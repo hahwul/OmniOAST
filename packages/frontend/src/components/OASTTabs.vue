@@ -103,8 +103,89 @@
             </div>
         </TabPanel>
         <TabPanel header="Settings">
-            <div class="text-center text-gray-400 py-8">
-                Settings page (coming soon)
+            <div>
+                <Button
+                    label="Add OAST Endpoint"
+                    icon="pi pi-plus"
+                    @click="openNewEndpointDialog"
+                    class="mb-3"
+                />
+                <DataTable
+                    :value="oastEndpoints"
+                    dataKey="id"
+                    selectionMode="single"
+                    v-model:selection="selectedEndpoint"
+                    class="p-datatable-sm"
+                >
+                    <Column field="name" header="Name" />
+                    <Column field="address" header="Address" />
+                    <Column field="enabled" header="Enabled">
+                        <template #body="{ data }">
+                            <Button
+                                :label="data.enabled ? 'Enabled' : 'Disabled'"
+                                :severity="
+                                    data.enabled ? 'success' : 'secondary'
+                                "
+                                size="small"
+                                @click="toggleEnable(data)"
+                            />
+                        </template>
+                    </Column>
+                    <Column header="Actions">
+                        <template #body="{ data }">
+                            <Button
+                                icon="pi pi-pencil"
+                                size="small"
+                                @click="openEditEndpointDialog(data)"
+                                class="mr-2"
+                            />
+                            <Button
+                                icon="pi pi-trash"
+                                size="small"
+                                severity="danger"
+                                @click="deleteEndpoint(data)"
+                            />
+                        </template>
+                    </Column>
+                </DataTable>
+                <Dialog
+                    v-model:visible="endpointDialogVisible"
+                    header="OAST Endpoint"
+                    :modal="true"
+                    :closable="true"
+                    style="width: 400px"
+                >
+                    <div class="p-fluid">
+                        <div class="field">
+                            <label for="name">Name</label>
+                            <InputText id="name" v-model="newEndpoint.name" />
+                        </div>
+                        <div class="field">
+                            <label for="address">Address</label>
+                            <InputText
+                                id="address"
+                                v-model="newEndpoint.address"
+                            />
+                        </div>
+                        <div class="field">
+                            <label>
+                                <Checkbox
+                                    v-model="newEndpoint.enabled"
+                                    :binary="true"
+                                />
+                                Enabled
+                            </label>
+                        </div>
+                    </div>
+                    <template #footer>
+                        <Button
+                            label="Cancel"
+                            @click="endpointDialogVisible = false"
+                            class="p-button-text"
+                        />
+                        <Button label="Save" @click="saveEndpoint" />
+                    </template>
+                </Dialog>
             </div>
         </TabPanel>
         <TabPanel header="Help">
@@ -123,6 +204,9 @@ import Button from "primevue/button";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import Card from "primevue/card";
+import Dialog from "primevue/dialog";
+import InputText from "primevue/inputtext";
+import Checkbox from "primevue/checkbox";
 
 type HistoryItem = {
     id: number;
@@ -133,6 +217,13 @@ type HistoryItem = {
     timestamp: string;
     request: string;
     response: string;
+};
+
+type OASTEndpoint = {
+    id: number;
+    name: string;
+    address: string;
+    enabled: boolean;
 };
 
 const history = ref<HistoryItem[]>([
@@ -159,6 +250,26 @@ const history = ref<HistoryItem[]>([
 ]);
 const selectedHistory = ref<HistoryItem | null>(null);
 
+const oastEndpoints = ref<OASTEndpoint[]>([
+    {
+        id: 1,
+        name: "Interactsh",
+        address: "interactsh-1234.oast.site",
+        enabled: true,
+    },
+    { id: 2, name: "Boast", address: "boast-5678.oast.site", enabled: false },
+]);
+const selectedEndpoint = ref<OASTEndpoint | null>(null);
+const endpointDialogVisible = ref(false);
+const isEditMode = ref(false);
+
+const newEndpoint = ref<OASTEndpoint>({
+    id: 0,
+    name: "",
+    address: "",
+    enabled: true,
+});
+
 function onGetAddress() {
     // Placeholder: implement address retrieval logic
     // Use Caido Toast or dialog in real implementation
@@ -182,6 +293,44 @@ function rowClass(data: HistoryItem) {
     return selectedHistory.value && selectedHistory.value.id === data.id
         ? "bg-primary-50"
         : "";
+}
+
+// OAST Endpoint CRUD + Enable/Disable
+function openNewEndpointDialog() {
+    isEditMode.value = false;
+    newEndpoint.value = { id: 0, name: "", address: "", enabled: true };
+    endpointDialogVisible.value = true;
+}
+
+function openEditEndpointDialog(endpoint: OASTEndpoint) {
+    isEditMode.value = true;
+    newEndpoint.value = { ...endpoint };
+    endpointDialogVisible.value = true;
+}
+
+function saveEndpoint() {
+    if (isEditMode.value) {
+        // Update
+        const idx = oastEndpoints.value.findIndex(
+            (e) => e.id === newEndpoint.value.id,
+        );
+        if (idx !== -1) oastEndpoints.value[idx] = { ...newEndpoint.value };
+    } else {
+        // Create
+        const nextId = Math.max(0, ...oastEndpoints.value.map((e) => e.id)) + 1;
+        oastEndpoints.value.push({ ...newEndpoint.value, id: nextId });
+    }
+    endpointDialogVisible.value = false;
+}
+
+function deleteEndpoint(endpoint: OASTEndpoint) {
+    oastEndpoints.value = oastEndpoints.value.filter(
+        (e) => e.id !== endpoint.id,
+    );
+}
+
+function toggleEnable(endpoint: OASTEndpoint) {
+    endpoint.enabled = !endpoint.enabled;
 }
 </script>
 
