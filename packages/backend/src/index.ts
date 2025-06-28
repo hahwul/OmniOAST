@@ -15,6 +15,23 @@ const saveOASTConfig = (sdk: SDK, config: OASTConfig) => {
   return true;
 };
 
+const generateRandomString = (length: number) => {
+  const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  const charactersLength = characters.length;
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+  }
+  return result;
+};
+
+const getOASTAddress = (sdk: SDK) => {
+  const randomSubdomain = generateRandomString(10);
+  const oastAddress = `${randomSubdomain}.oast.site`; // Example base domain
+  sdk.console.log(`Generated OAST address: ${oastAddress}`);
+  return oastAddress;
+};
+
 const fetchInteractions = async (sdk: SDK, oastId: string) => {
   const config = oastConfigs.get(oastId);
   if (!config) {
@@ -45,9 +62,11 @@ const fetchInteractions = async (sdk: SDK, oastId: string) => {
 export type API = DefineAPI<{
   saveOASTConfig: typeof saveOASTConfig;
   fetchInteractions: typeof fetchInteractions;
+  getOASTAddress: typeof getOASTAddress;
 }>;
 
 export function init(sdk: SDK<API>) {
   sdk.api.register("saveOASTConfig", saveOASTConfig);
   sdk.api.register("fetchInteractions", fetchInteractions);
+  sdk.api.register("getOASTAddress", getOASTAddress);
 }

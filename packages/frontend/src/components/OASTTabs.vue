@@ -4,6 +4,13 @@
             <div class="oast-section">
                 <div class="oast-section-header">
                     <div class="oast-section-actions">
+                        <Dropdown
+                            v-model="selectedOASTForRefresh"
+                            :options="oastEndpoints"
+                            optionLabel="name"
+                            placeholder="Select an OAST Endpoint"
+                            class="w-full md:w-14rem"
+                        />
                         <Button
                             label="Get Address"
                             @click="onGetAddress"
@@ -214,6 +221,7 @@ import Card from "primevue/card";
 import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
 import Checkbox from "primevue/checkbox";
+import Dropdown from "primevue/dropdown";
 import { useSDK } from "../plugins/sdk";
 
 const sdk = useSDK();
@@ -283,32 +291,52 @@ const newEndpoint = ref<OASTEndpoint>({
     enabled: true,
 });
 
-function onGetAddress() {
-    // Placeholder: implement address retrieval logic
-    // Use Caido Toast or dialog in real implementation
-    alert("Get Address clicked (implement logic)");
+const selectedOASTForRefresh = ref<OASTEndpoint | null>(null);
+
+async function onGetAddress() {
+    const address = await sdk.api.getOASTAddress();
+    if (address) {
+        newEndpoint.value.address = address;
+    }
 }
 
 async function onRefresh() {
     history.value = [];
-    for (const endpoint of oastEndpoints.value) {
-        if (endpoint.enabled) {
-            const interactions = await sdk.api.fetchInteractions(endpoint.id);
-            if (interactions) {
-                // Assuming interactions is an array of objects with protocol, source, destination, type, timestamp, request, response
-                // You might need to map the interaction data to your HistoryItem type
-                history.value.push(
-                    ...interactions.map((interaction: any) => ({
-                        id: Math.random(), // Generate a unique ID for now
-                        protocol: interaction.protocol,
-                        source: interaction.source,
-                        destination: interaction.destination,
-                        type: interaction.type,
-                        timestamp: interaction.timestamp,
-                        request: JSON.stringify(interaction.request, null, 2),
-                        response: JSON.stringify(interaction.response, null, 2),
-                    })),
-                );
+    if (selectedOASTForRefresh.value) {
+        const interactions = await sdk.api.fetchInteractions(selectedOASTForRefresh.value.id);
+        if (interactions) {
+            history.value.push(
+                ...interactions.map((interaction: any) => ({
+                    id: Math.random(), // Generate a unique ID for now
+                    protocol: interaction.protocol,
+                    source: interaction.source,
+                    destination: interaction.destination,
+                    type: interaction.type,
+                    timestamp: interaction.timestamp,
+                    request: JSON.stringify(interaction.request, null, 2),
+                    response: JSON.stringify(interaction.response, null, 2),
+                })),
+            );
+        }
+    } else {
+        // If no specific OAST is selected, refresh all enabled ones (current behavior)
+        for (const endpoint of oastEndpoints.value) {
+            if (endpoint.enabled) {
+                const interactions = await sdk.api.fetchInteractions(endpoint.id);
+                if (interactions) {
+                    history.value.push(
+                        ...interactions.map((interaction: any) => ({
+                            id: Math.random(), // Generate a unique ID for now
+                            protocol: interaction.protocol,
+                            source: interaction.source,
+                            destination: interaction.destination,
+                            type: interaction.type,
+                            timestamp: interaction.timestamp,
+                            request: JSON.stringify(interaction.request, null, 2),
+                            response: JSON.stringify(interaction.response, null, 2),
+                        })),
+                    );
+                }
             }
         }
     }
