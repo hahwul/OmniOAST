@@ -12,7 +12,8 @@ async function getDb(sdk: SDK): Promise<any> {
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
           url TEXT NOT NULL,
-          token TEXT
+          token TEXT,
+          type TEXT NOT NULL
         );
       `);
       return db;
@@ -42,7 +43,7 @@ export const saveOASTProviders = async (
   const db = await getDb(sdk);
   await db.exec("DELETE FROM oast_providers");
   const insertStmt = await db.prepare(
-    "INSERT INTO oast_providers (id, name, url, token, enabled) VALUES (?, ?, ?, ?, ?)",
+    "INSERT INTO oast_providers (id, name, url, token, type) VALUES (?, ?, ?, ?, ?)",
   );
   for (const provider of newProviders) {
     await insertStmt.run(
@@ -50,6 +51,7 @@ export const saveOASTProviders = async (
       provider.name,
       provider.url ?? "",
       provider.token ?? "",
+      provider.type ?? "interactsh",
     );
   }
 };
