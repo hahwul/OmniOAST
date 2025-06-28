@@ -1,46 +1,25 @@
-import { Classic } from "@caido/primevue";
-import PrimeVue from "primevue/config";
-import { createApp } from "vue";
+import { defineApp } from "./app";
+import type { CaidoSDK } from "./types";
+import * as oastRepo from "./repositories/oast";
 
-import { SDKPlugin } from "./plugins/sdk";
-import "./styles/index.css";
-import type { FrontendSDK } from "./types";
-import App from "./views/App.vue";
+export const init = (sdk: CaidoSDK) => {
+  oastRepo.init(sdk);
+  const app = defineApp(sdk);
 
-// This is the entry point for the frontend plugin
-export const init = (sdk: FrontendSDK) => {
-  const app = createApp(App);
-
-  // Load the PrimeVue component library
-  app.use(PrimeVue, {
-    unstyled: true,
-    pt: Classic,
-  });
-
-  // Provide the FrontendSDK
-  app.use(SDKPlugin, sdk);
-
-  // Create the root element for the app
   const root = document.createElement("div");
   Object.assign(root.style, {
     height: "100%",
     width: "100%",
   });
 
-  // Set the ID of the root element
-  // Replace this with the value of the prefixWrap plugin in caido.config.ts
-  // This is necessary to prevent styling conflicts between plugins
-  root.id = `plugin--frontend-vue`;
-
-  // Mount the app to the root element
+  console.log("Attempting to mount Vue app.");
   app.mount(root);
 
-  // Add the page to the navigation
-  // Make sure to use a unique name for the page
-  sdk.navigation.addPage("/omni-oast", {
+  sdk.navigation.addPage("/OmniOAST", {
     body: root,
   });
 
-  // Add a sidebar item
-  sdk.sidebar.registerItem("OmniOAST", "/omni-oast");
+  sdk.sidebar.registerItem("OmniOAST", "/OmniOAST", {
+    icon: "fas fa-satellite-dish",
+  });
 };

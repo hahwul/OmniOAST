@@ -303,7 +303,7 @@ const selectedOASTForRefresh = ref<OASTEndpoint | null>(
 );
 
 async function onGetAddress() {
-    const address = await sdk.api.getOASTAddress();
+    const address = await sdk.backend.getOASTAddress();
     if (address) {
         newEndpoint.value.address = address;
     }
@@ -312,7 +312,7 @@ async function onGetAddress() {
 async function onRefresh() {
     history.value = [];
     if (selectedOASTForRefresh.value) {
-        const interactions = await sdk.api.fetchInteractions(
+        const interactions = await sdk.backend.fetchInteractions(
             selectedOASTForRefresh.value.id,
         );
         if (interactions) {
@@ -333,7 +333,7 @@ async function onRefresh() {
         // If no specific OAST is selected, refresh all enabled ones (current behavior)
         for (const endpoint of oastEndpoints.value) {
             if (endpoint.enabled) {
-                const interactions = await sdk.api.fetchInteractions(
+                const interactions = await sdk.backend.fetchInteractions(
                     endpoint.id,
                 );
                 if (interactions) {
@@ -411,7 +411,7 @@ async function saveEndpoint() {
         newEndpoint.value.id = nextId;
         oastEndpoints.value.push({ ...newEndpoint.value });
     }
-    await sdk.api.saveOASTConfig({
+    await sdk.backend.saveOASTConfig({
         id: newEndpoint.value.id,
         name: newEndpoint.value.name,
         url: newEndpoint.value.address,
