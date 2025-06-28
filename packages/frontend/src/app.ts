@@ -1,7 +1,5 @@
 import { createPinia } from "pinia";
-
 import PrimeVue from "primevue/config";
-
 import { createApp } from "vue";
 import { Classic } from "@caido/primevue";
 import "@fortawesome/fontawesome-free/css/fontawesome.min.css";

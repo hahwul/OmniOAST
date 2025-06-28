@@ -1,6 +1,6 @@
 import type { Caido } from "@caido/sdk-frontend";
 import type { API } from "backend";
-import type { OASTProvider, OASTHistory } from "shared/src/types";
+import type { OASTHistory, OASTProvider } from "shared/src/types";
 
 type CaidoSDK = Caido<API>;
 
@@ -41,7 +41,7 @@ export async function call(
   }
   // Strict validation for addOASTProvider and updateOASTProvider payload
   if (method === "addOASTProvider" || method === "updateOASTProvider") {
-    const p = arg as any;
+    const p = arg;
     if (
       !p ||
       typeof p !== "object" ||

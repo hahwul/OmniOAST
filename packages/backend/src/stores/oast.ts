@@ -1,5 +1,6 @@
-import { type OASTProvider } from "../../../shared/src/types";
 import type { SDK } from "caido:plugin";
+
+import { type OASTProvider } from "../../../shared/src/types";
 
 let dbPromise: Promise<any> | null = null;
 

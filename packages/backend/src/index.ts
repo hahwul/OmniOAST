@@ -1,9 +1,9 @@
 import type { DefineAPI, SDK } from "caido:plugin";
 
+import type { OASTHistory, OASTProvider } from "../../shared/src/types";
+
 import { getOASTHistory, initHistoryService } from "./services/history";
 import { getOASTProviders, saveOASTProviders } from "./stores/oast";
-
-import type { OASTHistory, OASTProvider } from "../../shared/src/types";
 
 export type API = DefineAPI<{
   getOASTProviders: (sdk: SDK) => Promise<OASTProvider[]>;

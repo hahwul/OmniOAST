@@ -1,7 +1,7 @@
+import { type OASTProvider } from "shared/src/types";
+
 import { call, initSDK } from "../plugins/sdk";
 import type { CaidoSDK } from "../types";
-
-import { type OASTProvider } from "shared/src/types";
 
 export const init = (sdk: CaidoSDK) => {
   initSDK(sdk);
