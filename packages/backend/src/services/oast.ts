@@ -1,10 +1,12 @@
-import { OASTProvider } from "@/shared/types";
+import type { SDK } from "caido:plugin";
+
+import type { API } from "../index";
 import {
   getOASTProviders as getProviders,
   saveOASTProviders,
 } from "../stores/oast";
-import type { SDK } from "caido:plugin";
-import type { API } from "../index";
+
+import { type OASTProvider } from "@/shared/types";
 
 let sdkInstance: SDK<API>;
 
@@ -14,17 +16,20 @@ export const initOASTService = (sdk: SDK<API>) => {
 
 export const getOASTProviders = async () => {
   sdkInstance.console.log("getOASTProviders service called");
-  return await getProviders();
+  return getProviders();
 };
 
 export const addOASTProvider = async (provider: OASTProvider) => {
-  sdkInstance.console.log("addOASTProvider service called with provider:", provider);
+  sdkInstance.console.log(
+    "addOASTProvider service called with provider:",
+    provider,
+  );
   try {
     const providers = await getProviders();
     sdkInstance.console.log("Current providers before adding:", providers);
     providers.push(provider);
     sdkInstance.console.log("Providers after adding:", providers);
-    await saveOASTProviders(providers);
+    saveOASTProviders(providers);
     sdkInstance.console.log("Providers saved successfully.");
     return provider;
   } catch (error) {
@@ -34,13 +39,16 @@ export const addOASTProvider = async (provider: OASTProvider) => {
 };
 
 export const updateOASTProvider = async (provider: OASTProvider) => {
-  sdkInstance.console.log("updateOASTProvider service called with provider:", provider);
+  sdkInstance.console.log(
+    "updateOASTProvider service called with provider:",
+    provider,
+  );
   try {
     let providers = await getProviders();
     sdkInstance.console.log("Current providers before updating:", providers);
     providers = providers.map((p) => (p.id === provider.id ? provider : p));
     sdkInstance.console.log("Providers after updating:", providers);
-    await saveOASTProviders(providers);
+    saveOASTProviders(providers);
     sdkInstance.console.log("Providers saved successfully.");
     return provider;
   } catch (error) {
@@ -56,7 +64,7 @@ export const deleteOASTProvider = async (id: string) => {
     sdkInstance.console.log("Current providers before deleting:", providers);
     providers = providers.filter((p) => p.id !== id);
     sdkInstance.console.log("Providers after deleting:", providers);
-    await saveOASTProviders(providers);
+    saveOASTProviders(providers);
     sdkInstance.console.log("Providers saved successfully.");
     return { id };
   } catch (error) {

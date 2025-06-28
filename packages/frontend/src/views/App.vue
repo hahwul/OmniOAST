@@ -1,10 +1,11 @@
 <script setup lang="ts">
-console.log("App.vue script setup initialized");
 import MenuBar from "primevue/menubar";
 import { computed, ref } from "vue";
-import History from "./History.vue";
+
 import Config from "./Config.vue";
 import Help from "./Help.vue";
+import History from "./History.vue";
+console.log("App.vue script setup initialized");
 
 const page = ref<"History" | "Config" | "Help">("History");
 const items = [
@@ -36,9 +37,10 @@ const component = computed(() => {
             return Config;
         case "Help":
             return Help;
+        default:
+            return History;
     }
 });
-
 </script>
 
 <template>

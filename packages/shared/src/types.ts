@@ -1,7 +1,7 @@
 export interface OASTProvider {
   id: string;
   name: string;
-  type: 'interactsh' | 'boast' | 'custom';
+  type: "interactsh" | "boast" | "custom";
   url: string;
   token?: string;
 }

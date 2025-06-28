@@ -1,15 +1,15 @@
 import type { DefineAPI, SDK } from "caido:plugin";
-import { 
-  getOASTProviders, 
-  addOASTProvider, 
-  updateOASTProvider, 
-  deleteOASTProvider, 
-  initOASTService
-} from "./services/oast";
+
 import { getOASTHistory, initHistoryService } from "./services/history";
+import {
+  addOASTProvider,
+  deleteOASTProvider,
+  getOASTProviders,
+  initOASTService,
+  updateOASTProvider,
+} from "./services/oast";
 
-
-import type { OASTProvider, OASTHistory } from "@/shared/types";
+import type { OASTHistory, OASTProvider } from "@/shared/types";
 
 export type API = DefineAPI<{
   getOASTProviders: {
@@ -28,7 +28,7 @@ export type API = DefineAPI<{
     args: [id: string];
     returns: { id: string };
   };
-  
+
   getOASTHistory: {
     args: [providerId: string];
     returns: OASTHistory[];
@@ -44,7 +44,7 @@ export function init(sdk: SDK<API>) {
   sdk.api.register("addOASTProvider", addOASTProvider);
   sdk.api.register("updateOASTProvider", updateOASTProvider);
   sdk.api.register("deleteOASTProvider", deleteOASTProvider);
-  
+
   // OAST History endpoints
   sdk.api.register("getOASTHistory", getOASTHistory);
 }

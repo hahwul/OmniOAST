@@ -3,7 +3,7 @@ import type { API } from "backend";
 
 type CaidoSDK = Caido<API>;
 
-let _sdk: CaidoSDK | null = null;
+let _sdk: CaidoSDK | undefined = undefined;
 
 export const initSDK = (sdkInstance: CaidoSDK) => {
   _sdk = sdkInstance;
@@ -23,7 +23,7 @@ export const call = async <T extends keyof API>(
     const result = (await _sdk.backend[method](...args)) as ReturnType<API[T]>;
     console.log(`SDK backend call result:`, result);
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`SDK backend call error:`, error);
     throw error;
   }

@@ -1,11 +1,11 @@
-import { OASTHistory } from "@/shared/types";
+import { type OASTHistory } from "@/shared/types";
 
 let history: OASTHistory[] = [];
 
 export const getOASTHistory = (): OASTHistory[] => {
-    return history;
-}
+  return history;
+};
 
 export const saveOASTHistory = (newHistory: OASTHistory[]) => {
-    history = newHistory;
-}
+  history = newHistory;
+};

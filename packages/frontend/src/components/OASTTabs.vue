@@ -10,21 +10,21 @@
                         <Dropdown
                             v-model="selectedOASTForRefresh"
                             :options="oastEndpoints"
-                            optionLabel="name"
+                            option-label="name"
                             placeholder="Select an OAST Endpoint"
                             class="w-full md:w-14rem"
                             style="flex-grow: 1"
                         />
                         <Button
                             label="Get Address"
-                            @click="onGetAddress"
                             size="small"
+                            @click="onGetAddress"
                         />
                         <Button
                             label="Refresh"
-                            @click="onRefresh"
                             severity="secondary"
                             size="small"
+                            @click="onRefresh"
                         />
                     </div>
                 </div>
@@ -32,16 +32,16 @@
                     <template #content>
                         <DataTable
                             :value="history"
-                            selectionMode="single"
-                            dataKey="id"
+                            selection-mode="single"
+                            data-key="id"
                             :selection="selectedHistory"
-                            @rowSelect="(e) => selectHistory(e.data)"
-                            @rowUnselect="() => selectHistory(null)"
                             class="p-datatable-sm"
                             style="min-width: 100%"
-                            :rowClass="rowClass"
+                            :row-class="rowClass"
                             scrollable
-                            scrollHeight="250px"
+                            scroll-height="250px"
+                            @row-select="(e) => selectHistory(e.data)"
+                            @row-unselect="() => selectHistory(null)"
                         >
                             <Column
                                 field="protocol"
@@ -118,14 +118,14 @@
                 <Button
                     label="Add OAST Endpoint"
                     icon="pi pi-plus"
-                    @click="openNewEndpointDialog"
                     class="mb-3"
+                    @click="openNewEndpointDialog"
                 />
                 <DataTable
-                    :value="oastEndpoints"
-                    dataKey="id"
-                    selectionMode="single"
                     v-model:selection="selectedEndpoint"
+                    :value="oastEndpoints"
+                    data-key="id"
+                    selection-mode="single"
                     class="p-datatable-sm"
                 >
                     <Column field="name" header="Name" />
@@ -147,8 +147,8 @@
                             <Button
                                 icon="pi pi-pencil"
                                 size="small"
-                                @click="openEditEndpointDialog(data)"
                                 class="mr-2"
+                                @click="openEditEndpointDialog(data)"
                             />
                             <Button
                                 icon="pi pi-trash"
@@ -195,8 +195,8 @@
                     <template #footer>
                         <Button
                             label="Cancel"
-                            @click="endpointDialogVisible = false"
                             class="p-button-text"
+                            @click="endpointDialogVisible = false"
                         />
                         <Button label="Save" @click="saveEndpoint" />
                     </template>
@@ -212,17 +212,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import TabView from "primevue/tabview";
-import TabPanel from "primevue/tabpanel";
 import Button from "primevue/button";
-import DataTable from "primevue/datatable";
-import Column from "primevue/column";
 import Card from "primevue/card";
-import Dialog from "primevue/dialog";
-import InputText from "primevue/inputtext";
 import Checkbox from "primevue/checkbox";
+import Column from "primevue/column";
+import DataTable from "primevue/datatable";
+import Dialog from "primevue/dialog";
 import Dropdown from "primevue/dropdown";
+import InputText from "primevue/inputtext";
+import TabPanel from "primevue/tabpanel";
+import TabView from "primevue/tabview";
+import { ref } from "vue";
+
 import { useSDK } from "../plugins/sdk";
 
 const sdk = useSDK();
@@ -268,7 +269,7 @@ const history = ref<HistoryItem[]>([
         response: "DNS Response: 127.0.0.1",
     },
 ]);
-const selectedHistory = ref<HistoryItem | null>(null);
+const selectedHistory = ref<HistoryItem | undefined>(undefined);
 
 const oastEndpoints = ref<OASTEndpoint[]>([
     {
@@ -286,7 +287,7 @@ const oastEndpoints = ref<OASTEndpoint[]>([
         enabled: false,
     },
 ]);
-const selectedEndpoint = ref<OASTEndpoint | null>(null);
+const selectedEndpoint = ref<OASTEndpoint | undefined>(undefined);
 const endpointDialogVisible = ref(false);
 const isEditMode = ref(false);
 
@@ -298,64 +299,74 @@ const newEndpoint = ref<OASTEndpoint>({
     enabled: true,
 });
 
-const selectedOASTForRefresh = ref<OASTEndpoint | null>(
-    oastEndpoints.value.length > 0 ? oastEndpoints.value[0] : null,
+const selectedOASTForRefresh = ref<OASTEndpoint | undefined>(
+    oastEndpoints.value.length > 0 ? oastEndpoints.value[0] : undefined,
 );
 
 async function onGetAddress() {
     const address = await sdk.backend.getOASTAddress();
-    if (address) {
+    if (address !== undefined && address !== null) {
         newEndpoint.value.address = address;
     }
 }
 
 async function onRefresh() {
     history.value = [];
-    if (selectedOASTForRefresh.value) {
+    if (selectedOASTForRefresh.value !== undefined) {
         const interactions = await sdk.backend.fetchInteractions(
             selectedOASTForRefresh.value.id,
         );
-        if (interactions) {
+        if (interactions !== undefined && interactions !== null) {
             history.value.push(
-                ...interactions.map((interaction: any) => ({
+                ...interactions.map((interaction: Record<string, unknown>) => ({
                     id: Math.random(), // Generate a unique ID for now
-                    protocol: interaction.protocol,
-                    source: interaction.source,
-                    destination: interaction.destination,
-                    type: interaction.type,
-                    timestamp: interaction.timestamp,
-                    request: JSON.stringify(interaction.request, null, 2),
-                    response: JSON.stringify(interaction.response, null, 2),
+                    protocol: (interaction as any).protocol,
+                    source: (interaction as any).source,
+                    destination: (interaction as any).destination,
+                    type: (interaction as any).type,
+                    timestamp: (interaction as any).timestamp,
+                    request: JSON.stringify(
+                        (interaction as any).request,
+                        null,
+                        2,
+                    ),
+                    response: JSON.stringify(
+                        (interaction as any).response,
+                        null,
+                        2,
+                    ),
                 })),
             );
         }
     } else {
         // If no specific OAST is selected, refresh all enabled ones (current behavior)
         for (const endpoint of oastEndpoints.value) {
-            if (endpoint.enabled) {
+            if (endpoint.enabled === true) {
                 const interactions = await sdk.backend.fetchInteractions(
                     endpoint.id,
                 );
-                if (interactions) {
+                if (interactions !== undefined && interactions !== null) {
                     history.value.push(
-                        ...interactions.map((interaction: any) => ({
-                            id: Math.random(), // Generate a unique ID for now
-                            protocol: interaction.protocol,
-                            source: interaction.source,
-                            destination: interaction.destination,
-                            type: interaction.type,
-                            timestamp: interaction.timestamp,
-                            request: JSON.stringify(
-                                interaction.request,
-                                null,
-                                2,
-                            ),
-                            response: JSON.stringify(
-                                interaction.response,
-                                null,
-                                2,
-                            ),
-                        })),
+                        ...interactions.map(
+                            (interaction: Record<string, unknown>) => ({
+                                id: Math.random(), // Generate a unique ID for now
+                                protocol: (interaction as any).protocol,
+                                source: (interaction as any).source,
+                                destination: (interaction as any).destination,
+                                type: (interaction as any).type,
+                                timestamp: (interaction as any).timestamp,
+                                request: JSON.stringify(
+                                    (interaction as any).request,
+                                    null,
+                                    2,
+                                ),
+                                response: JSON.stringify(
+                                    (interaction as any).response,
+                                    null,
+                                    2,
+                                ),
+                            }),
+                        ),
                     );
                 }
             }
@@ -363,7 +374,7 @@ async function onRefresh() {
     }
 }
 
-function selectHistory(item: HistoryItem | null) {
+function selectHistory(item: HistoryItem | undefined) {
     selectedHistory.value = item;
 }
 
@@ -372,7 +383,8 @@ function rowIndexTemplate(rowData: HistoryItem, options: { rowIndex: number }) {
 }
 
 function rowClass(data: HistoryItem) {
-    return selectedHistory.value && selectedHistory.value.id === data.id
+    return selectedHistory.value !== undefined &&
+        selectedHistory.value.id === data.id
         ? "bg-primary-50"
         : "";
 }
@@ -397,7 +409,7 @@ function openEditEndpointDialog(endpoint: OASTEndpoint) {
 }
 
 async function saveEndpoint() {
-    if (isEditMode.value) {
+    if (isEditMode.value === true) {
         // Update
         const idx = oastEndpoints.value.findIndex(
             (e) => e.id === newEndpoint.value.id,
@@ -427,7 +439,7 @@ function deleteEndpoint(endpoint: OASTEndpoint) {
 }
 
 function toggleEnable(endpoint: OASTEndpoint) {
-    endpoint.enabled = !endpoint.enabled;
+    endpoint.enabled = endpoint.enabled !== true;
 }
 </script>
 

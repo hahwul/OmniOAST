@@ -1,22 +1,3 @@
-
 @import "tailwindcss/utilities";
 @import "tailwindcss/base";
 @import "tailwindcss/components";
-
-.status {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.8rem;
-  gap: 0.25rem;
-}
-
-.enforced-status {
-  background: #498849 !important;
-}
-
-.bypassed-status {
-  background: #df3257 !important;
-}
-
-.unexpected-status {
-  background: #f1cb5a !important;
-}
