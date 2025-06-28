@@ -3,13 +3,17 @@
         <TabPanel header="OAST">
             <div class="oast-section">
                 <div class="oast-section-header">
-                    <div class="oast-section-actions" style="display: flex; align-items: center; gap: 10px;">
+                    <div
+                        class="oast-section-actions"
+                        style="display: flex; align-items: center; gap: 10px"
+                    >
                         <Dropdown
                             v-model="selectedOASTForRefresh"
                             :options="oastEndpoints"
                             optionLabel="name"
                             placeholder="Select an OAST Endpoint"
-                            class="w-full md:w-14rem" style="flex-grow: 1;"
+                            class="w-full md:w-14rem"
+                            style="flex-grow: 1"
                         />
                         <Button
                             label="Get Address"
@@ -176,10 +180,7 @@
                         </div>
                         <div class="field">
                             <label for="token">Token</label>
-                            <InputText
-                                id="token"
-                                v-model="newEndpoint.token"
-                            />
+                            <InputText id="token" v-model="newEndpoint.token" />
                         </div>
                         <div class="field">
                             <label>
@@ -260,7 +261,7 @@ const history = ref<HistoryItem[]>([
         id: 2,
         protocol: "DNS",
         source: "10.0.0.2",
-        destination: "boast-5678.oast.site",
+        destination: "boast-5678.oast.",
         type: "boast",
         timestamp: "2024-06-01 12:35:10",
         request: "DNS Query for boast-5678.oast.site",
@@ -273,11 +274,17 @@ const oastEndpoints = ref<OASTEndpoint[]>([
     {
         id: "1",
         name: "Interactsh",
-        address: "interactsh-1234.oast.site",
-        token: "your-token-here",
+        address: "oast.fun",
+        token: "",
         enabled: true,
     },
-    { id: "2", name: "Boast", address: "boast-5678.oast.site", token: "your-token-here", enabled: false },
+    {
+        id: "2",
+        name: "Boast",
+        address: "boast-5678.oast.site",
+        token: "your-token-here",
+        enabled: false,
+    },
 ]);
 const selectedEndpoint = ref<OASTEndpoint | null>(null);
 const endpointDialogVisible = ref(false);
@@ -291,7 +298,9 @@ const newEndpoint = ref<OASTEndpoint>({
     enabled: true,
 });
 
-const selectedOASTForRefresh = ref<OASTEndpoint | null>(oastEndpoints.value.length > 0 ? oastEndpoints.value[0] : null);
+const selectedOASTForRefresh = ref<OASTEndpoint | null>(
+    oastEndpoints.value.length > 0 ? oastEndpoints.value[0] : null,
+);
 
 async function onGetAddress() {
     const address = await sdk.api.getOASTAddress();
@@ -303,7 +312,9 @@ async function onGetAddress() {
 async function onRefresh() {
     history.value = [];
     if (selectedOASTForRefresh.value) {
-        const interactions = await sdk.api.fetchInteractions(selectedOASTForRefresh.value.id);
+        const interactions = await sdk.api.fetchInteractions(
+            selectedOASTForRefresh.value.id,
+        );
         if (interactions) {
             history.value.push(
                 ...interactions.map((interaction: any) => ({
@@ -322,7 +333,9 @@ async function onRefresh() {
         // If no specific OAST is selected, refresh all enabled ones (current behavior)
         for (const endpoint of oastEndpoints.value) {
             if (endpoint.enabled) {
-                const interactions = await sdk.api.fetchInteractions(endpoint.id);
+                const interactions = await sdk.api.fetchInteractions(
+                    endpoint.id,
+                );
                 if (interactions) {
                     history.value.push(
                         ...interactions.map((interaction: any) => ({
@@ -332,8 +345,16 @@ async function onRefresh() {
                             destination: interaction.destination,
                             type: interaction.type,
                             timestamp: interaction.timestamp,
-                            request: JSON.stringify(interaction.request, null, 2),
-                            response: JSON.stringify(interaction.response, null, 2),
+                            request: JSON.stringify(
+                                interaction.request,
+                                null,
+                                2,
+                            ),
+                            response: JSON.stringify(
+                                interaction.response,
+                                null,
+                                2,
+                            ),
                         })),
                     );
                 }
@@ -359,7 +380,13 @@ function rowClass(data: HistoryItem) {
 // OAST Endpoint CRUD + Enable/Disable
 function openNewEndpointDialog() {
     isEditMode.value = false;
-    newEndpoint.value = { id: "", name: "", address: "", token: "", enabled: true };
+    newEndpoint.value = {
+        id: "",
+        name: "",
+        address: "",
+        token: "",
+        enabled: true,
+    };
     endpointDialogVisible.value = true;
 }
 
@@ -378,7 +405,9 @@ async function saveEndpoint() {
         if (idx !== -1) oastEndpoints.value[idx] = { ...newEndpoint.value };
     } else {
         // Create
-        const nextId = (Math.max(0, ...oastEndpoints.value.map((e) => parseInt(e.id))) + 1).toString();
+        const nextId = (
+            Math.max(0, ...oastEndpoints.value.map((e) => parseInt(e.id))) + 1
+        ).toString();
         newEndpoint.value.id = nextId;
         oastEndpoints.value.push({ ...newEndpoint.value });
     }
