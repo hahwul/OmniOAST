@@ -32,7 +32,7 @@ import { onMounted, ref, watch } from "vue";
 
 import * as oastRepo from "../repositories/oast";
 
-import { type OASTHistory, type OASTProvider } from "@/shared/types";
+import { type OASTHistory, type OASTProvider } from "shared/src/types";
 
 const providers = ref<OASTProvider[]>([]);
 const selectedProvider = ref<OASTProvider | undefined>(undefined);

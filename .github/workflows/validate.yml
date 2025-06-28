@@ -3,7 +3,7 @@ name: Validate
 on:
   push:
     branches:
-      - 'main'
+      - "main"
   workflow_call:
 
 concurrency:
@@ -16,7 +16,7 @@ env:
 
 jobs:
   typecheck:
-    name: 'Typecheck'
+    name: "Typecheck"
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -41,7 +41,7 @@ jobs:
         run: pnpm typecheck
 
   lint:
-    name: 'Lint'
+    name: "Lint"
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

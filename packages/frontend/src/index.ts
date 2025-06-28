@@ -1,8 +1,7 @@
 import { defineApp } from "./app";
 import * as oastRepo from "./repositories/oast";
-import type { CaidoSDK } from "./types";
 
-export const init = (sdk: CaidoSDK) => {
+export const init = (sdk: any) => {
   oastRepo.init(sdk);
   const app = defineApp(sdk);
 
