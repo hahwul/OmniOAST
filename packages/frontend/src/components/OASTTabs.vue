@@ -168,6 +168,13 @@
                             />
                         </div>
                         <div class="field">
+                            <label for="token">Token</label>
+                            <InputText
+                                id="token"
+                                v-model="newEndpoint.token"
+                            />
+                        </div>
+                        <div class="field">
                             <label>
                                 <Checkbox
                                     v-model="newEndpoint.enabled"
@@ -207,6 +214,9 @@ import Card from "primevue/card";
 import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
 import Checkbox from "primevue/checkbox";
+import { useSDK } from "../plugins/sdk";
+
+const sdk = useSDK();
 
 type HistoryItem = {
     id: number;
@@ -220,9 +230,10 @@ type HistoryItem = {
 };
 
 type OASTEndpoint = {
-    id: number;
+    id: string;
     name: string;
     address: string;
+    token: string;
     enabled: boolean;
 };
 
@@ -252,21 +263,23 @@ const selectedHistory = ref<HistoryItem | null>(null);
 
 const oastEndpoints = ref<OASTEndpoint[]>([
     {
-        id: 1,
+        id: "1",
         name: "Interactsh",
         address: "interactsh-1234.oast.site",
+        token: "your-token-here",
         enabled: true,
     },
-    { id: 2, name: "Boast", address: "boast-5678.oast.site", enabled: false },
+    { id: "2", name: "Boast", address: "boast-5678.oast.site", token: "your-token-here", enabled: false },
 ]);
 const selectedEndpoint = ref<OASTEndpoint | null>(null);
 const endpointDialogVisible = ref(false);
 const isEditMode = ref(false);
 
 const newEndpoint = ref<OASTEndpoint>({
-    id: 0,
+    id: "",
     name: "",
     address: "",
+    token: "",
     enabled: true,
 });
 
@@ -276,9 +289,29 @@ function onGetAddress() {
     alert("Get Address clicked (implement logic)");
 }
 
-function onRefresh() {
-    // Placeholder: implement refresh logic
-    alert("Refresh clicked (implement logic)");
+async function onRefresh() {
+    history.value = [];
+    for (const endpoint of oastEndpoints.value) {
+        if (endpoint.enabled) {
+            const interactions = await sdk.api.fetchInteractions(endpoint.id);
+            if (interactions) {
+                // Assuming interactions is an array of objects with protocol, source, destination, type, timestamp, request, response
+                // You might need to map the interaction data to your HistoryItem type
+                history.value.push(
+                    ...interactions.map((interaction: any) => ({
+                        id: Math.random(), // Generate a unique ID for now
+                        protocol: interaction.protocol,
+                        source: interaction.source,
+                        destination: interaction.destination,
+                        type: interaction.type,
+                        timestamp: interaction.timestamp,
+                        request: JSON.stringify(interaction.request, null, 2),
+                        response: JSON.stringify(interaction.response, null, 2),
+                    })),
+                );
+            }
+        }
+    }
 }
 
 function selectHistory(item: HistoryItem | null) {
@@ -298,7 +331,7 @@ function rowClass(data: HistoryItem) {
 // OAST Endpoint CRUD + Enable/Disable
 function openNewEndpointDialog() {
     isEditMode.value = false;
-    newEndpoint.value = { id: 0, name: "", address: "", enabled: true };
+    newEndpoint.value = { id: "", name: "", address: "", token: "", enabled: true };
     endpointDialogVisible.value = true;
 }
 
@@ -308,7 +341,7 @@ function openEditEndpointDialog(endpoint: OASTEndpoint) {
     endpointDialogVisible.value = true;
 }
 
-function saveEndpoint() {
+async function saveEndpoint() {
     if (isEditMode.value) {
         // Update
         const idx = oastEndpoints.value.findIndex(
@@ -317,9 +350,16 @@ function saveEndpoint() {
         if (idx !== -1) oastEndpoints.value[idx] = { ...newEndpoint.value };
     } else {
         // Create
-        const nextId = Math.max(0, ...oastEndpoints.value.map((e) => e.id)) + 1;
-        oastEndpoints.value.push({ ...newEndpoint.value, id: nextId });
+        const nextId = (Math.max(0, ...oastEndpoints.value.map((e) => parseInt(e.id))) + 1).toString();
+        newEndpoint.value.id = nextId;
+        oastEndpoints.value.push({ ...newEndpoint.value });
     }
+    await sdk.api.saveOASTConfig({
+        id: newEndpoint.value.id,
+        name: newEndpoint.value.name,
+        url: newEndpoint.value.address,
+        token: newEndpoint.value.token,
+    });
     endpointDialogVisible.value = false;
 }
 
