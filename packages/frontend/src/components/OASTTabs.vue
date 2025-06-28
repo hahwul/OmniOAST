@@ -3,13 +3,13 @@
         <TabPanel header="OAST">
             <div class="oast-section">
                 <div class="oast-section-header">
-                    <div class="oast-section-actions">
+                    <div class="oast-section-actions" style="display: flex; align-items: center; gap: 10px;">
                         <Dropdown
                             v-model="selectedOASTForRefresh"
                             :options="oastEndpoints"
                             optionLabel="name"
                             placeholder="Select an OAST Endpoint"
-                            class="w-full md:w-14rem"
+                            class="w-full md:w-14rem" style="flex-grow: 1;"
                         />
                         <Button
                             label="Get Address"
@@ -291,7 +291,7 @@ const newEndpoint = ref<OASTEndpoint>({
     enabled: true,
 });
 
-const selectedOASTForRefresh = ref<OASTEndpoint | null>(null);
+const selectedOASTForRefresh = ref<OASTEndpoint | null>(oastEndpoints.value.length > 0 ? oastEndpoints.value[0] : null);
 
 async function onGetAddress() {
     const address = await sdk.api.getOASTAddress();
