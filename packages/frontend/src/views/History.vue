@@ -2,14 +2,16 @@
     <div class="p-4">
         <h1 class="text-2xl font-bold mb-4">OAST Interaction History</h1>
 
-        <div class="mb-4">
+        <div class="mb-4 flex items-center gap-2">
             <Dropdown
                 v-model="selectedProvider"
                 :options="providers"
                 option-label="name"
                 placeholder="Select an OAST Provider"
-                class="w-full md:w-14rem"
+                class="w-96 md:w-14rem"
             />
+            <Button label="Get Payload" @click="onGetPayload" />
+            <Button label="Refresh" @click="onRefresh" />
         </div>
 
         <DataTable v-if="history.length > 0" :value="history">
@@ -28,6 +30,7 @@
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import Dropdown from "primevue/dropdown";
+import Button from "primevue/button";
 import { onMounted, ref, watch } from "vue";
 
 import * as oastRepo from "../repositories/oast";
@@ -49,4 +52,18 @@ watch(selectedProvider, async (newProvider) => {
         history.value = [];
     }
 });
+function onGetPayload() {
+    if (selectedProvider.value) {
+        // TODO: 실제 payload 생성/복사 로직 구현
+        // 예시: alert(`Payload for ${selectedProvider.value.name}`);
+    }
+}
+
+async function onRefresh() {
+    if (selectedProvider.value) {
+        history.value = await oastRepo.getOASTHistory(
+            selectedProvider.value.id,
+        );
+    }
+}
 </script>
