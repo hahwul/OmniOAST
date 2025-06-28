@@ -107,7 +107,7 @@
                 Settings page (coming soon)
             </div>
         </TabPanel>
-        <TabPanel header="How to Use">
+        <TabPanel header="Help">
             <div class="text-center text-gray-400 py-8">
                 How to Use page (coming soon)
             </div>
