@@ -1,5 +1,5 @@
-import { defineConfig } from "@caido-community/dev";
-import vue from "@vitejs/plugin-vue";
+import { defineConfig } from '@caido-community/dev';
+import vue from '@vitejs/plugin-vue';
 import tailwindcss from "tailwindcss";
 // @ts-expect-error no declared types at this time
 import tailwindPrimeui from "tailwindcss-primeui";
@@ -10,13 +10,13 @@ import prefixwrap from "postcss-prefixwrap";
 const id = "frontend-vue";
 export default defineConfig({
   id,
-  name: "OmniOAST",
-  description: "OAST",
-  version: "0.0.1",
+  name: "Frontend Vue",
+  description: "Plugin template with frontend using VueJS",
+  version: "0.0.0",
   author: {
-    name: "hahwul",
-    email: "hahwul@gmail.com",
-    url: "https://www.hahwul.com",
+    name: "Caido Labs Inc.",
+    email: "dev@caido.io",
+    url: "https://caido.io",
   },
   plugins: [
     {
@@ -25,9 +25,9 @@ export default defineConfig({
       root: "packages/backend",
     },
     {
-      kind: "frontend",
+      kind: 'frontend',
       id: "frontend",
-      root: "packages/frontend",
+      root: 'packages/frontend',
       backend: {
         id: "backend",
       },
@@ -36,19 +36,19 @@ export default defineConfig({
         build: {
           rollupOptions: {
             external: [
-              "@caido/frontend-sdk",
-              "@codemirror/state",
-              "@codemirror/view",
-              "@codemirror/autocomplete",
-              "@codemirror/commands",
-              "@codemirror/lint",
-              "@codemirror/search",
-              "@codemirror/language",
-              "@lezer/common",
-              "@lezer/highlight",
-              "@lezer/lr",
-            ],
-          },
+              '@caido/frontend-sdk', 
+              "@codemirror/state", 
+              "@codemirror/view", 
+              "@codemirror/autocomplete", 
+              "@codemirror/commands", 
+              "@codemirror/lint", 
+              "@codemirror/search", 
+              "@codemirror/language", 
+              "@lezer/common", 
+              "@lezer/highlight", 
+              "@lezer/lr"
+            ]
+          }
         },
         resolve: {
           alias: [
@@ -70,24 +70,25 @@ export default defineConfig({
                   preflight: false,
                 },
                 content: [
-                  "./packages/frontend/src/**/*.{vue,ts}",
-                  "./node_modules/@caido/primevue/dist/primevue.mjs",
+                  './packages/frontend/src/**/*.{vue,ts}',
+                  './node_modules/@caido/primevue/dist/primevue.mjs'
                 ],
                 // Check the [data-mode="dark"] attribute on the <html> element to determine the mode
                 // This attribute is set in the Caido core application
                 darkMode: ["selector", '[data-mode="dark"]'],
                 plugins: [
+
                   // This plugin injects the necessary Tailwind classes for PrimeVue components
                   tailwindPrimeui,
 
                   // This plugin injects the necessary Tailwind classes for the Caido theme
                   tailwindCaido,
                 ],
-              }),
-            ],
-          },
-        },
-      },
-    },
-  ],
+              })
+            ]
+          }
+        }
+      }
+    }
+  ]
 });

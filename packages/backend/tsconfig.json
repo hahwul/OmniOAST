@@ -3,5 +3,5 @@
   "compilerOptions": {
     "types": ["@caido/sdk-backend"]
   },
-  "include": ["./src/**/*.ts"]
+  "include": ["./src/**/*.ts", "./types.ts"]
 }
