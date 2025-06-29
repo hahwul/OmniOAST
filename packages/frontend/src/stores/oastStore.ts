@@ -2,15 +2,21 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 
 import { useSDK } from "@/plugins/sdk";
+import { OASTEvent } from "../../backend/types";
 
 interface OastInteraction {
-  method: string;
-  source: string;
-  destination: string;
-  provider: string;
-  timestamp: string;
-  rawRequest: string;
-  rawResponse: string;
+  id: string;
+  type: string; // e.g., "BOAST", "interactsh"
+  timestamp: number;
+  provider: string; // Name of the provider
+  correlationId: string;
+  // Optional fields for specific interaction types
+  method?: string;
+  source?: string;
+  destination?: string;
+  rawRequest?: string;
+  rawResponse?: string;
+  data: any; // Raw event data from OASTEvent
 }
 
 interface InteractshSecret {
@@ -23,10 +29,10 @@ interface InteractshSecret {
 export const useOastStore = defineStore("oast", () => {
   const sdk = useSDK();
   const interactions = ref<OastInteraction[]>([]);
-  const interactshSecret = ref<InteractshSecret | null>(null);
+  const activeProviders = ref<Record<string, any>>({}); // Stores data for active providers by type
 
   const storageKeyInteractions = "omnioast.interactions";
-  const storageKeyInteractshSecret = "omnioast.interactshSecret";
+  const storageKeyActiveProviders = "omnioast.activeProviders";
 
   const loadInteractions = () => {
     const storage = sdk.storage.get() as Record<string, any> | null;
@@ -51,39 +57,39 @@ export const useOastStore = defineStore("oast", () => {
     await saveInteractions();
   };
 
-  const loadInteractshSecret = () => {
+  const loadProviderData = () => {
     const storage = sdk.storage.get() as Record<string, any> | null;
-    if (storage && storage[storageKeyInteractshSecret]) {
-      interactshSecret.value = storage[storageKeyInteractshSecret];
+    if (storage && storage[storageKeyActiveProviders]) {
+      activeProviders.value = storage[storageKeyActiveProviders];
     }
   };
 
-  const saveInteractshSecret = async (secret: InteractshSecret) => {
-    interactshSecret.value = secret;
+  const saveProviderData = async (type: string, data: any) => {
+    activeProviders.value[type] = data;
     const storage = (sdk.storage.get() as Record<string, any>) || {};
-    storage[storageKeyInteractshSecret] = secret;
+    storage[storageKeyActiveProviders] = activeProviders.value;
     await sdk.storage.set(storage);
   };
 
-  const clearInteractshSecret = async () => {
-    interactshSecret.value = null;
+  const clearProviderData = async (type: string) => {
+    delete activeProviders.value[type];
     const storage = (sdk.storage.get() as Record<string, any>) || {};
-    delete storage[storageKeyInteractshSecret];
+    delete storage[storageKeyActiveProviders];
     await sdk.storage.set(storage);
   };
 
   // Initial load
   loadInteractions();
-  loadInteractshSecret();
+  loadProviderData();
 
   return {
     interactions,
-    interactshSecret,
+    activeProviders,
     addInteraction,
     clearInteractions,
-    saveInteractshSecret,
-    clearInteractshSecret,
+    saveProviderData,
+    clearProviderData,
     loadInteractions,
-    loadInteractshSecret,
+    loadProviderData,
   };
 });

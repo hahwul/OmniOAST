@@ -12,6 +12,7 @@ import { onMounted, ref } from "vue";
 import type { Provider } from "../../../../backend/src/validation/schemas";
 
 import { useSDK } from "@/plugins/sdk";
+import { addBoastPublicProvider } from "@/services/boast";
 
 // 'id'가 보장된 Provider 타입을 정의합니다.
 type FetchedProvider = Provider & { id: string };
@@ -24,6 +25,7 @@ const toast = useToast();
 
 const providerTypes = ref([
   { name: "Interactsh", code: "interactsh" as const },
+  { name: "BOAST", code: "BOAST" as const },
 ]);
 
 const providers = ref<FetchedProvider[]>([]);
@@ -226,6 +228,27 @@ const addPublicInteractshProvider = async () => {
   }
 };
 
+const addPublicBoastProvider = async () => {
+  try {
+    await addBoastPublicProvider();
+    toast.add({
+      severity: "success",
+      summary: "Success",
+      detail: "Public BOAST Provider created",
+      life: 3000,
+    });
+    await loadProviders();
+  } catch (error) {
+    toast.add({
+      severity: "error",
+      summary: "Error",
+      detail: "Failed to create Public BOAST Provider",
+      life: 3000,
+    });
+    console.error("Failed to create Public BOAST Provider:", error);
+  }
+};
+
 onMounted(loadProviders);
 </script>
 
@@ -243,6 +266,13 @@ onMounted(loadProviders);
       class="p-button-info mb-4 ml-2"
       style="float: right"
       @click="addPublicInteractshProvider"
+    />
+    <Button
+      label="Add Public BOAST Provider"
+      icon="pi pi-plus"
+      class="p-button-info mb-4 ml-2"
+      style="float: right"
+      @click="addPublicBoastProvider"
     />
 
     <DataTable :value="providers" responsive-layout="scroll">

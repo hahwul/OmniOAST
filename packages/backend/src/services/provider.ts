@@ -2,6 +2,15 @@ import { v4 as uuidv4 } from "uuid";
 
 import type { CaidoBackendSDK } from "../../types";
 import { type Provider, ProviderSchema } from "../validation/schemas";
+import { BoastService } from "./boast";
+// Assuming InteractshService exists in a similar path
+// import { InteractshService } from "./interactsh";
+
+export interface OASTService {
+  getEvents(): Promise<any[]>;
+  getId(): string | null;
+  getDomain(): string | null;
+}
 
 // SDK 메서드 반환값에서 Database 타입을 추론합니다.
 type Database = Awaited<ReturnType<CaidoBackendSDK["meta"]["db"]>>;
@@ -186,6 +195,18 @@ export class ProviderService {
     } catch (error) {
       this.console.error("Error in toggleProviderEnabled:" + error);
       return null;
+    }
+  }
+
+  public getOASTServiceInstance(provider: Provider): OASTService | null {
+    switch (provider.type) {
+      case "BOAST":
+        return new BoastService(provider.url, provider.token || "");
+      // case "interactsh":
+      //   return new InteractshService(provider.url, provider.token || "");
+      default:
+        this.console.error(`Unknown provider type: ${provider.type}`);
+        return null;
     }
   }
 }

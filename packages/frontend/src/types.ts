@@ -5,7 +5,7 @@ import { type Caido } from "@caido/sdk-frontend";
 type API = {
   createProvider: (provider: {
     name: string;
-    type: string;
+    type: "interactsh" | "BOAST";
     url: string;
     token: string;
   }) => Promise<any>;
