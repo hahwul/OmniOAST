@@ -7,11 +7,13 @@
   },
   "dependencies": {
     "@caido/primevue": "0.1.2",
+    "@types/uuid": "^10.0.0",
     "@vueuse/core": "^13.4.0",
     "axios": "^1.10.0",
     "crypto-js": "^4.2.0",
     "pinia": "^3.0.2",
     "primevue": "4.1.0",
+    "uuid": "^11.1.0",
     "vue": "3.4.37"
   },
   "devDependencies": {

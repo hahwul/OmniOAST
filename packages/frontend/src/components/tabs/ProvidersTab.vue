@@ -12,7 +12,7 @@ import { onMounted, ref } from "vue";
 import type { Provider } from "../../../../backend/src/validation/schemas";
 
 import { useSDK } from "@/plugins/sdk";
-import { addBoastPublicProvider } from "@/services/boast";
+
 
 // 'id'가 보장된 Provider 타입을 정의합니다.
 type FetchedProvider = Provider & { id: string };
@@ -230,14 +230,28 @@ const addPublicInteractshProvider = async () => {
 
 const addPublicBoastProvider = async () => {
   try {
-    await addBoastPublicProvider();
-    toast.add({
-      severity: "success",
-      summary: "Success",
-      detail: "Public BOAST Provider created",
-      life: 3000,
+    const provider = await sdk.backend.createProvider({
+      name: "Public BOAST",
+      type: "BOAST",
+      url: "https://odiss.eu:2096/events",
+      token: "",
     });
-    await loadProviders();
+    if (provider) {
+      toast.add({
+        severity: "success",
+        summary: "Success",
+        detail: "Public BOAST Provider created",
+        life: 3000,
+      });
+      await loadProviders();
+    } else {
+      toast.add({
+        severity: "error",
+        summary: "Error",
+        detail: "Failed to add public BOAST provider.",
+        life: 3000,
+      });
+    }
   } catch (error) {
     toast.add({
       severity: "error",

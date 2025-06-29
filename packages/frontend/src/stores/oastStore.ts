@@ -2,7 +2,6 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 
 import { useSDK } from "@/plugins/sdk";
-import { OASTEvent } from "../../backend/types";
 
 interface OastInteraction {
   id: string;
@@ -19,12 +18,7 @@ interface OastInteraction {
   data: any; // Raw event data from OASTEvent
 }
 
-interface InteractshSecret {
-  secret: string;
-  domain: string;
-  correlationId: string;
-  lastFetched: number;
-}
+
 
 export const useOastStore = defineStore("oast", () => {
   const sdk = useSDK();

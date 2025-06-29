@@ -1,7 +1,7 @@
-import { Provider } from './provider';
+import { OASTService } from './provider';
 import { OASTEvent } from '../../types';
 
-export class BoastService implements Provider {
+export class BoastService implements OASTService {
   private url: string;
   private secret: string;
   private id: string | null = null;
@@ -35,7 +35,7 @@ export class BoastService implements Provider {
       return data.events.map((event: any) => ({
         id: event.id,
         type: 'BOAST', // Assuming BOAST events have a type field or we set it
-        timestamp: new Date(event.timestamp).getTime(),
+        timestamp: new Date(event.timestamp),
         data: event, // Store raw event data
         correlationId: event.id, // Use event ID as correlation ID for now
       }));
