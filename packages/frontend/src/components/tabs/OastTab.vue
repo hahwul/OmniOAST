@@ -92,10 +92,11 @@ async function getPayload() {
                     keepAliveInterval: 5000, // 5초마다 폴링
                 },
                 (interaction) => {
+                    console.log(interaction);
                     oastStore.addInteraction({
                         method: interaction.protocol as string,
-                        source: interaction.remoteAddress as string,
-                        destination: interaction.fullId as string,
+                        source: interaction["remote-address"] as string,
+                        destination: interaction["full-id"] as string,
                         provider: currentProvider.name,
                         timestamp: new Date(
                             interaction.timestamp as number,
