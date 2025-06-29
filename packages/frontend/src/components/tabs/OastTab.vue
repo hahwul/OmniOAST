@@ -25,7 +25,7 @@ const props = defineProps<{ active: boolean }>();
 const selectedProvider = ref<string | undefined>(undefined);
 const availableProviders = ref<Provider[]>([]);
 
-// Computed property to get the selected provider object by id
+// selectedProvider의 id를 기반으로 전체 Provider 객체를 찾는 계산된 속성
 const selectedProviderObj: ComputedRef<Provider | undefined> = computed(
     () =>
         availableProviders.value.find((p) => p.id === selectedProvider.value) ||
@@ -35,14 +35,15 @@ const selectedProviderObj: ComputedRef<Provider | undefined> = computed(
 const loadProviders = async () => {
     try {
         availableProviders.value = await sdk.backend.listProviders();
-        console.log("Loaded providers:", availableProviders.value);
-        // 자동 선택: provider 목록이 있고, 아직 선택된 값이 없으면 첫 번째 provider 선택
+        // provider 목록이 있고, 아직 선택된 값이 없으면 첫 번째 provider를 자동으로 선택합니다.
         if (
             availableProviders.value.length > 0 &&
             selectedProvider.value === undefined
         ) {
-            const first = availableProviders.value[0]!;
-            selectedProvider.value = first.id ?? undefined;
+            const firstProvider = availableProviders.value[0];
+            if (firstProvider) {
+                selectedProvider.value = firstProvider.id ?? undefined;
+            }
         }
     } catch (error) {
         toast.add({
@@ -51,10 +52,12 @@ const loadProviders = async () => {
             detail: "Failed to load providers",
             life: 3000,
         });
+        console.error("Failed to load providers:", error);
     }
 };
 
 async function getPayload() {
+    // selectedProviderObj.value가 없을 경우, 사용자에게 알리고 함수를 종료합니다.
     if (!selectedProviderObj.value) {
         toast.add({
             severity: "warn",
@@ -66,9 +69,7 @@ async function getPayload() {
     }
     const currentProvider = selectedProviderObj.value;
 
-    console.log("Get Payload clicked for", currentProvider.name);
-
-    if (currentProvider.url === undefined || currentProvider.url === "") {
+    if (!currentProvider.url) {
         toast.add({
             severity: "error",
             summary: "Error",
@@ -87,19 +88,19 @@ async function getPayload() {
                     keepAliveInterval: 5000, // 5초마다 폴링
                 },
                 (interaction) => {
+                    // --- FIX START ---
+                    // 콜백 함수 내에서 'selectedProviderObj.value' 대신
+                    // 스코프 내에서 타입이 보장된 'currentProvider'를 사용합니다.
                     oastStore.addInteraction({
                         method: interaction.protocol as string,
-                        source: interaction.remote_address as string,
-                        destination: interaction.full_url as string,
-                        // --- FIX ---
-                        // 'selectedProviderObj.value' 대신 타입이 보장된 'currentProvider' 사용
-
-                        provider: selectedProviderObj.value.name,
-                        // --- END FIX ---
+                        source: interaction.remoteAddress as string,
+                        destination: interaction.fullId as string,
+                        provider: currentProvider.name,
                         timestamp: new Date(
                             interaction.timestamp as number,
                         ).toLocaleString(),
                     });
+                    // --- FIX END ---
                 },
             );
 
@@ -141,18 +142,24 @@ function pollInteractions() {
 
 function copyToClipboard(value: string, field: string) {
     copy(value);
-    sdk.window.showToast("Copied to clipboard", { variant: "success" });
-
-    return true;
+    toast.add({
+        severity: "success",
+        summary: "Copied",
+        detail: `${field} copied to clipboard`,
+        life: 2000,
+    });
 }
 
 onMounted(() => {
     loadProviders();
 });
+
 watch(
     () => props.active,
-    (val) => {
-        if (val) loadProviders();
+    (isActive) => {
+        if (isActive) {
+            loadProviders();
+        }
     },
 );
 </script>
@@ -169,8 +176,16 @@ watch(
                 class="w-96 md:w-14rem"
             />
             <Button label="Get Payload" @click="getPayload" />
-            <Button label="Clear" @click="clearInteractions" />
-            <Button label="Poll" @click="pollInteractions" />
+            <Button
+                label="Clear"
+                class="p-button-warning"
+                @click="clearInteractions"
+            />
+            <Button
+                label="Poll"
+                class="p-button-secondary"
+                @click="pollInteractions"
+            />
         </div>
         <div class="flex-grow p-4">
             <DataTable
@@ -179,12 +194,34 @@ watch(
                 :rows="10"
                 :rows-per-page-options="[5, 10, 20, 50]"
                 table-style="min-width: 50rem"
+                sort-field="timestamp"
+                :sort-order="-1"
             >
-                <Column field="method" header="Method"></Column>
-                <Column field="source" header="Source"></Column>
-                <Column field="destination" header="Destination"></Column>
-                <Column field="provider" header="Provider"></Column>
-                <Column field="timestamp" header="Timestamp"></Column>
+                <Column
+                    field="method"
+                    header="Method"
+                    :sortable="true"
+                ></Column>
+                <Column
+                    field="source"
+                    header="Source"
+                    :sortable="true"
+                ></Column>
+                <Column
+                    field="destination"
+                    header="Destination"
+                    :sortable="true"
+                ></Column>
+                <Column
+                    field="provider"
+                    header="Provider"
+                    :sortable="true"
+                ></Column>
+                <Column
+                    field="timestamp"
+                    header="Timestamp"
+                    :sortable="true"
+                ></Column>
             </DataTable>
         </div>
     </div>
