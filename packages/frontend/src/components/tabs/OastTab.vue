@@ -24,6 +24,10 @@ const props = defineProps<{ active: boolean }>();
 
 const selectedProvider = ref<string | undefined>(undefined);
 const availableProviders = ref<Provider[]>([]);
+// --- FIX START ---
+// payload URL을 담을 ref를 선언합니다.
+const payloadInput = ref("");
+// --- FIX END ---
 
 // selectedProvider의 id를 기반으로 전체 Provider 객체를 찾는 계산된 속성
 const selectedProviderObj: ComputedRef<Provider | undefined> = computed(
@@ -88,9 +92,6 @@ async function getPayload() {
                     keepAliveInterval: 5000, // 5초마다 폴링
                 },
                 (interaction) => {
-                    // --- FIX START ---
-                    // 콜백 함수 내에서 'selectedProviderObj.value' 대신
-                    // 스코프 내에서 타입이 보장된 'currentProvider'를 사용합니다.
                     oastStore.addInteraction({
                         method: interaction.protocol as string,
                         source: interaction.remoteAddress as string,
@@ -100,12 +101,14 @@ async function getPayload() {
                             interaction.timestamp as number,
                         ).toLocaleString(),
                     });
-                    // --- FIX END ---
                 },
             );
 
             const { url: payloadUrl } = clientService.generateUrl();
-            copyToClipboard(payloadUrl, "Payload");
+            // --- FIX START ---
+            // 생성된 URL을 클립보드에 바로 복사하는 대신 input 필드에 설정합니다.
+            payloadInput.value = payloadUrl;
+            // --- FIX END ---
         } catch (error) {
             console.error("Registration failed:", error);
             toast.add({
@@ -141,6 +144,15 @@ function pollInteractions() {
 }
 
 function copyToClipboard(value: string, field: string) {
+    if (!value) {
+        toast.add({
+            severity: "warn",
+            summary: "Warning",
+            detail: "Nothing to copy",
+            life: 2000,
+        });
+        return;
+    }
     copy(value);
     toast.add({
         severity: "success",
@@ -167,25 +179,38 @@ watch(
 <template>
     <div class="flex flex-col h-full">
         <div class="flex items-center p-4 justify-between">
-            <div class="flex space-x-2">
+            <div class="flex space-x-2 items-center">
                 <Dropdown
                     v-model="selectedProvider"
                     :options="availableProviders"
                     option-label="name"
                     option-value="id"
                     placeholder="Select a Provider"
-                    class="w-96 md:w-14rem"
+                    class="w-64 md:w-14rem"
                 />
                 <Button label="Get Payload" @click="getPayload" />
+                <input
+                    v-model="payloadInput"
+                    placeholder="Payload URL"
+                    class="leading-none m-0 py-2 px-3 rounded-md text-surface-800 dark:text-white/80 placeholder:text-surface-400 dark:placeholder:text-surface-500 bg-surface-0 dark:bg-surface-950 border border-surface-300 dark:border-surface-700 invalid:focus:ring-danger-400 invalid:hover:border-danger-400 hover:border-surface-400 dark:hover:border-surface-600 focus:outline-none focus:outline-offset-0 focus:ring-1 focus:ring-secondary-500 dark:focus:ring-secondary-400 focus:z-10 appearance-none transition-colors duration-200 w-96"
+                />
+                <Button
+                    label="Copy"
+                    icon="pi pi-copy"
+                    class="p-button-secondary"
+                    @click="copyToClipboard(payloadInput, 'Payload')"
+                />
             </div>
             <div class="flex space-x-2">
                 <Button
                     label="Clear"
+                    icon="pi pi-trash"
                     class="p-button-warning"
                     @click="clearInteractions"
                 />
                 <Button
                     label="Poll"
+                    icon="pi pi-refresh"
                     class="p-button-secondary"
                     @click="pollInteractions"
                 />
