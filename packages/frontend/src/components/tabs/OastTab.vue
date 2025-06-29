@@ -86,10 +86,7 @@ async function getPayload() {
         return;
     }
 
-    if (
-        currentProvider.type === "interactsh" ||
-        currentProvider.type === "BOAST"
-    ) {
+    if (currentProvider.type === "interactsh") {
         try {
             await clientService.start(
                 {
@@ -129,11 +126,79 @@ async function getPayload() {
                 life: 3000,
             });
         }
+    } else if (currentProvider.type === "BOAST") {
+        try {
+            const headers = {
+                Authorization: `Secret ${currentProvider.token}`,
+            };
+
+            const response = await fetch(currentProvider.url, {
+                headers,
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+
+            if (data.id) {
+                const urlObj = new URL(currentProvider.url);
+                const payloadUrl = `${data.id}.${urlObj.hostname}`;
+                payloadInput.value = payloadUrl;
+
+                // BOAST 이벤트 폴링 로직 추가 (예시)
+                // 실제 구현에서는 별도의 폴링 서비스나 웹소켓 등을 사용할 수 있습니다.
+                setInterval(async () => {
+                    try {
+                        const pollResponse = await fetch(currentProvider.url, {
+                            headers,
+                        });
+                        if (!pollResponse.ok) {
+                            throw new Error(`HTTP error! status: ${pollResponse.status}`);
+                        }
+                        const pollData = await pollResponse.json();
+                        if (pollData.events && pollData.events.length > 0) {
+                            pollData.events.forEach((event: any) => {
+                                oastStore.addInteraction({
+                                    id: uuidv4(),
+                                    type: "BOAST",
+                                    correlationId: event.id,
+                                    data: event,
+                                    method: event.receiver,
+                                    source: event.remoteAddress,
+                                    destination: `${event.testID}.${urlObj.hostname}`,
+                                    provider: currentProvider.name,
+                                    timestamp: new Date(event.time).getTime(),
+                                    rawRequest: event.dump,
+                                    rawResponse: "", // BOAST는 rawResponse를 제공하지 않을 수 있습니다.
+                                });
+                            });
+                        }
+                    } catch (pollError) {
+                        console.error("Error polling BOAST events:", pollError);
+                    }
+                }, 5000); // 5초마다 폴링
+
+                toast.add({
+                    severity: "success",
+                    summary: "Success",
+                    detail: "BOAST Payload generated",
+                    life: 3000,
+                });
+            }
+        } catch (error) {
+            console.error("BOAST registration failed:", error);
+            toast.add({
+                severity: "error",
+                summary: "Error",
+                detail: "Failed to register BOAST provider",
+                life: 3000,
+            });
+        }
     } else {
         toast.add({
             severity: "warn",
             summary: "Warning",
-            detail: "Provider type is not interactsh & BOAST",
+            detail: "Provider type is not interactsh or BOAST",
             life: 3000,
         });
     }

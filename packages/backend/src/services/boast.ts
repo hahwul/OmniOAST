@@ -1,5 +1,5 @@
-import { OASTService } from './provider';
-import { OASTEvent } from '../../types';
+import { OASTService } from "./provider";
+import { OASTEvent } from "../../types";
 
 export class BoastService implements OASTService {
   private url: string;
@@ -15,7 +15,7 @@ export class BoastService implements OASTService {
   public async getEvents(): Promise<OASTEvent[]> {
     try {
       const headers = {
-        'Authorization': `Secret ${this.secret}`,
+        Authorization: `Secret ${this.secret}`,
       };
 
       const response = await fetch(this.url, { headers });
@@ -34,13 +34,13 @@ export class BoastService implements OASTService {
       // Need to map BOAST event structure to OASTEvent
       return data.events.map((event: any) => ({
         id: event.id,
-        type: 'BOAST', // Assuming BOAST events have a type field or we set it
+        type: "BOAST", // Assuming BOAST events have a type field or we set it
         timestamp: new Date(event.timestamp),
         data: event, // Store raw event data
         correlationId: event.id, // Use event ID as correlation ID for now
       }));
     } catch (error) {
-      console.error('Error fetching BOAST events:', error);
+      console.error("Error fetching BOAST events:", error);
       return [];
     }
   }
