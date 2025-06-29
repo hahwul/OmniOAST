@@ -6,6 +6,7 @@ import DataTable from "primevue/datatable";
 import Dropdown from "primevue/dropdown";
 import { useToast } from "primevue/usetoast";
 import { computed, type ComputedRef, onMounted, ref, watch } from "vue";
+import Textarea from "primevue/textarea";
 
 import type { Provider } from "../../../../backend/src/validation/schemas";
 
@@ -24,6 +25,7 @@ const props = defineProps<{ active: boolean }>();
 
 const selectedProvider = ref<string | undefined>(undefined);
 const availableProviders = ref<Provider[]>([]);
+const selectedInteraction = ref<any>(null);
 // --- FIX START ---
 // payload URL을 담을 ref를 선언합니다.
 const payloadInput = ref("");
@@ -101,6 +103,8 @@ async function getPayload() {
                         timestamp: new Date(
                             interaction.timestamp as number,
                         ).toLocaleString(),
+                        rawRequest: interaction["raw-request"] as string,
+                        rawResponse: interaction["raw-response"] as string,
                     });
                 },
             );
@@ -161,6 +165,10 @@ function copyToClipboard(value: string, field: string) {
         detail: `${field} copied to clipboard`,
         life: 2000,
     });
+}
+
+function showDetails(event: any) {
+    selectedInteraction.value = event.data;
 }
 
 onMounted(() => {
@@ -226,6 +234,9 @@ watch(
                 table-style="min-width: 50rem"
                 sort-field="timestamp"
                 :sort-order="-1"
+                selection-mode="single"
+                data-key="timestamp"
+                @row-select="showDetails"
             >
                 <Column
                     field="method"
@@ -253,6 +264,37 @@ watch(
                     :sortable="true"
                 ></Column>
             </DataTable>
+            <div
+                v-if="selectedInteraction"
+                class="mt-4 p-4 border border-surface-300 dark:border-surface-700 rounded-md"
+            >
+                <div class="field mb-4">
+                    <label for="rawRequest" class="font-bold block mb-2"
+                        >Raw Request</label
+                    >
+                    <Textarea
+                        id="rawRequest"
+                        v-model="selectedInteraction.rawRequest"
+                        rows="10"
+                        cols="30"
+                        readonly
+                        class="w-full"
+                    />
+                </div>
+                <div class="field">
+                    <label for="rawResponse" class="font-bold block mb-2"
+                        >Raw Response</label
+                    >
+                    <Textarea
+                        id="rawResponse"
+                        v-model="selectedInteraction.rawResponse"
+                        rows="10"
+                        cols="30"
+                        readonly
+                        class="w-full"
+                    />
+                </div>
+            </div>
         </div>
     </div>
 </template>

@@ -9,6 +9,8 @@ interface OastInteraction {
   destination: string;
   provider: string;
   timestamp: string;
+  rawRequest: string;
+  rawResponse: string;
 }
 
 interface InteractshSecret {
