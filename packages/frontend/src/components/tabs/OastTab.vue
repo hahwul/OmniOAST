@@ -33,7 +33,8 @@ const loadProviders = async () => {
         console.log("Loaded providers:", availableProviders.value);
         // 자동 선택: provider 목록이 있고, 아직 선택된 값이 없으면 첫 번째 provider 선택
         if (availableProviders.value.length > 0 && !selectedProvider.value) {
-            selectedProvider.value = availableProviders.value[0].id;
+            const first = availableProviders.value[0]!;
+            selectedProvider.value = first.id ?? null;
         }
     } catch (error) {
         toast.add({

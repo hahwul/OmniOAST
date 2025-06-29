@@ -30,8 +30,8 @@ export function init(sdk: CaidoBackendSDK) {
   const providerService = getProviderService();
 
   (sdk as any).api?.register?.("createProvider", (...args: any[]) => {
-    // 실제 provider 데이터는 args[1][0]에 위치
-    let provider = args[1] && Array.isArray(args[1]) ? args[1][0] : undefined;
+    // provider 데이터는 args[1]에 위치
+    let provider = args[1];
     return providerService.createProvider(provider);
   });
   (sdk as any).api?.register?.("getProvider", (id: string) =>

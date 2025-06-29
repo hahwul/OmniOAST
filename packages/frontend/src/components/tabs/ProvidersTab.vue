@@ -7,7 +7,7 @@ import Dropdown from "primevue/dropdown";
 import InputSwitch from "primevue/inputswitch";
 import InputText from "primevue/inputtext";
 import { useToast } from "primevue/usetoast";
-import { onMounted, ref, toRaw } from "vue";
+import { onMounted, ref } from "vue";
 
 import type { Provider } from "../../../../backend/src/validation/schemas";
 
@@ -16,13 +16,15 @@ import { useSDK } from "@/plugins/sdk";
 const sdk = useSDK();
 const toast = useToast();
 
-const providerTypes = ref([{ name: "Interactsh", code: "interactsh" }]);
+const providerTypes = ref([
+    { name: "Interactsh", code: "interactsh" as const },
+]);
 const providers = ref<Provider[]>([]);
 const displayDialog = ref(false);
 const isEdit = ref(false);
 const currentProvider = ref<Partial<Provider>>({
     name: "",
-    type: providerTypes.value[0].code,
+    type: providerTypes.value[0]!.code,
     url: "",
     token: "",
     enabled: true,
@@ -47,7 +49,7 @@ const loadProviders = async () => {
 const openNew = () => {
     currentProvider.value = {
         name: "",
-        type: providerTypes.value[0].code,
+        type: providerTypes.value[0]!.code,
         url: "",
         token: "",
         enabled: true,
@@ -97,13 +99,16 @@ const saveProvider = async () => {
             });
         } else {
             const payload = {
-                name: currentProvider.value.name,
-                type: currentProvider.value.type,
-                url: currentProvider.value.url,
-                token: currentProvider.value.token,
+                name: currentProvider.value.name ?? "",
+                type: (currentProvider.value.type ??
+                    "interactsh") as "interactsh",
+                url: currentProvider.value.url ?? "",
+                token: currentProvider.value.token ?? "",
             };
             console.log("payload to backend:", payload);
-            await sdk.backend.createProvider([{ ...payload }]);
+            await sdk.backend.createProvider({
+                ...payload,
+            });
             toast.add({
                 severity: "success",
                 summary: "Success",
@@ -205,7 +210,7 @@ onMounted(loadProviders);
                 </template>
             </Column>
             <Column :exportable="false" style="min-width: 8rem">
-                <template #body="slotProps">
+                <template #body="slotProps: { data: Provider }">
                     <Button
                         icon="pi pi-pencil"
                         class="p-button-rounded p-button-success mr-2"

@@ -69,7 +69,7 @@ export class ProviderService {
     }
   }
 
-  async getProvider(id: string): Promise<Provider | null> {
+  async getProvider(id: string | { id: string }): Promise<Provider | null> {
     try {
       // id가 object로 넘어오는 경우 string으로 변환
       const safeId =
@@ -81,7 +81,7 @@ export class ProviderService {
         "SELECT * FROM providers WHERE id = ?",
       );
 
-      const result = await statement.get<any>(safeId);
+      const result = (await statement.get(safeId)) as any;
 
       if (!result) {
         return null;
@@ -104,9 +104,11 @@ export class ProviderService {
     updates: Partial<Provider>,
   ): Promise<Provider | null> {
     try {
-      this.console.log("updateProvider id:", id, "updates:", updates);
+      this.console.log(
+        "updateProvider id:" + id + " updates:" + JSON.stringify(updates),
+      );
       const existingProvider = await this.getProvider(id);
-      this.console.log("existingProvider:", existingProvider);
+      this.console.log("existingProvider:" + JSON.stringify(existingProvider));
       if (!existingProvider) {
         this.console.log("Provider not found for update!");
         return null;
@@ -114,7 +116,9 @@ export class ProviderService {
 
       const updatedProvider = { ...existingProvider, ...updates, id };
       const validatedProvider = ProviderSchema.parse(updatedProvider);
-      this.console.log("validatedProvider:", validatedProvider);
+      this.console.log(
+        "validatedProvider:" + JSON.stringify(validatedProvider),
+      );
       const db = await this.getDb();
 
       const statement = await db.prepare(
@@ -130,7 +134,7 @@ export class ProviderService {
         validatedProvider.enabled ? 1 : 0,
         id,
       );
-      this.console.log("updateProvider result:", result);
+      this.console.log("updateProvider result:" + JSON.stringify(result));
 
       return validatedProvider;
     } catch (error) {
@@ -144,7 +148,7 @@ export class ProviderService {
       const db = await this.getDb();
       const statement = await db.prepare("DELETE FROM providers WHERE id = ?");
       const result = await statement.run(id);
-      this.console.log("deleteProvider result:", result);
+      this.console.log("deleteProvider result:" + JSON.stringify(result));
       return result.changes > 0;
     } catch (error) {
       this.console.error("Error in deleteProvider:" + error);
@@ -158,7 +162,7 @@ export class ProviderService {
       const statement = await db.prepare("SELECT * FROM providers");
 
       const results = await statement.all<any[]>();
-      this.console.log("listProviders results:", results);
+      this.console.log("listProviders results:" + JSON.stringify(results));
 
       return results.map((provider: any) =>
         ProviderSchema.parse({
