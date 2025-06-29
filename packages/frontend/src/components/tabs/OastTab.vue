@@ -166,26 +166,30 @@ watch(
 
 <template>
     <div class="flex flex-col h-full">
-        <div class="flex items-center p-4 space-x-2">
-            <Dropdown
-                v-model="selectedProvider"
-                :options="availableProviders"
-                option-label="name"
-                option-value="id"
-                placeholder="Select a Provider"
-                class="w-96 md:w-14rem"
-            />
-            <Button label="Get Payload" @click="getPayload" />
-            <Button
-                label="Clear"
-                class="p-button-warning"
-                @click="clearInteractions"
-            />
-            <Button
-                label="Poll"
-                class="p-button-secondary"
-                @click="pollInteractions"
-            />
+        <div class="flex items-center p-4 justify-between">
+            <div class="flex space-x-2">
+                <Dropdown
+                    v-model="selectedProvider"
+                    :options="availableProviders"
+                    option-label="name"
+                    option-value="id"
+                    placeholder="Select a Provider"
+                    class="w-96 md:w-14rem"
+                />
+                <Button label="Get Payload" @click="getPayload" />
+            </div>
+            <div class="flex space-x-2">
+                <Button
+                    label="Clear"
+                    class="p-button-warning"
+                    @click="clearInteractions"
+                />
+                <Button
+                    label="Poll"
+                    class="p-button-secondary"
+                    @click="pollInteractions"
+                />
+            </div>
         </div>
         <div class="flex-grow p-4">
             <DataTable
