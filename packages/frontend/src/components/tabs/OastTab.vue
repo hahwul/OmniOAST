@@ -30,7 +30,7 @@ const selectedProviderObj = computed(
 const loadProviders = async () => {
     try {
         availableProviders.value = await sdk.backend.listProviders();
-        console.log("Loaded providers:", availableProviders.value);
+        console.log("Loaded providers:" + availableProviders.value);
         // 자동 선택: provider 목록이 있고, 아직 선택된 값이 없으면 첫 번째 provider 선택
         if (availableProviders.value.length > 0 && !selectedProvider.value) {
             const first = availableProviders.value[0]!;
@@ -43,7 +43,6 @@ const loadProviders = async () => {
             detail: "Failed to load providers",
             life: 3000,
         });
-        alert("Failed to load providers:" + error);
     }
 };
 
@@ -57,7 +56,7 @@ function getPayload() {
         });
         return;
     }
-    console.log("Get Payload clicked for", selectedProviderObj.value.name);
+    console.log("Get Payload clicked for" + selectedProviderObj.value.name);
     // TODO: Implement actual payload generation based on provider type
     // For now, just add a dummy interaction
     oastStore.addInteraction({
