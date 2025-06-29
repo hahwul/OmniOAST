@@ -1,34 +1,49 @@
 import { OASTService } from "./provider";
 import { OASTEvent } from "../../types";
+import type { CaidoBackendSDK } from "../../types";
+import type { RequestSpec } from "caido:utils";
 
 export class BoastService implements OASTService {
   private url: string;
   private secret: string;
   private id: string | null = null;
   private domain: string | null = null;
+  private sdk: CaidoBackendSDK;
 
-  constructor(url: string, secret: string) {
+  constructor(url: string, secret: string, sdk: CaidoBackendSDK) {
     this.url = url;
     this.secret = secret;
+    this.sdk = sdk;
   }
 
   public async getEvents(): Promise<OASTEvent[]> {
     try {
-      const headers = {
-        Authorization: `Secret ${this.secret}`,
-      };
+      const spec = new RequestSpec(this.url);
+      spec.setHeader("Authorization", `Secret ${this.secret}`);
 
-      const response = await fetch(this.url, { headers });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const res: RequestResponse = await this.sdk.requests.send(spec);
+
+      if (res.response.getCode() >= 300) {
+        throw new Error(`HTTP error! status: ${res.response.getCode()}`);
       }
-      const data = await response.json();
+
+      const bodyBytes = res.response.getBody();
+      const bodyString = new TextDecoder().decode(bodyBytes);
+      const data = JSON.parse(bodyString);
 
       if (!this.id && data.id) {
         this.id = data.id;
         const urlObj = new URL(this.url);
         this.domain = `${this.id}.${urlObj.hostname}`;
       }
+
+      return data.events.map((event: any) => ({
+        id: event.id,
+        type: "BOAST",
+        timestamp: new Date(event.timestamp),
+        data: event,
+        correlationId: event.id,
+      }));
 
       // Assuming data.events is an array of events
       // Need to map BOAST event structure to OASTEvent

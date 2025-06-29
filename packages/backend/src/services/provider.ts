@@ -201,7 +201,7 @@ export class ProviderService {
   public getOASTServiceInstance(provider: Provider): OASTService | null {
     switch (provider.type) {
       case "BOAST":
-        return new BoastService(provider.url, provider.token || "");
+        return new BoastService(provider.url, provider.token || "", this.sdk);
       // case "interactsh":
       //   return new InteractshService(provider.url, provider.token || "");
       default:
