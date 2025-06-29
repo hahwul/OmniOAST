@@ -1,16 +1,16 @@
 <script setup lang="ts">
+import { useClipboard } from "@vueuse/core";
 import Button from "primevue/button";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import Dropdown from "primevue/dropdown";
 import { useToast } from "primevue/usetoast";
-import { computed, onMounted, ref, watch } from "vue";
-import { useClientService } from "@/services/interactsh";
-import { useClipboard } from "@vueuse/core";
+import { computed, type ComputedRef, onMounted, ref, watch } from "vue";
 
 import type { Provider } from "../../../../backend/src/validation/schemas";
 
 import { useSDK } from "@/plugins/sdk";
+import { useClientService } from "@/services/interactsh";
 import { useOastStore } from "@/stores/oastStore";
 
 const { copy } = useClipboard();
@@ -22,24 +22,27 @@ const clientService = useClientService();
 
 const props = defineProps<{ active: boolean }>();
 
-const selectedProvider = ref<string | null>(null);
+const selectedProvider = ref<string | undefined>(undefined);
 const availableProviders = ref<Provider[]>([]);
 
 // Computed property to get the selected provider object by id
-const selectedProviderObj = computed(
+const selectedProviderObj: ComputedRef<Provider | undefined> = computed(
     () =>
         availableProviders.value.find((p) => p.id === selectedProvider.value) ||
-        null,
+        undefined,
 );
 
 const loadProviders = async () => {
     try {
         availableProviders.value = await sdk.backend.listProviders();
-        console.log("Loaded providers:" + availableProviders.value);
+        console.log("Loaded providers:", availableProviders.value);
         // 자동 선택: provider 목록이 있고, 아직 선택된 값이 없으면 첫 번째 provider 선택
-        if (availableProviders.value.length > 0 && !selectedProvider.value) {
+        if (
+            availableProviders.value.length > 0 &&
+            selectedProvider.value === undefined
+        ) {
             const first = availableProviders.value[0]!;
-            selectedProvider.value = first.id ?? null;
+            selectedProvider.value = first.id ?? undefined;
         }
     } catch (error) {
         toast.add({
@@ -61,9 +64,11 @@ async function getPayload() {
         });
         return;
     }
-    console.log("Get Payload clicked for" + selectedProviderObj.value.name);
+    const currentProvider = selectedProviderObj.value;
 
-    if (!selectedProviderObj.value.url) {
+    console.log("Get Payload clicked for", currentProvider.name);
+
+    if (currentProvider.url === undefined || currentProvider.url === "") {
         toast.add({
             severity: "error",
             summary: "Error",
@@ -73,12 +78,28 @@ async function getPayload() {
         return;
     }
 
-    if (selectedProviderObj.value.type === "interactsh") {
+    if (currentProvider.type === "interactsh") {
         try {
-            await clientService.start({
-                serverURL: selectedProviderObj.value.url,
-                token: selectedProviderObj.value.token || "",
-            });
+            await clientService.start(
+                {
+                    serverURL: currentProvider.url,
+                    token: currentProvider.token || "",
+                },
+                (interaction) => {
+                    oastStore.addInteraction({
+                        method: interaction.protocol as string,
+                        source: interaction.remote_address as string,
+                        destination: interaction.full_url as string,
+                        // --- FIX ---
+                        // 'selectedProviderObj.value' 대신 타입이 보장된 'currentProvider' 사용
+                        provider: currentProvider.name,
+                        // --- END FIX ---
+                        timestamp: new Date(
+                            interaction.timestamp as number,
+                        ).toLocaleString(),
+                    });
+                },
+            );
 
             const { url: payloadUrl } = clientService.generateUrl();
             copyToClipboard(payloadUrl, "Payload");
@@ -113,7 +134,7 @@ function clearInteractions() {
 
 function pollInteractions() {
     console.log("Poll Interactions clicked");
-    // TODO: Implement polling logic
+    clientService.poll();
 }
 
 function copyToClipboard(value: string, field: string) {

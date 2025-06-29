@@ -94,7 +94,7 @@ class InteractshClient {
       );
     }
 
-    if (data?.status === 200) {
+    if (data?.status !== undefined && data.status === 200) {
       this.state.value = State.Idle;
     } else {
       throw new Error("Registration failed");
@@ -109,9 +109,9 @@ class InteractshClient {
     callback: (interaction: Record<string, unknown>) => void,
   ) {
     if (
-      !this.correlationID.value ||
-      !this.secretKey.value ||
-      !this.serverURL.value
+      this.correlationID.value === undefined ||
+      this.secretKey.value === undefined ||
+      this.serverURL.value === undefined
     ) {
       throw new Error("Missing required client configuration");
     }
@@ -128,14 +128,14 @@ class InteractshClient {
       throw new Error("Error polling interactions");
     }
 
-    if (data?.status !== 200) {
-      if (data?.status === 401) {
+    if (data?.status !== undefined && data.status !== 200) {
+      if (data?.status !== undefined && data.status === 401) {
         throw new Error("Couldn't authenticate to the server");
       }
       throw new Error(`Could not poll interactions: ${data?.data}`);
     }
 
-    if (data?.data?.data && Array.isArray(data.data.data)) {
+    if (data?.data?.data !== undefined && Array.isArray(data.data.data)) {
       for (const item of data.data.data) {
         const { data: decryptedData, error: decryptError } = await tryCatch(
           this.cryptoService.decryptMessage(data.data.aes_key, item),
@@ -186,11 +186,11 @@ class InteractshClient {
       this.interactionCallback = interactionCallbackParam;
     }
 
-    if (options.sessionInfo) {
-      const { token: sessionToken, serverURL: sessionServerURL } =
-        options.sessionInfo;
-      this.token.value = sessionToken;
-      this.serverURL.value = new URL(sessionServerURL);
+    if (options.sessionInfo !== undefined) {
+      this.correlationID.value = options.sessionInfo.correlationID;
+      this.secretKey.value = options.sessionInfo.secretKey;
+      this.token.value = options.sessionInfo.token;
+      this.serverURL.value = new URL(options.sessionInfo.serverURL);
     }
 
     const publicKey = await this.cryptoService.encodePublicKey();
@@ -204,7 +204,7 @@ class InteractshClient {
       },
     );
 
-    if (options.keepAliveInterval) {
+    if (options.keepAliveInterval !== undefined) {
       this.pollingInterval.value = options.keepAliveInterval;
       this.startPolling(
         this.interactionCallback || this.defaultInteractionHandler,
@@ -247,10 +247,6 @@ class InteractshClient {
    * Manually polls the server once for interactions
    */
   public async poll() {
-    if (this.state.value !== State.Polling) {
-      throw new Error("Client is not polling");
-    }
-
     try {
       await this.getInteractions(
         this.interactionCallback || this.defaultInteractionHandler,
@@ -336,7 +332,7 @@ class InteractshClient {
       throw new Error("Could not deregister from server");
     }
 
-    if (data?.status !== 200) {
+    if (data?.status !== undefined && data.status !== 200) {
       throw new Error(`Could not deregister from server: ${data?.data}`);
     }
 
@@ -373,8 +369,8 @@ class InteractshClient {
   public generateUrl(incrementNumber = 0): { url: string; uniqueId: string } {
     if (
       this.state.value === State.Closed ||
-      !this.correlationID.value ||
-      !this.serverURL.value
+      this.correlationID.value === undefined ||
+      this.serverURL.value === undefined
     ) {
       return { url: "", uniqueId: "" };
     }
