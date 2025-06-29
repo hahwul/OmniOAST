@@ -10,7 +10,7 @@ export type { BackendEvents };
 export type API = DefineAPI<{
   createProvider: (
     provider: Omit<Provider, "id" | "enabled">,
-  ) => Promise<Provider>;
+  ) => Promise<any>;
   getProvider: (id: string) => Promise<Provider | null>;
   updateProvider: (
     id: string,

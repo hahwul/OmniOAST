@@ -10,6 +10,7 @@ export interface OASTService {
   getEvents(): Promise<any[]>;
   getId(): string | null;
   getDomain(): string | null;
+  registerAndGetPayload?(): Promise<{ id: string; payloadUrl: string } | null>;
 }
 
 // SDK 메서드 반환값에서 Database 타입을 추론합니다.

@@ -128,48 +128,38 @@ async function getPayload() {
         }
     } else if (currentProvider.type === "BOAST") {
         try {
-            const headers = {
-                Authorization: `Secret ${currentProvider.token}`,
-            };
-
-            const response = await fetch(currentProvider.url, {
-                headers,
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            const boastService =
+                await sdk.backend.getOASTService(currentProvider);
+            if (!boastService || !boastService.registerAndGetPayload) {
+                throw new Error(
+                    "BOAST service not available or does not support payload generation.",
+                );
             }
-            const data = await response.json();
 
-            if (data.id) {
-                const urlObj = new URL(currentProvider.url);
-                const payloadUrl = `${data.id}.${urlObj.hostname}`;
-                payloadInput.value = payloadUrl;
+            const payloadInfo = await boastService.registerAndGetPayload();
+
+            if (payloadInfo && payloadInfo.payloadUrl) {
+                payloadInput.value = payloadInfo.payloadUrl;
 
                 // BOAST 이벤트 폴링 로직 추가 (예시)
                 // 실제 구현에서는 별도의 폴링 서비스나 웹소켓 등을 사용할 수 있습니다.
                 setInterval(async () => {
                     try {
-                        const pollResponse = await fetch(currentProvider.url, {
-                            headers,
-                        });
-                        if (!pollResponse.ok) {
-                            throw new Error(`HTTP error! status: ${pollResponse.status}`);
-                        }
-                        const pollData = await pollResponse.json();
-                        if (pollData.events && pollData.events.length > 0) {
-                            pollData.events.forEach((event: any) => {
+                        const events = await boastService.getEvents(); // getEvents 호출
+                        if (events && events.length > 0) {
+                            events.forEach((event: any) => {
                                 oastStore.addInteraction({
                                     id: uuidv4(),
                                     type: "BOAST",
-                                    correlationId: event.id,
-                                    data: event,
-                                    method: event.receiver,
-                                    source: event.remoteAddress,
-                                    destination: `${event.testID}.${urlObj.hostname}`,
+                                    correlationId: event.correlationId,
+                                    data: event.data,
+                                    method: event.method,
+                                    source: event.source,
+                                    destination: event.destination,
                                     provider: currentProvider.name,
-                                    timestamp: new Date(event.time).getTime(),
-                                    rawRequest: event.dump,
-                                    rawResponse: "", // BOAST는 rawResponse를 제공하지 않을 수 있습니다.
+                                    timestamp: event.timestamp,
+                                    rawRequest: event.rawRequest,
+                                    rawResponse: event.rawResponse,
                                 });
                             });
                         }

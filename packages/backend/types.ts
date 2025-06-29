@@ -1,8 +1,11 @@
 import type { SDK } from "caido:plugin";
+import { OASTService } from "./src/services/provider";
 
 export type BackendEvents = {};
 
-export type CaidoBackendSDK = SDK<Request, BackendEvents>;
+export type CaidoBackendSDK = SDK<any, BackendEvents>;
+
+export type { OASTService };
 
 export interface OASTEvent {
   id: string;
