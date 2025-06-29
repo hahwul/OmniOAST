@@ -6,12 +6,14 @@ import Dropdown from "primevue/dropdown";
 import { useToast } from "primevue/usetoast";
 import { computed, onMounted, ref, watch } from "vue";
 import { useClientService } from "@/services/interactsh";
+import { useClipboard } from "@vueuse/core";
 
 import type { Provider } from "../../../../backend/src/validation/schemas";
 
 import { useSDK } from "@/plugins/sdk";
 import { useOastStore } from "@/stores/oastStore";
 
+const { copy } = useClipboard();
 const sdk = useSDK();
 const toast = useToast();
 const oastStore = useOastStore();
@@ -79,13 +81,7 @@ async function getPayload() {
             });
 
             const { url: payloadUrl } = clientService.generateUrl();
-            console.log("Generated Payload:", payloadUrl);
-            toast.add({
-                severity: "success",
-                summary: "Success",
-                detail: "Payload logged to console",
-                life: 3000,
-            });
+            copyToClipboard(payloadUrl, "Payload");
         } catch (error) {
             console.error("Registration failed:", error);
             toast.add({
@@ -118,6 +114,13 @@ function clearInteractions() {
 function pollInteractions() {
     console.log("Poll Interactions clicked");
     // TODO: Implement polling logic
+}
+
+function copyToClipboard(value: string, field: string) {
+    copy(value);
+    sdk.window.showToast("Copied to clipboard", { variant: "success" });
+
+    return true;
 }
 
 onMounted(() => {

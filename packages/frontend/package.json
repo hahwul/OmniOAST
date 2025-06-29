@@ -7,6 +7,7 @@
   },
   "dependencies": {
     "@caido/primevue": "0.1.2",
+    "@vueuse/core": "^13.4.0",
     "axios": "^1.10.0",
     "crypto-js": "^4.2.0",
     "pinia": "^3.0.2",
