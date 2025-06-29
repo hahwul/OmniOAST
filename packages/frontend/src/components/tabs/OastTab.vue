@@ -5,7 +5,7 @@ import DataTable from "primevue/datatable";
 import Dropdown from "primevue/dropdown";
 import { useToast } from "primevue/usetoast";
 import { computed, onMounted, ref, watch } from "vue";
-import { performRegistration } from "@/services/interactsh";
+import { useClientService } from "@/services/interactsh";
 
 import type { Provider } from "../../../../backend/src/validation/schemas";
 
@@ -15,6 +15,8 @@ import { useOastStore } from "@/stores/oastStore";
 const sdk = useSDK();
 const toast = useToast();
 const oastStore = useOastStore();
+
+const clientService = useClientService();
 
 const props = defineProps<{ active: boolean }>();
 
@@ -71,18 +73,17 @@ async function getPayload() {
 
     if (selectedProviderObj.value.type === "interactsh") {
         try {
-            // const serverURL = selectedProviderObj.value.url;
-            const result = await performRegistration({
-                "public-key": "dummy-public-key", // Replace with actual public key logic
-                "secret-key": "dummy-secret-key", // Replace with actual secret key logic
-                "correlation-id": "dummy-correlation-id", // Replace with actual correlation ID logic
+            await clientService.start({
+                serverURL: selectedProviderObj.value.url,
+                token: selectedProviderObj.value.token || "",
             });
 
-            await navigator.clipboard.writeText(JSON.stringify(result));
+            const { url: payloadUrl } = clientService.generateUrl();
+            console.log("Generated Payload:", payloadUrl);
             toast.add({
                 severity: "success",
                 summary: "Success",
-                detail: "Registration result copied to clipboard",
+                detail: "Payload logged to console",
                 life: 3000,
             });
         } catch (error) {
