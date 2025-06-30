@@ -2,9 +2,7 @@
 
 ---
 
-# OmniOAST
-
-The all-in-one [Caido](https://caido.io) plugin for managing all your OAST providers and Interactions. OmniOAST is designed for scenarios where multiple OAST (Out-of-Band Application Security Testing) providers need to be utilized efficiently, streamlining workflows for security professionals.
+OmniOAST is the all-in-one [Caido](https://caido.io) plugin for managing all your OAST providers and Interactions. It's designed to streamline workflows for security professionals by efficiently handling multiple OAST (Out-of-Band Application Security Testing) providers.
 
 ```mermaid
 mindmap
@@ -17,13 +15,13 @@ mindmap
 
 ## Installation
 
-Download the latest release file from [https://github.com/hahwul/OmniOAST/releases](https://github.com/hahwul/OmniOAST/releases) and install it via `Caido` > `Plugins` > `Install Package`. It will be officially available through the marketplace in the future.
+Download the latest package from the [Releases page](https://github.com/hahwul/OmniOAST/releases) and install it in Caido via the `Plugins` > `Install Package` menu. OmniOAST will be available on the official marketplace in the future.
 
 ## Dev
 
 ### Build
 
-Follow these steps to set up and build the project:
+To build the project from the source, follow these steps:
 
 ```bash
 git clone https://github.com/hahwul/OmniOAST
@@ -39,7 +37,7 @@ pnpm build
 
 ### Type Check
 
-Ensure the codebase meets TypeScript standards by running the type check command.
+Run the following command to type-check the codebase:
 
 ```bash
 pnpm typecheck
@@ -49,4 +47,4 @@ pnpm typecheck
 
 ## Inspiration
 
-OmniOAST is inspired by tools like [QuickSSRF (Caido Plugin)](https://github.com/caido-community/quickssrf) and [OAST Support (ZAP Add-on)](https://www.zaproxy.org/docs/desktop/addons/oast-support/).
+OmniOAST was inspired by tools like [QuickSSRF (Caido Plugin)](https://github.com/caido-community/quickssrf) and [OAST Support (ZAP Add-on)](https://www.zaproxy.org/docs/desktop/addons/oast-support/).
