@@ -8,9 +8,7 @@ import { type Provider } from "./validation/schemas";
 export type { BackendEvents };
 
 export type API = DefineAPI<{
-  createProvider: (
-    provider: Omit<Provider, "id" | "enabled">,
-  ) => Promise<any>;
+  createProvider: (provider: Omit<Provider, "id" | "enabled">) => Promise<any>;
   getProvider: (id: string) => Promise<Provider | null>;
   updateProvider: (
     id: string,
@@ -22,6 +20,11 @@ export type API = DefineAPI<{
     id: string,
     enabled: boolean,
   ) => Promise<Provider | null>;
+  // OASTService 관련 기능 노출
+  registerAndGetPayload: (
+    provider: Provider,
+  ) => Promise<{ id: string; payloadUrl: string } | null>;
+  getOASTEvents: (provider: Provider) => Promise<any[]>;
 }>;
 
 // Accept sdk as CaidoBackendSDK for provider service compatibility
@@ -69,5 +72,23 @@ export function init(sdk: CaidoBackendSDK) {
       enabled = args[2];
     }
     return providerService.toggleProviderEnabled(id, enabled);
+  });
+
+  // OASTService 관련 기능 노출
+  (sdk as any).api?.register?.(
+    "registerAndGetPayload",
+    async (...args: any[]) => {
+      const provider = args[1];
+      const service = providerService.getOASTService(provider);
+      if (!service || !service.registerAndGetPayload) return null;
+      return await service.registerAndGetPayload();
+    },
+  );
+
+  (sdk as any).api?.register?.("getOASTEvents", async (...args: any[]) => {
+    const provider = args[1];
+    const service = providerService.getOASTService(provider);
+    if (!service) return [];
+    return await service.getEvents();
   });
 }

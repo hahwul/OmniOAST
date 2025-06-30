@@ -199,12 +199,11 @@ export class ProviderService {
     }
   }
 
-  public getOASTServiceInstance(provider: Provider): OASTService | null {
+  public getOASTService(provider: Provider): OASTService | null {
+    this.console.log(provider);
     switch (provider.type) {
       case "BOAST":
         return new BoastService(provider.url, provider.token || "", this.sdk);
-      // case "interactsh":
-      //   return new InteractshService(provider.url, provider.token || "");
       default:
         this.console.error(`Unknown provider type: ${provider.type}`);
         return null;

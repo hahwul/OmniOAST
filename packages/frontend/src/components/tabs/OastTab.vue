@@ -41,7 +41,12 @@ const selectedProviderObj: ComputedRef<Provider | undefined> = computed(
 
 const loadProviders = async () => {
     try {
-        availableProviders.value = await sdk.backend.listProviders();
+        // enable된 Provider만 필터링
+        const allProviders = await sdk.backend.listProviders();
+        availableProviders.value = allProviders.filter(
+            (p: Provider) => p.enabled,
+        );
+
         // provider 목록이 있고, 아직 선택된 값이 없으면 첫 번째 provider를 자동으로 선택합니다.
         if (
             availableProviders.value.length > 0 &&
@@ -128,24 +133,18 @@ async function getPayload() {
         }
     } else if (currentProvider.type === "BOAST") {
         try {
-            const boastService =
-                await sdk.backend.getOASTService(currentProvider);
-            if (!boastService || !boastService.registerAndGetPayload) {
-                throw new Error(
-                    "BOAST service not available or does not support payload generation.",
-                );
-            }
-
-            const payloadInfo = await boastService.registerAndGetPayload();
+            // 백엔드에 직접 payload 생성 요청
+            const payloadInfo =
+                await sdk.backend.registerAndGetPayload(currentProvider);
 
             if (payloadInfo && payloadInfo.payloadUrl) {
                 payloadInput.value = payloadInfo.payloadUrl;
 
-                // BOAST 이벤트 폴링 로직 추가 (예시)
-                // 실제 구현에서는 별도의 폴링 서비스나 웹소켓 등을 사용할 수 있습니다.
+                // BOAST 이벤트 폴링 로직
                 setInterval(async () => {
                     try {
-                        const events = await boastService.getEvents(); // getEvents 호출
+                        const events =
+                            await sdk.backend.getOASTEvents(currentProvider);
                         if (events && events.length > 0) {
                             events.forEach((event: any) => {
                                 oastStore.addInteraction({
@@ -266,7 +265,7 @@ watch(
                 />
                 <Button
                     label="Copy"
-                    icon="pi pi-copy"
+                    icon="fa fa-copy"
                     class="p-button-secondary"
                     @click="copyToClipboard(payloadInput, 'Payload')"
                 />
@@ -274,13 +273,13 @@ watch(
             <div class="flex space-x-2">
                 <Button
                     label="Clear"
-                    icon="pi pi-trash"
+                    icon="fa fa-trash"
                     class="p-button-warning"
                     @click="clearInteractions"
                 />
                 <Button
                     label="Poll"
-                    icon="pi pi-refresh"
+                    icon="fa fa-refresh"
                     class="p-button-secondary"
                     @click="pollInteractions"
                 />
@@ -299,11 +298,85 @@ watch(
                 data-key="timestamp"
                 @row-select="showDetails"
             >
-                <Column
-                    field="method"
-                    header="Method"
-                    :sortable="true"
-                ></Column>
+                <Column field="method" header="Method" :sortable="true">
+                    <template #body="slotProps">
+                        <span class="flex items-center">
+                            <i
+                                v-if="
+                                    slotProps.data.method &&
+                                    slotProps.data.method.toUpperCase() ===
+                                        'HTTP'
+                                "
+                                class="fa fa-globe mr-2 text-info"
+                                title="HTTP"
+                            ></i>
+                            <i
+                                v-else-if="
+                                    slotProps.data.method &&
+                                    slotProps.data.method.toUpperCase() ===
+                                        'DNS'
+                                "
+                                class="fa fa-globe-asia mr-2 text-success"
+                                title="DNS"
+                            ></i>
+                            <i
+                                v-else-if="
+                                    slotProps.data.method &&
+                                    slotProps.data.method.toUpperCase() ===
+                                        'SMTP'
+                                "
+                                class="fa fa-at mr-2 text-info"
+                                title="SMTP"
+                            ></i>
+                            <i
+                                v-else-if="
+                                    slotProps.data.method &&
+                                    slotProps.data.method.toUpperCase() ===
+                                        'LDAP'
+                                "
+                                class="fa fa-user-circle mr-2 text-info"
+                                title="LDAP"
+                            ></i>
+                            <i
+                                v-else-if="
+                                    slotProps.data.method &&
+                                    slotProps.data.method.toUpperCase() ===
+                                        'SMB'
+                                "
+                                class="fa fa-server mr-2 text-warning"
+                                title="SMB"
+                            ></i>
+                            <i
+                                v-else-if="
+                                    slotProps.data.method &&
+                                    slotProps.data.method.toUpperCase() ===
+                                        'FTP'
+                                "
+                                class="fa fa-cloud-upload mr-2 text-warning"
+                                title="FTP"
+                            ></i>
+                            <i
+                                v-else-if="
+                                    slotProps.data.method &&
+                                    slotProps.data.method.toUpperCase() ===
+                                        'RESPONDER'
+                                "
+                                class="fa fa-arrow-down mr-2 text-warning"
+                                title="Responder"
+                            ></i>
+                            <i
+                                v-else
+                                class="fa fa-question-circle mr-2"
+                                title="Other"
+                            ></i>
+                            <span>{{
+                                slotProps.data.method
+                                    ? slotProps.data.method.toUpperCase()
+                                    : ""
+                            }}</span>
+                        </span>
+                    </template>
+                </Column>
                 <Column
                     field="source"
                     header="Source"

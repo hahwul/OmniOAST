@@ -1,5 +1,4 @@
 import { type Caido } from "@caido/sdk-frontend";
-import { type OASTService } from "../../backend/types";
 import { type Provider } from "../../backend/src/validation/schemas";
 // import { type API } from "backend";
 
@@ -16,7 +15,11 @@ type API = {
   deleteProvider: (id: string) => Promise<boolean>;
   listProviders: () => Promise<any[]>;
   toggleProviderEnabled: (id: string, enabled: boolean) => Promise<any>;
-  getOASTService: (provider: Provider) => Promise<OASTService | null>;
+  // getOASTService: (provider: Provider) => Promise<OASTService | null>;
+  registerAndGetPayload: (
+    provider: Provider,
+  ) => Promise<{ id: string; payloadUrl: string } | null>;
+  getOASTEvents: (provider: Provider) => Promise<any[]>;
 };
 
 export type FrontendSDK = Caido<API, {}>;
