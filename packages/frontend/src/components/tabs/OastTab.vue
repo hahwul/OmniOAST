@@ -129,31 +129,8 @@ async function getPayload() {
             if (payloadInfo && payloadInfo.payloadUrl) {
                 payloadInput.value = payloadInfo.payloadUrl;
 
-                setInterval(async () => {
-                    try {
-                        const events =
-                            await sdk.backend.getOASTEvents(currentProvider);
-                        if (events && events.length > 0) {
-                            events.forEach((event: any) => {
-                                oastStore.addInteraction({
-                                    id: uuidv4(),
-                                    type: "BOAST",
-                                    correlationId: event.correlationId,
-                                    data: event.data,
-                                    method: event.method,
-                                    source: event.source,
-                                    destination: event.destination,
-                                    provider: currentProvider.name,
-                                    timestamp: event.timestamp,
-                                    rawRequest: event.rawRequest,
-                                    rawResponse: event.rawResponse,
-                                });
-                            });
-                        }
-                    } catch (pollError) {
-                        console.error("Error polling BOAST events:", pollError);
-                    }
-                }, 5000);
+                // Call the new pollBoastEvents function every 5 seconds
+                setInterval(() => pollBoastEvents(currentProvider), 5000);
 
                 toast.add({
                     severity: "success",
@@ -191,9 +168,81 @@ function clearInteractions() {
     });
 }
 
-function pollInteractions() {
+// Helper function for BOAST polling
+async function pollBoastEvents(provider: Provider) {
+    if (!provider) {
+        console.error("BOAST polling called without a provider.");
+        return;
+    }
+    try {
+        const events = await sdk.backend.getOASTEvents(provider);
+        if (events && events.length > 0) {
+            events.forEach((event: any) => {
+                oastStore.addInteraction({
+                    id: uuidv4(),
+                    type: "BOAST",
+                    correlationId: event.correlationId,
+                    data: event.data,
+                    method: event.method,
+                    source: event.source,
+                    destination: event.destination,
+                    provider: provider.name,
+                    timestamp: event.timestamp,
+                    rawRequest: event.rawRequest,
+                    rawResponse: event.rawResponse,
+                });
+            });
+            toast.add({
+                severity: "success",
+                summary: "Success",
+                detail: `Polled ${events.length} new event(s)`,
+                life: 2000,
+            });
+        }
+    } catch (pollError) {
+        console.error("Error polling BOAST events:", pollError);
+        toast.add({
+            severity: "error",
+            summary: "Error",
+            detail: "Failed to poll BOAST events",
+            life: 3000,
+        });
+    }
+}
+
+// Modified pollInteractions to handle both Interactsh and BOAST
+async function pollInteractions() {
     console.log("Poll Interactions clicked");
-    clientService.poll();
+    const currentProvider = selectedProviderObj.value;
+
+    if (!currentProvider) {
+        toast.add({
+            severity: "warn",
+            summary: "Warning",
+            detail: "Please select a provider first",
+            life: 3000,
+        });
+        return;
+    }
+
+    if (currentProvider.type === "interactsh") {
+        clientService.poll();
+        toast.add({
+            severity: "info",
+            summary: "Info",
+            detail: "Polling for Interactsh events...",
+            life: 2000,
+        });
+    } else if (currentProvider.type === "BOAST") {
+        await pollBoastEvents(currentProvider);
+    } else {
+        toast.add({
+            severity: "warn",
+            summary: "Warning",
+            detail: `Polling not implemented for provider type: ${currentProvider.type}`,
+            life: 3000,
+        });
+    }
 }
 
 function copyToClipboard(value: string, field: string) {
