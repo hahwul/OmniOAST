@@ -333,81 +333,96 @@ onMounted(loadProviders);
             :style="{ width: '450px' }"
             header="Provider Details"
             :modal="true"
-            class="p-fluid"
+            class="p-fluid bg-white rounded-lg shadow-lg p-6"
         >
-            <div class="field">
-                <label for="name">Name</label>
-                <InputText
-                    id="name"
-                    v-model.trim="currentProvider.name"
-                    required="true"
-                    autofocus
-                    :class="{
-                        // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-                        'p-invalid': !currentProvider.name && displayDialog,
-                    }"
-                />
-                <small
-                    v-if="!currentProvider.name && displayDialog"
-                    class="p-error"
-                    >Name is required.</small
-                >
-            </div>
-            <div class="field">
-                <label for="type">Type</label>
-                <Dropdown
-                    id="type"
-                    v-model="currentProvider.type"
-                    :options="providerTypes"
-                    option-label="name"
-                    option-value="code"
-                    placeholder="Select a Type"
-                    required="true"
-                    :class="{
-                        'p-invalid': !currentProvider.type && displayDialog,
-                    }"
-                />
-                <small
-                    v-if="!currentProvider.type && displayDialog"
-                    class="p-error"
-                    >Type is required.</small
-                >
-            </div>
-            <div class="field">
-                <label for="url">URL</label>
-                <InputText
-                    id="url"
-                    v-model.trim="currentProvider.url"
-                    required="true"
-                    :class="{
-                        'p-invalid': !currentProvider.url && displayDialog,
-                    }"
-                />
-                <small
-                    v-if="!currentProvider.url && displayDialog"
-                    class="p-error"
-                    >URL is required.</small
-                >
-            </div>
-            <div class="field">
-                <label for="token">Token (Optional)</label>
-                <InputText id="token" v-model.trim="currentProvider.token" />
-            </div>
-
-            <template #footer>
-                <Button
-                    label="Cancel"
-                    icon="fa fa-times"
-                    class="p-button-text"
-                    @click="displayDialog = false"
-                />
-                <Button
-                    label="Save"
-                    icon="fa fa-check"
-                    class="p-button-text"
-                    @click="saveProvider"
-                />
-            </template>
+            <form class="flex flex-col gap-4">
+                <div class="flex flex-col gap-1">
+                    <label for="name" class="font-semibold">Name</label>
+                    <InputText
+                        id="name"
+                        v-model.trim="currentProvider.name"
+                        required="true"
+                        autofocus
+                        :class="[
+                            'border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 transition',
+                            !currentProvider.name && displayDialog
+                                ? 'border-red-400'
+                                : 'border-gray-300',
+                        ]"
+                    />
+                    <small
+                        v-if="!currentProvider.name && displayDialog"
+                        class="text-red-500"
+                        >Name is required.</small
+                    >
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label for="type" class="font-semibold">Type</label>
+                    <Dropdown
+                        id="type"
+                        v-model="currentProvider.type"
+                        :options="providerTypes"
+                        option-label="name"
+                        option-value="code"
+                        placeholder="Select a Type"
+                        required="true"
+                        :class="[
+                            'border rounded focus:outline-none focus:ring-2 focus:ring-blue-400 transition',
+                            !currentProvider.type && displayDialog
+                                ? 'border-red-400'
+                                : 'border-gray-300',
+                        ]"
+                    />
+                    <small
+                        v-if="!currentProvider.type && displayDialog"
+                        class="text-red-500"
+                        >Type is required.</small
+                    >
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label for="url" class="font-semibold">URL</label>
+                    <InputText
+                        id="url"
+                        v-model.trim="currentProvider.url"
+                        required="true"
+                        :class="[
+                            'border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 transition',
+                            !currentProvider.url && displayDialog
+                                ? 'border-red-400'
+                                : 'border-gray-300',
+                        ]"
+                    />
+                    <small
+                        v-if="!currentProvider.url && displayDialog"
+                        class="text-red-500"
+                        >URL is required.</small
+                    >
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label for="token" class="font-semibold"
+                        >Token (Optional)</label
+                    >
+                    <InputText
+                        id="token"
+                        v-model.trim="currentProvider.token"
+                        class="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 transition border-gray-300"
+                    />
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <Button
+                        label="Cancel"
+                        icon="fa fa-times"
+                        class="p-button-text bg-gray-100 hover:bg-gray-200 rounded"
+                        @click="displayDialog = false"
+                    />
+                    <Button
+                        label="Save"
+                        icon="fa fa-check"
+                        class="p-button-text bg-blue-600 hover:bg-blue-700 text-white rounded"
+                        @click="saveProvider"
+                    />
+                </div>
+            </form>
         </Dialog>
     </div>
 </template>
