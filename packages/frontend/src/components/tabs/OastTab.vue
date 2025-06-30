@@ -27,12 +27,8 @@ const props = defineProps<{ active: boolean }>();
 const selectedProvider = ref<string | undefined>(undefined);
 const availableProviders = ref<Provider[]>([]);
 const selectedInteraction = ref<any>(null);
-// --- FIX START ---
-// payload URL을 담을 ref를 선언합니다.
 const payloadInput = ref("");
-// --- FIX END ---
 
-// selectedProvider의 id를 기반으로 전체 Provider 객체를 찾는 계산된 속성
 const selectedProviderObj: ComputedRef<Provider | undefined> = computed(
     () =>
         availableProviders.value.find((p) => p.id === selectedProvider.value) ||
@@ -41,13 +37,11 @@ const selectedProviderObj: ComputedRef<Provider | undefined> = computed(
 
 const loadProviders = async () => {
     try {
-        // enable된 Provider만 필터링
         const allProviders = await sdk.backend.listProviders();
         availableProviders.value = allProviders.filter(
             (p: Provider) => p.enabled,
         );
 
-        // provider 목록이 있고, 아직 선택된 값이 없으면 첫 번째 provider를 자동으로 선택합니다.
         if (
             availableProviders.value.length > 0 &&
             selectedProvider.value === undefined
@@ -69,7 +63,6 @@ const loadProviders = async () => {
 };
 
 async function getPayload() {
-    // selectedProviderObj.value가 없을 경우, 사용자에게 알리고 함수를 종료합니다.
     if (!selectedProviderObj.value) {
         toast.add({
             severity: "warn",
@@ -97,7 +90,7 @@ async function getPayload() {
                 {
                     serverURL: currentProvider.url,
                     token: currentProvider.token || "",
-                    keepAliveInterval: 5000, // 5초마다 폴링
+                    keepAliveInterval: 5000,
                 },
                 (interaction) => {
                     console.log(interaction);
@@ -118,10 +111,7 @@ async function getPayload() {
             );
 
             const { url: payloadUrl } = clientService.generateUrl();
-            // --- FIX START ---
-            // 생성된 URL을 클립보드에 바로 복사하는 대신 input 필드에 설정합니다.
             payloadInput.value = payloadUrl;
-            // --- FIX END ---
         } catch (error) {
             console.error("Registration failed:", error);
             toast.add({
@@ -133,14 +123,12 @@ async function getPayload() {
         }
     } else if (currentProvider.type === "BOAST") {
         try {
-            // 백엔드에 직접 payload 생성 요청
             const payloadInfo =
                 await sdk.backend.registerAndGetPayload(currentProvider);
 
             if (payloadInfo && payloadInfo.payloadUrl) {
                 payloadInput.value = payloadInfo.payloadUrl;
 
-                // BOAST 이벤트 폴링 로직
                 setInterval(async () => {
                     try {
                         const events =
@@ -165,7 +153,7 @@ async function getPayload() {
                     } catch (pollError) {
                         console.error("Error polling BOAST events:", pollError);
                     }
-                }, 5000); // 5초마다 폴링
+                }, 5000);
 
                 toast.add({
                     severity: "success",
