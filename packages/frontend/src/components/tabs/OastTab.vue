@@ -29,6 +29,26 @@ const availableProviders = ref<Provider[]>([]);
 const selectedInteraction = ref<any>(null);
 const payloadInput = ref("");
 
+// 검색어 상태 및 필터링된 인터랙션
+const searchQuery = ref("");
+const filteredInteractions = computed(() =>
+    oastStore.interactions.filter(
+        (i) =>
+            (i.method?.toLowerCase() ?? "").includes(
+                searchQuery.value.toLowerCase(),
+            ) ||
+            (i.source?.toLowerCase() ?? "").includes(
+                searchQuery.value.toLowerCase(),
+            ) ||
+            (i.destination?.toLowerCase() ?? "").includes(
+                searchQuery.value.toLowerCase(),
+            ) ||
+            (i.provider?.toLowerCase() ?? "").includes(
+                searchQuery.value.toLowerCase(),
+            ),
+    ),
+);
+
 const selectedProviderObj: ComputedRef<Provider | undefined> = computed(
     () =>
         availableProviders.value.find((p) => p.id === selectedProvider.value) ||
@@ -284,47 +304,67 @@ watch(
 
 <template>
     <div class="flex flex-col h-full">
-        <div class="flex items-center p-4 justify-between">
-            <div class="flex space-x-2 items-center">
-                <Dropdown
-                    v-model="selectedProvider"
-                    :options="availableProviders"
-                    option-label="name"
-                    option-value="id"
-                    placeholder="Select a Provider"
-                    class="w-64 md:w-14rem"
-                />
-                <Button label="Get Payload" @click="getPayload" />
-                <input
-                    v-model="payloadInput"
-                    placeholder="Payload URL"
-                    class="leading-none m-0 py-2 px-3 rounded-md text-surface-800 dark:text-white/80 placeholder:text-surface-400 dark:placeholder:text-surface-500 bg-surface-0 dark:bg-surface-950 border border-surface-300 dark:border-surface-700 invalid:focus:ring-danger-400 invalid:hover:border-danger-400 hover:border-surface-400 dark:hover:border-surface-600 focus:outline-none focus:outline-offset-0 focus:ring-1 focus:ring-secondary-500 dark:focus:ring-secondary-400 focus:z-10 appearance-none transition-colors duration-200 w-96"
-                />
-                <Button
-                    label="Copy"
-                    icon="fa fa-copy"
-                    class="p-button-secondary"
-                    @click="copyToClipboard(payloadInput, 'Payload')"
-                />
-            </div>
-            <div class="flex space-x-2">
-                <Button
-                    label="Clear"
-                    icon="fa fa-trash"
-                    class="p-button-warning"
-                    @click="clearInteractions"
-                />
-                <Button
-                    label="Poll"
-                    icon="fa fa-refresh"
-                    class="p-button-secondary"
-                    @click="pollInteractions"
-                />
+        <!-- 상단: Provider/버튼 그룹 -->
+        <div
+            class="oast-actions-group flex flex-col gap-2 p-4 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900"
+        >
+            <div class="flex items-center justify-between">
+                <div class="flex space-x-2 items-center">
+                    <Dropdown
+                        v-model="selectedProvider"
+                        :options="availableProviders"
+                        option-label="name"
+                        option-value="id"
+                        placeholder="Select a Provider"
+                        class="w-64 md:w-14rem"
+                    />
+                    <Button label="Get Payload" @click="getPayload" />
+                    <input
+                        v-model="payloadInput"
+                        placeholder="Payload URL"
+                        class="leading-none m-0 py-2 px-3 rounded-md text-surface-800 dark:text-white/80 placeholder:text-surface-400 dark:placeholder:text-surface-500 bg-surface-0 dark:bg-surface-950 border border-surface-300 dark:border-surface-700 invalid:focus:ring-danger-400 invalid:hover:border-danger-400 hover:border-surface-400 dark:hover:border-surface-600 focus:outline-none focus:outline-offset-0 focus:ring-1 focus:ring-secondary-500 dark:focus:ring-secondary-400 focus:z-10 appearance-none transition-colors duration-200 w-96"
+                    />
+                    <Button
+                        label="Copy"
+                        icon="fa fa-copy"
+                        class="p-button-secondary"
+                        @click="copyToClipboard(payloadInput, 'Payload')"
+                    />
+                </div>
+                <div class="flex space-x-2">
+                    <Button
+                        label="Clear"
+                        icon="fa fa-trash"
+                        class="p-button-warning"
+                        @click="clearInteractions"
+                    />
+                    <Button
+                        label="Poll"
+                        icon="fa fa-refresh"
+                        class="p-button-secondary"
+                        @click="pollInteractions"
+                    />
+                </div>
             </div>
         </div>
-        <div class="flex-grow p-4">
+
+        <!-- 구분선 -->
+        <!-- <hr class="oast-divider" /> -->
+
+        <!-- Interaction 검색 및 리스트 그룹 -->
+        <div class="oast-interactions-group flex-grow flex flex-col p-4">
+            <!-- 검색바 -->
+            <div class="mb-2">
+                <input
+                    v-model="searchQuery"
+                    type="text"
+                    class="oast-search-bar w-full px-3 py-2 rounded border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950 mb-2"
+                    placeholder="Search interactions..."
+                />
+            </div>
+            <!-- Interaction 리스트 -->
             <DataTable
-                :value="oastStore.interactions"
+                :value="filteredInteractions"
                 paginator
                 :rows="10"
                 :rows-per-page-options="[5, 10, 20, 50]"
@@ -469,3 +509,31 @@ watch(
         </div>
     </div>
 </template>
+
+<style scoped>
+.oast-actions-group {
+    /* 상단 버튼 영역 스타일 */
+    border-radius: 0 0 8px 8px;
+}
+.oast-divider {
+    margin: 0;
+    border: none;
+    border-top: 1px solid #eee;
+}
+.oast-interactions-group {
+    /* 검색+리스트 그룹 스타일 */
+}
+.oast-search-bar {
+    /* 검색바 스타일 */
+    margin-bottom: 8px;
+}
+.oast-interaction-list {
+    /* 리스트 스타일 */
+}
+.oast-interaction-item {
+    cursor: pointer;
+}
+.oast-interaction-details {
+    /* 상세 영역 스타일 */
+}
+</style>
