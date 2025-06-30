@@ -6,6 +6,15 @@
 
 The all-in-one Caido plugin for managing allCaido plugin for managing all your OAST providers. OmniOAST is designed for scenarios where multiple OAST (Out-of-Band Application Security Testing) providers need to be utilized efficiently, streamlining workflows for security professionals.
 
+```mermaid
+mindmap
+  root((Caido))
+    OmniOAST
+      Public IP Interactsh
+      Private IP Interactsh
+      Private IP BOAST
+```
+
 ## Installation
 
 ...
