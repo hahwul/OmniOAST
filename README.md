@@ -1,10 +1,14 @@
 ![](./images/omnioast-banner.jpg)
 
-----
+---
 
 # OmniOAST
 
-The all-in-one Caido plugin for managing all your OAST providers. OmniOAST simplifies integration and management of multiple OAST (Out-of-Band Application Security Testing) providers, making it easier for developers and security professionals to streamline their workflows.
+The all-in-one Caido plugin for managing allCaido plugin for managing all your OAST providers. OmniOAST is designed for scenarios where multiple OAST (Out-of-Band Application Security Testing) providers need to be utilized efficiently, streamlining workflows for security professionals.
+
+## Installation
+
+...
 
 ## Dev
 
@@ -26,8 +30,14 @@ pnpm build
 
 ### Type Check
 
-Ensure the codebase meets TypeScript standards by running the type check command:
+Ensure the codebase meets TypeScript standards by running the type check command.
 
 ```bash
 pnpm typecheck
 ```
+
+---
+
+## Inspiration
+
+OmniOAST is inspired by tools like [QuickSSRF (Caido Plugin)](https://github.com/caido-community/quickssrf) and [OAST Support (ZAP Add-on)](https://www.zaproxy.org/docs/desktop/addons/oast-support/).
