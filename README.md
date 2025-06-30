@@ -17,7 +17,7 @@ mindmap
 
 ## Installation
 
-...
+Download the latest release file from [https://github.com/hahwul/OmniOAST/releases](https://github.com/hahwul/OmniOAST/releases) and install it via `Caido` > `Plugins` > `Install Package`. It will be officially available through the marketplace in the future.
 
 ## Dev
 
