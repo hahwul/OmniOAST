@@ -10,16 +10,16 @@ const activeTabIndex = ref(0);
 </script>
 
 <template>
-  <TabView v-model:active-index="activeTabIndex" class="h-full">
-    <TabPanel header="OAST">
-      <OastTab :active="activeTabIndex === 0" />
-    </TabPanel>
-    <TabPanel header="Providers">
-      <ProvidersTab />
-    </TabPanel>
-    <TabPanel header="Guide">
-      <GuideTab />
-    </TabPanel>
-  </TabView>
-  <Toast />
+    <TabView v-model:active-index="activeTabIndex" class="h-full">
+        <TabPanel header="OAST">
+            <OastTab :active="activeTabIndex === 0" />
+        </TabPanel>
+        <TabPanel header="Providers">
+            <ProvidersTab />
+        </TabPanel>
+        <TabPanel header="Guide">
+            <GuideTab />
+        </TabPanel>
+    </TabView>
+    <Toast />
 </template>
