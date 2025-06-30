@@ -509,31 +509,3 @@ watch(
         </div>
     </div>
 </template>
-
-<style scoped>
-.oast-actions-group {
-    /* 상단 버튼 영역 스타일 */
-    border-radius: 0 0 8px 8px;
-}
-.oast-divider {
-    margin: 0;
-    border: none;
-    border-top: 1px solid #eee;
-}
-.oast-interactions-group {
-    /* 검색+리스트 그룹 스타일 */
-}
-.oast-search-bar {
-    /* 검색바 스타일 */
-    margin-bottom: 8px;
-}
-.oast-interaction-list {
-    /* 리스트 스타일 */
-}
-.oast-interaction-item {
-    cursor: pointer;
-}
-.oast-interaction-details {
-    /* 상세 영역 스타일 */
-}
-</style>

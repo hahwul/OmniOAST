@@ -286,14 +286,14 @@ onMounted(loadProviders);
         />
         <Button
             label="Add Public Interactsh Provider"
-            icon="fa fa-plus"
+            icon="fa fa-i"
             class="p-button-info mb-4 ml-2"
             style="float: right"
             @click="addPublicInteractshProvider"
         />
         <Button
             label="Add Public BOAST Provider"
-            icon="fa fa-plus"
+            icon="fa fa-b"
             class="p-button-info mb-4 ml-2"
             style="float: right"
             @click="addPublicBoastProvider"
