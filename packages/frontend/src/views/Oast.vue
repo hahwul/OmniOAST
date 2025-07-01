@@ -531,7 +531,7 @@ watch(
             </div>
             <div
                 v-else
-                class="flex items-center justify-center h-full text-gray-400"
+                class="flex items-center justify-center h-full text-gray-400 bg-surface-0 dark:bg-surface-800 rounded"
             >
                 No selected inteaction.
             </div>
