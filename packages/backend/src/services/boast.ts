@@ -35,12 +35,9 @@ export class BoastService implements OASTService {
       const body = res.response.getBody();
       if (!body) {
         throw new Error("Response body is empty");
-      } // --- 최종 수정된 부분 ---
-      // Body 객체의 toJson() 메소드를 직접 호출하여 JSON 객체를 얻습니다.
-      // 이 메소드는 동기적으로 작동하므로 await가 필요 없습니다.
+      }
 
-      const data = body.toJson() as any; // any로 캐스팅하여 후속 코드에서 사용
-      // --- 여기까지 수정 ---
+      const data = body.toJson() as any;
       if (!this.id && data.id) {
         this.id = data.id;
         const urlObj = new URL(this.url);
@@ -51,9 +48,14 @@ export class BoastService implements OASTService {
       return data.events.map((event: any) => ({
         id: event.id,
         type: "BOAST",
-        timestamp: new Date(event.timestamp),
+        destination: this.domain,
+        timestamp: new Date(event.time),
         data: event,
+        method: event.receiver,
+        source: event.remoteAddress,
         correlationId: event.id,
+        rawRequest: event.dump,
+        rawResponse: event.dump,
       }));
     } catch (error) {
       this.sdk.console.error("Error fetching BOAST events:", error);
@@ -82,13 +84,8 @@ export class BoastService implements OASTService {
     } // 이미 payloadUrl이 있으면 바로 반환
 
     if (this.payloadUrl && this.id) {
-      // --- FIX START ---
-      // `if` 조건문에서 null이 아님을 확인했으므로 `!` 연산자로 타입 단언
       return { id: this.id!, payloadUrl: this.payloadUrl! };
-      // --- FIX END ---
-    } // 이벤트를 한 번 불러와서 id/domain/payloadUrl을 초기화
-    // 그리고 canary 값을 파싱해 payloadUrl을 생성
-    // canary는 BOAST 응답에 포함됨
+    }
     try {
       // Caido SDK의 RequestSpec 생성 및 헤더 설정
       const spec = new RequestSpec(this.url);
@@ -113,13 +110,9 @@ export class BoastService implements OASTService {
       this.id = data.id;
       const urlObj = new URL(this.url); // canary 기반 payloadUrl 생성 (http/https는 원본 url 기준)
       const protocol = urlObj.protocol === "https:" ? "https" : "http";
-      this.payloadUrl = `${protocol}://${data.canary}.${urlObj.hostname}`;
+      this.payloadUrl = `${protocol}://${data.id}.${urlObj.hostname}`;
 
-      // --- FIX START ---
-      // 이 시점에는 `this.id`와 `this.payloadUrl`에 반드시 문자열이 할당되므로
-      // `!` 연산자로 타입 단언
       return { id: this.id!, payloadUrl: this.payloadUrl! };
-      // --- FIX END ---
     } catch (err) {
       this.sdk.console.error("Error during BOAST registration:", err);
       return null;

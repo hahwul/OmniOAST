@@ -89,6 +89,7 @@ export function init(sdk: CaidoBackendSDK) {
     const provider = args[1];
     const service = providerService.getOASTService(provider);
     if (!service) return [];
-    return await service.getEvents();
+    const data = await service.getEvents();
+    return data;
   });
 }

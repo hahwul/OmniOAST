@@ -205,19 +205,24 @@ async function pollBoastEvents(provider: Provider) {
         const events = await sdk.backend.getOASTEvents(provider);
         if (events && events.length > 0) {
             events.forEach((event: any) => {
-                oastStore.addInteraction({
-                    id: uuidv4(),
-                    type: "BOAST",
-                    correlationId: event.correlationId,
-                    data: event.data,
-                    method: event.method,
-                    source: event.source,
-                    destination: event.destination,
-                    provider: provider.name,
-                    timestamp: event.timestamp,
-                    rawRequest: event.rawRequest,
-                    rawResponse: event.rawResponse,
-                });
+                const exists = oastStore.interactions.some(
+                    (i) => i.id === event.id,
+                );
+                if (!exists) {
+                    oastStore.addInteraction({
+                        id: event.id,
+                        type: "BOAST",
+                        correlationId: event.correlationId,
+                        data: event,
+                        method: event.method,
+                        source: event.source,
+                        destination: event.destination,
+                        provider: provider.name,
+                        timestamp: event.timestamp,
+                        rawRequest: event.rawRequest,
+                        rawResponse: event.rawResponse,
+                    });
+                }
             });
             toast.add({
                 severity: "success",
