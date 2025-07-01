@@ -24,7 +24,7 @@ const clientService = useClientService();
 
 const props = defineProps<{ active: boolean }>();
 
-const selectedProvider = ref<string | undefined>(undefined);
+const selectedProvider = ref<string | undefined>(undefined); // 기본값 undefined로 전체 표시
 const availableProviders = ref<Provider[]>([]);
 const selectedInteraction = ref<any>(null);
 const payloadInput = ref("");
@@ -32,8 +32,8 @@ const payloadInput = ref("");
 // 검색어 상태 및 필터링된 인터랙션
 const searchQuery = ref("");
 const filteredInteractions = computed(() =>
-    oastStore.interactions.filter(
-        (i) =>
+    oastStore.interactions.filter((i) => {
+        const matchesSearch =
             (i.method?.toLowerCase() ?? "").includes(
                 searchQuery.value.toLowerCase(),
             ) ||
@@ -45,8 +45,15 @@ const filteredInteractions = computed(() =>
             ) ||
             (i.provider?.toLowerCase() ?? "").includes(
                 searchQuery.value.toLowerCase(),
-            ),
-    ),
+            );
+        const matchesProvider =
+            !selectedProvider.value ||
+            i.provider ===
+                (availableProviders.value.find(
+                    (p) => p.id === selectedProvider.value,
+                )?.name ?? "");
+        return matchesSearch && matchesProvider;
+    }),
 );
 
 const selectedProviderObj: ComputedRef<Provider | undefined> = computed(
@@ -62,15 +69,7 @@ const loadProviders = async () => {
             (p: Provider) => p.enabled,
         );
 
-        if (
-            availableProviders.value.length > 0 &&
-            selectedProvider.value === undefined
-        ) {
-            const firstProvider = availableProviders.value[0];
-            if (firstProvider) {
-                selectedProvider.value = firstProvider.id ?? undefined;
-            }
-        }
+        // Provider 필터는 기본값을 선택하지 않음(전체 표시)
     } catch (error) {
         toast.add({
             severity: "error",
@@ -349,12 +348,26 @@ watch(
                 </div>
             </div>
             <!-- 검색바 -->
-            <div class="px-4 mb-2 flex-shrink-0">
+            <div class="px-4 mb-2 flex-shrink-0 flex items-center gap-2">
                 <input
                     v-model="searchQuery"
                     type="text"
-                    class="oast-search-bar w-full px-3 py-2 rounded border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950"
+                    class="oast-search-bar w-full h-10 px-3 py-2 rounded border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950"
                     placeholder="Search interactions..."
+                    style="min-width: 0; display: flex; align-items: center"
+                />
+                <Dropdown
+                    v-model="selectedProvider"
+                    :options="availableProviders"
+                    option-label="name"
+                    option-value="id"
+                    placeholder="Filter by Provider"
+                    class="w-64 mb-2 h-10"
+                    clearable
+                    :style="{
+                        display: 'flex',
+                        alignItems: 'center',
+                    }"
                 />
             </div>
             <!-- Interaction 리스트 -->
