@@ -5,7 +5,6 @@ import Button from "primevue/button";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import Dropdown from "primevue/dropdown";
-import Textarea from "primevue/textarea";
 import { useToast } from "primevue/usetoast";
 import { computed, onMounted, ref, watch } from "vue";
 
@@ -501,35 +500,33 @@ watch(
             </div>
         </div>
 
-        <div
-            class="w-full h-2/5 flex flex-col gap-1 bg-surface-0 dark:bg-surface-800 rounded"
-        >
-            <div v-if="selectedInteraction" class="flex gap-2 w-full">
-                <div class="field mb-4 w-1/2">
+        <div class="w-full h-2/5 flex flex-col">
+            <div v-if="selectedInteraction" class="flex gap-1 w-full h-full">
+                <div
+                    class="field mb-4 w-1/2 p-4 h-full bg-surface-0 dark:bg-surface-800 rounded"
+                >
                     <label for="rawRequest" class="font-bold block mb-2"
                         >Raw Request</label
                     >
-                    <Textarea
+                    <pre
                         id="rawRequest"
-                        v-model="selectedInteraction.rawRequest"
-                        rows="10"
-                        cols="30"
-                        readonly
-                        class="w-full"
-                    />
+                        class="w-full bg-transparent border-none outline-none whitespace-pre-wrap"
+                        style="font-family: inherit; font-size: inherit"
+                        >{{ selectedInteraction.rawRequest }}</pre
+                    >
                 </div>
-                <div class="field w-1/2">
+                <div
+                    class="field w-1/2 p-4 h-full bg-surface-0 dark:bg-surface-800 rounded"
+                >
                     <label for="rawResponse" class="font-bold block mb-2"
                         >Raw Response</label
                     >
-                    <Textarea
+                    <pre
                         id="rawResponse"
-                        v-model="selectedInteraction.rawResponse"
-                        rows="10"
-                        cols="30"
-                        readonly
-                        class="w-full"
-                    />
+                        class="w-full bg-transparent border-none outline-none whitespace-pre-wrap"
+                        style="font-family: inherit; font-size: inherit"
+                        >{{ selectedInteraction.rawResponse }}</pre
+                    >
                 </div>
             </div>
             <div
