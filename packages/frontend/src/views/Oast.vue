@@ -408,8 +408,10 @@ watch(
                                 <i
                                     v-if="
                                         slotProps.data.method &&
-                                        slotProps.data.method.toUpperCase() ===
-                                            'HTTP'
+                                        (slotProps.data.method.toUpperCase() ===
+                                            'HTTP' ||
+                                            slotProps.data.method.toUpperCase() ===
+                                                'HTTPS')
                                     "
                                     class="fa fa-globe mr-2 text-info"
                                     title="HTTP"

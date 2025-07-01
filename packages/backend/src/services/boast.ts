@@ -55,7 +55,7 @@ export class BoastService implements OASTService {
         source: event.remoteAddress,
         correlationId: event.id,
         rawRequest: event.dump,
-        rawResponse: event.dump,
+        rawResponse: "",
       }));
     } catch (error) {
       this.sdk.console.error("Error fetching BOAST events:", error);
