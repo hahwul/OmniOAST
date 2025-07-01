@@ -6,7 +6,7 @@ import Oast from "./Oast.vue";
 import Providers from "./Providers.vue";
 import Guide from "./Guide.vue";
 
-const page = ref<"OAST" | "Providers" | "Help & Docs">("Oast");
+const page = ref<"OAST" | "Providers" | "Help & Docs">("OAST");
 const items = [
     {
         label: "OAST",
