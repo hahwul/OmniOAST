@@ -9,7 +9,7 @@ import InputText from "primevue/inputtext";
 import { useToast } from "primevue/usetoast";
 import { onMounted, ref } from "vue";
 
-import type { Provider } from "../../../../backend/src/validation/schemas";
+import type { Provider } from "../../../backend/src/validation/schemas";
 
 import { useSDK } from "@/plugins/sdk";
 
@@ -277,7 +277,7 @@ onMounted(loadProviders);
 </script>
 
 <template>
-    <div class="p-4">
+    <div class="p-4 h-full bg-surface-0 dark:bg-surface-800 rounded">
         <Button
             label="New Provider"
             icon="fa fa-plus"

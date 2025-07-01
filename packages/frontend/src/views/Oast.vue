@@ -9,7 +9,7 @@ import Textarea from "primevue/textarea";
 import { useToast } from "primevue/usetoast";
 import { computed, type ComputedRef, onMounted, ref, watch } from "vue";
 
-import type { Provider } from "../../../../backend/src/validation/schemas";
+import type { Provider } from "../../../backend/src/validation/schemas";
 
 import { useSDK } from "@/plugins/sdk";
 import { useClientService } from "@/services/interactsh";
@@ -303,178 +303,178 @@ watch(
 </script>
 
 <template>
-    <div class="flex flex-col h-full">
-        <!-- 상단: Provider/버튼 그룹 -->
-        <div
-            class="oast-actions-group flex flex-col gap-2 p-4 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900"
-        >
-            <div class="flex items-center justify-between">
-                <div class="flex space-x-2 items-center">
-                    <Dropdown
-                        v-model="selectedProvider"
-                        :options="availableProviders"
-                        option-label="name"
-                        option-value="id"
-                        placeholder="Select a Provider"
-                        class="w-64 md:w-14rem"
-                    />
-                    <Button label="Get Payload" @click="getPayload" />
+    <div class="h-full flex flex-col gap-1">
+        <div class="w-full h-1/2 bg-surface-0 dark:bg-surface-800 rounded">
+            <div class="flex flex-col gap-2 p-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex space-x-2 items-center">
+                        <Dropdown
+                            v-model="selectedProvider"
+                            :options="availableProviders"
+                            option-label="name"
+                            option-value="id"
+                            placeholder="Select a Provider"
+                            class="w-64 md:w-14rem"
+                        />
+                        <Button label="Get Payload" @click="getPayload" />
+                        <input
+                            v-model="payloadInput"
+                            placeholder="Payload URL"
+                            class="leading-none m-0 py-2 px-3 rounded-md text-surface-800 dark:text-white/80 placeholder:text-surface-400 dark:placeholder:text-surface-500 bg-surface-0 dark:bg-surface-950 border border-surface-300 dark:border-surface-700 invalid:focus:ring-danger-400 invalid:hover:border-danger-400 hover:border-surface-400 dark:hover:border-surface-600 focus:outline-none focus:outline-offset-0 focus:ring-1 focus:ring-secondary-500 dark:focus:ring-secondary-400 focus:z-10 appearance-none transition-colors duration-200 w-96"
+                        />
+                        <Button
+                            label="Copy"
+                            icon="fa fa-copy"
+                            class="p-button-secondary"
+                            @click="copyToClipboard(payloadInput, 'Payload')"
+                        />
+                    </div>
+                    <div class="flex space-x-2">
+                        <Button
+                            label="Clear"
+                            icon="fa fa-trash"
+                            class="p-button-warning"
+                            @click="clearInteractions"
+                        />
+                        <Button
+                            label="Poll"
+                            icon="fa fa-refresh"
+                            class="p-button-secondary"
+                            @click="pollInteractions"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div class="oast-interactions-group flex-grow flex flex-col p-4">
+                <!-- 검색바 -->
+                <div class="mb-2">
                     <input
-                        v-model="payloadInput"
-                        placeholder="Payload URL"
-                        class="leading-none m-0 py-2 px-3 rounded-md text-surface-800 dark:text-white/80 placeholder:text-surface-400 dark:placeholder:text-surface-500 bg-surface-0 dark:bg-surface-950 border border-surface-300 dark:border-surface-700 invalid:focus:ring-danger-400 invalid:hover:border-danger-400 hover:border-surface-400 dark:hover:border-surface-600 focus:outline-none focus:outline-offset-0 focus:ring-1 focus:ring-secondary-500 dark:focus:ring-secondary-400 focus:z-10 appearance-none transition-colors duration-200 w-96"
-                    />
-                    <Button
-                        label="Copy"
-                        icon="fa fa-copy"
-                        class="p-button-secondary"
-                        @click="copyToClipboard(payloadInput, 'Payload')"
+                        v-model="searchQuery"
+                        type="text"
+                        class="oast-search-bar w-full px-3 py-2 rounded border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950 mb-2"
+                        placeholder="Search interactions..."
                     />
                 </div>
-                <div class="flex space-x-2">
-                    <Button
-                        label="Clear"
-                        icon="fa fa-trash"
-                        class="p-button-warning"
-                        @click="clearInteractions"
-                    />
-                    <Button
-                        label="Poll"
-                        icon="fa fa-refresh"
-                        class="p-button-secondary"
-                        @click="pollInteractions"
-                    />
-                </div>
+                <!-- Interaction 리스트 -->
+                <DataTable
+                    :value="filteredInteractions"
+                    paginator
+                    :rows="10"
+                    :rows-per-page-options="[5, 10, 20, 50]"
+                    table-style="min-width: 50rem"
+                    sort-field="timestamp"
+                    :sort-order="-1"
+                    selection-mode="single"
+                    data-key="timestamp"
+                    @row-select="showDetails"
+                >
+                    <Column field="method" header="Method" :sortable="true">
+                        <template #body="slotProps">
+                            <span class="flex items-center">
+                                <i
+                                    v-if="
+                                        slotProps.data.method &&
+                                        slotProps.data.method.toUpperCase() ===
+                                            'HTTP'
+                                    "
+                                    class="fa fa-globe mr-2 text-info"
+                                    title="HTTP"
+                                ></i>
+                                <i
+                                    v-else-if="
+                                        slotProps.data.method &&
+                                        slotProps.data.method.toUpperCase() ===
+                                            'DNS'
+                                    "
+                                    class="fa fa-globe-asia mr-2 text-success"
+                                    title="DNS"
+                                ></i>
+                                <i
+                                    v-else-if="
+                                        slotProps.data.method &&
+                                        slotProps.data.method.toUpperCase() ===
+                                            'SMTP'
+                                    "
+                                    class="fa fa-at mr-2 text-info"
+                                    title="SMTP"
+                                ></i>
+                                <i
+                                    v-else-if="
+                                        slotProps.data.method &&
+                                        slotProps.data.method.toUpperCase() ===
+                                            'LDAP'
+                                    "
+                                    class="fa fa-user-circle mr-2 text-info"
+                                    title="LDAP"
+                                ></i>
+                                <i
+                                    v-else-if="
+                                        slotProps.data.method &&
+                                        slotProps.data.method.toUpperCase() ===
+                                            'SMB'
+                                    "
+                                    class="fa fa-server mr-2 text-warning"
+                                    title="SMB"
+                                ></i>
+                                <i
+                                    v-else-if="
+                                        slotProps.data.method &&
+                                        slotProps.data.method.toUpperCase() ===
+                                            'FTP'
+                                    "
+                                    class="fa fa-cloud-upload mr-2 text-warning"
+                                    title="FTP"
+                                ></i>
+                                <i
+                                    v-else-if="
+                                        slotProps.data.method &&
+                                        slotProps.data.method.toUpperCase() ===
+                                            'RESPONDER'
+                                    "
+                                    class="fa fa-arrow-down mr-2 text-warning"
+                                    title="Responder"
+                                ></i>
+                                <i
+                                    v-else
+                                    class="fa fa-question-circle mr-2"
+                                    title="Other"
+                                ></i>
+                                <span>{{
+                                    slotProps.data.method
+                                        ? slotProps.data.method.toUpperCase()
+                                        : ""
+                                }}</span>
+                            </span>
+                        </template>
+                    </Column>
+                    <Column
+                        field="source"
+                        header="Source"
+                        :sortable="true"
+                    ></Column>
+                    <Column
+                        field="destination"
+                        header="Destination"
+                        :sortable="true"
+                    ></Column>
+                    <Column
+                        field="provider"
+                        header="Provider"
+                        :sortable="true"
+                    ></Column>
+                    <Column
+                        field="timestamp"
+                        header="Timestamp"
+                        :sortable="true"
+                    ></Column>
+                </DataTable>
             </div>
         </div>
 
-        <!-- 구분선 -->
-        <!-- <hr class="oast-divider" /> -->
-
-        <!-- Interaction 검색 및 리스트 그룹 -->
-        <div class="oast-interactions-group flex-grow flex flex-col p-4">
-            <!-- 검색바 -->
-            <div class="mb-2">
-                <input
-                    v-model="searchQuery"
-                    type="text"
-                    class="oast-search-bar w-full px-3 py-2 rounded border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950 mb-2"
-                    placeholder="Search interactions..."
-                />
-            </div>
-            <!-- Interaction 리스트 -->
-            <DataTable
-                :value="filteredInteractions"
-                paginator
-                :rows="10"
-                :rows-per-page-options="[5, 10, 20, 50]"
-                table-style="min-width: 50rem"
-                sort-field="timestamp"
-                :sort-order="-1"
-                selection-mode="single"
-                data-key="timestamp"
-                @row-select="showDetails"
-            >
-                <Column field="method" header="Method" :sortable="true">
-                    <template #body="slotProps">
-                        <span class="flex items-center">
-                            <i
-                                v-if="
-                                    slotProps.data.method &&
-                                    slotProps.data.method.toUpperCase() ===
-                                        'HTTP'
-                                "
-                                class="fa fa-globe mr-2 text-info"
-                                title="HTTP"
-                            ></i>
-                            <i
-                                v-else-if="
-                                    slotProps.data.method &&
-                                    slotProps.data.method.toUpperCase() ===
-                                        'DNS'
-                                "
-                                class="fa fa-globe-asia mr-2 text-success"
-                                title="DNS"
-                            ></i>
-                            <i
-                                v-else-if="
-                                    slotProps.data.method &&
-                                    slotProps.data.method.toUpperCase() ===
-                                        'SMTP'
-                                "
-                                class="fa fa-at mr-2 text-info"
-                                title="SMTP"
-                            ></i>
-                            <i
-                                v-else-if="
-                                    slotProps.data.method &&
-                                    slotProps.data.method.toUpperCase() ===
-                                        'LDAP'
-                                "
-                                class="fa fa-user-circle mr-2 text-info"
-                                title="LDAP"
-                            ></i>
-                            <i
-                                v-else-if="
-                                    slotProps.data.method &&
-                                    slotProps.data.method.toUpperCase() ===
-                                        'SMB'
-                                "
-                                class="fa fa-server mr-2 text-warning"
-                                title="SMB"
-                            ></i>
-                            <i
-                                v-else-if="
-                                    slotProps.data.method &&
-                                    slotProps.data.method.toUpperCase() ===
-                                        'FTP'
-                                "
-                                class="fa fa-cloud-upload mr-2 text-warning"
-                                title="FTP"
-                            ></i>
-                            <i
-                                v-else-if="
-                                    slotProps.data.method &&
-                                    slotProps.data.method.toUpperCase() ===
-                                        'RESPONDER'
-                                "
-                                class="fa fa-arrow-down mr-2 text-warning"
-                                title="Responder"
-                            ></i>
-                            <i
-                                v-else
-                                class="fa fa-question-circle mr-2"
-                                title="Other"
-                            ></i>
-                            <span>{{
-                                slotProps.data.method
-                                    ? slotProps.data.method.toUpperCase()
-                                    : ""
-                            }}</span>
-                        </span>
-                    </template>
-                </Column>
-                <Column
-                    field="source"
-                    header="Source"
-                    :sortable="true"
-                ></Column>
-                <Column
-                    field="destination"
-                    header="Destination"
-                    :sortable="true"
-                ></Column>
-                <Column
-                    field="provider"
-                    header="Provider"
-                    :sortable="true"
-                ></Column>
-                <Column
-                    field="timestamp"
-                    header="Timestamp"
-                    :sortable="true"
-                ></Column>
-            </DataTable>
+        <div
+            class="w-full h-1/2 flex flex-col gap-1 bg-surface-0 dark:bg-surface-800 rounded"
+        >
             <div
                 v-if="selectedInteraction"
                 class="mt-4 p-4 border border-surface-300 dark:border-surface-700 rounded-md"
@@ -505,6 +505,12 @@ watch(
                         class="w-full"
                     />
                 </div>
+            </div>
+            <div
+                v-else
+                class="flex items-center justify-center h-full text-gray-400"
+            >
+                No selected inteaction.
             </div>
         </div>
     </div>
