@@ -7,7 +7,7 @@ import DataTable from "primevue/datatable";
 import Dropdown from "primevue/dropdown";
 import Textarea from "primevue/textarea";
 import { useToast } from "primevue/usetoast";
-import { computed, type ComputedRef, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 
 import type { Provider } from "../../../backend/src/validation/schemas";
 
@@ -24,8 +24,29 @@ const clientService = useClientService();
 
 const props = defineProps<{ active: boolean }>();
 
-const selectedProvider = ref<string | undefined>(undefined); // 기본값 undefined로 전체 표시
+const selectedProviderA = ref<string | undefined>(undefined); // Get Payload용
+const selectedProviderB = ref<string | undefined>(undefined); // Interaction 필터용
 const availableProviders = ref<Provider[]>([]);
+
+// 'All Providers' 옵션을 포함한 리스트
+const availableProvidersWithAll = computed(() => [
+    { id: "", name: "All Providers" },
+    ...availableProviders.value,
+]);
+
+// 첫 provider 자동 선택
+onMounted(() => {
+    watch(
+        availableProviders,
+        (providers) => {
+            // providers[0]이 유효할 때만 .id에 접근합니다.
+            if (!selectedProviderA.value && providers.length > 0) {
+                selectedProviderA.value = providers[0]?.id;
+            }
+        },
+        { immediate: true },
+    );
+});
 const selectedInteraction = ref<any>(null);
 const payloadInput = ref("");
 
@@ -47,19 +68,15 @@ const filteredInteractions = computed(() =>
                 searchQuery.value.toLowerCase(),
             );
         const matchesProvider =
-            !selectedProvider.value ||
+            !selectedProviderB.value ||
             i.provider ===
-                (availableProviders.value.find(
-                    (p) => p.id === selectedProvider.value,
-                )?.name ?? "");
+                ((availableProviders.value &&
+                    availableProviders.value.find(
+                        (p) => p.id === selectedProviderB.value,
+                    )?.name) ??
+                    "");
         return matchesSearch && matchesProvider;
     }),
-);
-
-const selectedProviderObj: ComputedRef<Provider | undefined> = computed(
-    () =>
-        availableProviders.value.find((p) => p.id === selectedProvider.value) ||
-        undefined,
 );
 
 const loadProviders = async () => {
@@ -82,22 +99,14 @@ const loadProviders = async () => {
 };
 
 async function getPayload() {
-    if (!selectedProviderObj.value) {
+    const currentProvider = availableProviders.value.find(
+        (p) => p.id === selectedProviderA.value,
+    );
+    if (!currentProvider) {
         toast.add({
             severity: "warn",
             summary: "Warning",
             detail: "Please select a provider",
-            life: 3000,
-        });
-        return;
-    }
-    const currentProvider = selectedProviderObj.value;
-
-    if (!currentProvider.url) {
-        toast.add({
-            severity: "error",
-            summary: "Error",
-            detail: "Provider URL is missing",
             life: 3000,
         });
         return;
@@ -232,7 +241,9 @@ async function pollBoastEvents(provider: Provider) {
 // Modified pollInteractions to handle both Interactsh and BOAST
 async function pollInteractions() {
     console.log("Poll Interactions clicked");
-    const currentProvider = selectedProviderObj.value;
+    const currentProvider = availableProviders.value.find(
+        (p) => p.id === selectedProviderA.value,
+    );
 
     if (!currentProvider) {
         toast.add({
@@ -304,14 +315,14 @@ watch(
 <template>
     <div class="h-full flex flex-col gap-1">
         <div
-            class="w-full h-1/2 bg-surface-0 dark:bg-surface-800 rounded flex flex-col"
+            class="w-full h-3/5 bg-surface-0 dark:bg-surface-800 rounded flex flex-col"
         >
             <!-- 도구바 -->
             <div class="flex flex-col gap-2 p-4 flex-shrink-0">
                 <div class="flex items-center justify-between">
                     <div class="flex space-x-2 items-center">
                         <Dropdown
-                            v-model="selectedProvider"
+                            v-model="selectedProviderA"
                             :options="availableProviders"
                             option-label="name"
                             option-value="id"
@@ -357,8 +368,8 @@ watch(
                     style="min-width: 0; display: flex; align-items: center"
                 />
                 <Dropdown
-                    v-model="selectedProvider"
-                    :options="availableProviders"
+                    v-model="selectedProviderB"
+                    :options="availableProvidersWithAll"
                     option-label="name"
                     option-value="id"
                     placeholder="Filter by Provider"
@@ -491,13 +502,10 @@ watch(
         </div>
 
         <div
-            class="w-full h-1/2 flex flex-col gap-1 bg-surface-0 dark:bg-surface-800 rounded"
+            class="w-full h-2/5 flex flex-col gap-1 bg-surface-0 dark:bg-surface-800 rounded"
         >
-            <div
-                v-if="selectedInteraction"
-                class="mt-4 p-4 border border-surface-300 dark:border-surface-700 rounded-md"
-            >
-                <div class="field mb-4">
+            <div v-if="selectedInteraction" class="flex gap-2 w-full">
+                <div class="field mb-4 w-1/2">
                     <label for="rawRequest" class="font-bold block mb-2"
                         >Raw Request</label
                     >
@@ -510,7 +518,7 @@ watch(
                         class="w-full"
                     />
                 </div>
-                <div class="field">
+                <div class="field w-1/2">
                     <label for="rawResponse" class="font-bold block mb-2"
                         >Raw Response</label
                     >
