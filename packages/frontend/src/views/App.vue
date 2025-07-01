@@ -6,12 +6,12 @@ import Oast from "./Oast.vue";
 import Providers from "./Providers.vue";
 import Guide from "./Guide.vue";
 
-const page = ref<"Oast" | "Providers" | "Help & Docs">("Oast");
+const page = ref<"OAST" | "Providers" | "Help & Docs">("Oast");
 const items = [
     {
-        label: "Oast",
+        label: "OAST",
         command: () => {
-            page.value = "Oast";
+            page.value = "OAST";
         },
     },
     {
@@ -30,7 +30,7 @@ const items = [
 
 const component = computed(() => {
     switch (page.value) {
-        case "Oast":
+        case "OAST":
             return Oast;
         case "Providers":
             return Providers;
@@ -53,10 +53,10 @@ const component = computed(() => {
                         <div
                             v-for="(item, index) in items"
                             :key="index"
-                            class="px-3 py-2 cursor-pointer"
+                            class="px-3 py-2 cursor-pointer rounded-xl"
                             :class="{
-                                'bg-zinc-800/40': page === item.label,
-                                'hover:bg-gray-800/10': page !== item.label,
+                                'bg-surface-900 shadow-md': page === item.label,
+                                'hover:bg-surface-900': page !== item.label,
                             }"
                             @click="item.command"
                         >
