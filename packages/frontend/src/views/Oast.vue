@@ -362,13 +362,19 @@ watch(
                 <DataTable
                     :value="filteredInteractions"
                     table-style="min-width: 50rem;"
+                    table-class="omnioast-table bg-surface-0 dark:bg-surface-800"
                     sort-field="timestamp"
                     :sort-order="-1"
                     selection-mode="single"
                     data-key="timestamp"
                     @row-select="showDetails"
                 >
-                    <Column field="method" header="Method" :sortable="true">
+                    <Column
+                        field="method"
+                        header="Method"
+                        :sortable="true"
+                        class
+                    >
                         <template #body="slotProps">
                             <span class="flex items-center">
                                 <i

@@ -23,3 +23,10 @@
 .oast-interaction-details {
     /* 상세 영역 스타일 */
 }
+
+.omnioast-table tbody tr {
+    background-color: var(--surface-0);
+}
+.dark .omnioast-table tbody tr {
+    background-color: var(--surface-800);
+}
