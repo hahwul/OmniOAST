@@ -183,12 +183,18 @@ const toggleEnabled = async (provider: FetchedProvider) => {
 };
 
 const addPublicInteractshProvider = async () => {
-    const publicUrls = ["https://oast.me", "https://oast.fun"];
+    const publicUrls = [
+        "https://oast.pro",
+        "https://oast.live",
+        "https://oast.site",
+        "https://oast.online",
+        "https://oast.fun",
+        "https://oast.me",
+    ];
+
     const selectedUrl =
         publicUrls[Math.floor(Math.random() * publicUrls.length)];
 
-    // --- FIX START ---
-    // selectedUrl이 undefined일 가능성을 제거하여 타입 에러를 해결합니다.
     if (!selectedUrl) {
         toast.add({
             severity: "error",
