@@ -304,8 +304,11 @@ watch(
 
 <template>
     <div class="h-full flex flex-col gap-1">
-        <div class="w-full h-1/2 bg-surface-0 dark:bg-surface-800 rounded">
-            <div class="flex flex-col gap-2 p-4">
+        <div
+            class="w-full h-1/2 bg-surface-0 dark:bg-surface-800 rounded flex flex-col"
+        >
+            <!-- 도구바 -->
+            <div class="flex flex-col gap-2 p-4 flex-shrink-0">
                 <div class="flex items-center justify-between">
                     <div class="flex space-x-2 items-center">
                         <Dropdown
@@ -345,24 +348,20 @@ watch(
                     </div>
                 </div>
             </div>
-
-            <div class="oast-interactions-group flex-grow flex flex-col p-4">
-                <!-- 검색바 -->
-                <div class="mb-2">
-                    <input
-                        v-model="searchQuery"
-                        type="text"
-                        class="oast-search-bar w-full px-3 py-2 rounded border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950 mb-2"
-                        placeholder="Search interactions..."
-                    />
-                </div>
-                <!-- Interaction 리스트 -->
+            <!-- 검색바 -->
+            <div class="px-4 mb-2 flex-shrink-0">
+                <input
+                    v-model="searchQuery"
+                    type="text"
+                    class="oast-search-bar w-full px-3 py-2 rounded border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950"
+                    placeholder="Search interactions..."
+                />
+            </div>
+            <!-- Interaction 리스트 -->
+            <div class="flex-grow overflow-auto px-4 pb-4">
                 <DataTable
                     :value="filteredInteractions"
-                    paginator
-                    :rows="10"
-                    :rows-per-page-options="[5, 10, 20, 50]"
-                    table-style="min-width: 50rem"
+                    table-style="min-width: 50rem;"
                     sort-field="timestamp"
                     :sort-order="-1"
                     selection-mode="single"
