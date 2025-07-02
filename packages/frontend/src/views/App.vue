@@ -51,7 +51,7 @@ const component = computed(() => {
                         <div
                             v-for="(item, index) in items"
                             :key="index"
-                            class="px-3 py-2 cursor-pointer rounded-xl"
+                            class="px-3 py-2 cursor-pointer rounded-xl font-bold"
                             :class="{
                                 'bg-surface-900 shadow-md': page === item.label,
                                 'hover:bg-surface-900': page !== item.label,
