@@ -13,7 +13,6 @@ export interface OASTService {
   registerAndGetPayload?(): Promise<{ id: string; payloadUrl: string } | null>;
 }
 
-// SDK 메서드 반환값에서 Database 타입을 추론합니다.
 type Database = Awaited<ReturnType<CaidoBackendSDK["meta"]["db"]>>;
 
 export class ProviderService {
@@ -42,7 +41,6 @@ export class ProviderService {
     return db;
   }
 
-  // DB 인스턴스를 안전하게 가져오는 메서드
   private async getDb(): Promise<Database> {
     if (this.db) {
       return this.db;
@@ -62,7 +60,6 @@ export class ProviderService {
         "INSERT INTO providers (id, name, type, url, token, enabled) VALUES (?, ?, ?, ?, ?, ?)",
       );
 
-      // [수정] id는 항상 존재함을 `!`로 명시하고, token은 `?? null`로 변환합니다.
       await statement.run(
         validatedProvider.id!,
         validatedProvider.name,
@@ -81,7 +78,6 @@ export class ProviderService {
 
   async getProvider(id: string | { id: string }): Promise<Provider | null> {
     try {
-      // id가 object로 넘어오는 경우 string으로 변환
       const safeId =
         typeof id === "object" && id !== null && "id" in id
           ? String(id.id)
@@ -97,7 +93,6 @@ export class ProviderService {
         return null;
       }
 
-      // DB의 enabled (0 또는 1)를 boolean으로 변환
       const parsed = ProviderSchema.parse({
         ...result,
         enabled: !!result.enabled,
@@ -135,7 +130,6 @@ export class ProviderService {
         "UPDATE providers SET name = ?, type = ?, url = ?, token = ?, enabled = ? WHERE id = ?",
       );
 
-      // [수정] token은 `?? null`로 변환하고, boolean인 enabled를 숫자로 변환합니다.
       const result = await statement.run(
         validatedProvider.name,
         validatedProvider.type,

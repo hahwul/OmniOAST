@@ -1,8 +1,6 @@
 import { type Caido } from "@caido/sdk-frontend";
 import { type Provider } from "../../backend/src/validation/schemas";
-// import { type API } from "backend";
 
-// API 타입을 직접 명시
 type API = {
   createProvider: (provider: {
     name: string;

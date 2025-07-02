@@ -73,6 +73,8 @@ class InteractshClient {
 
   /**
    * Registers the client with the Interactsh server
+   * @param serverURL URL of the Interactsh server
+   * @param token Authentication token for the server
    * @param payload Registration payload containing keys and correlation ID
    */
   private async performRegistration(

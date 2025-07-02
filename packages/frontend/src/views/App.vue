@@ -40,8 +40,6 @@ const component = computed(() => {
             return undefined;
     }
 });
-
-// const activeTabIndex = ref(0);
 </script>
 
 <template>

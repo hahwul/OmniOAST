@@ -27,18 +27,15 @@ const selectedProviderA = ref<string | undefined>(undefined); // Get Payload용
 const selectedProviderB = ref<string | undefined>(undefined); // Interaction 필터용
 const availableProviders = ref<Provider[]>([]);
 
-// 'All Providers' 옵션을 포함한 리스트
 const availableProvidersWithAll = computed(() => [
     { id: "", name: "All Providers" },
     ...availableProviders.value,
 ]);
 
-// 첫 provider 자동 선택
 onMounted(() => {
     watch(
         availableProviders,
         (providers) => {
-            // providers[0]이 유효할 때만 .id에 접근합니다.
             if (!selectedProviderA.value && providers.length > 0) {
                 selectedProviderA.value = providers[0]?.id;
             }
@@ -49,7 +46,6 @@ onMounted(() => {
 const selectedInteraction = ref<any>(null);
 const payloadInput = ref("");
 
-// 검색어 상태 및 필터링된 인터랙션
 const searchQuery = ref("");
 const filteredInteractions = computed(() =>
     oastStore.interactions.filter((i) => {
@@ -84,8 +80,6 @@ const loadProviders = async () => {
         availableProviders.value = allProviders.filter(
             (p: Provider) => p.enabled,
         );
-
-        // Provider 필터는 기본값을 선택하지 않음(전체 표시)
     } catch (error) {
         toast.add({
             severity: "error",

@@ -1,8 +1,8 @@
 import { OASTService } from "./provider";
 import { OASTEvent } from "../../types";
 
-// 'caido:utils'에서 필요한 클래스와 타입을 모두 import 합니다.
-// 'import type'이 아닌 일반 'import'를 사용해야 합니다.
+// Import all required classes and types from 'caido:utils'
+// Using regular 'import' instead of 'import type'
 import { RequestSpec, RequestResponse } from "caido:utils";
 import type { CaidoBackendSDK } from "../../types";
 
@@ -22,9 +22,9 @@ export class BoastService implements OASTService {
 
   public async getEvents(): Promise<OASTEvent[]> {
     try {
-      // Caido SDK의 RequestSpec 생성 및 헤더 설정
+      // Create RequestSpec for Caido SDK and set headers
       const spec = new RequestSpec(this.url);
-      spec.setHeader("Authorization", `Secret ${this.secret}`); // sdk.requests.send()를 통해 요청 전송
+      spec.setHeader("Authorization", `Secret ${this.secret}`); // Send request through sdk.requests.send()
 
       const res: RequestResponse = await this.sdk.requests.send(spec);
 
@@ -41,7 +41,7 @@ export class BoastService implements OASTService {
       if (!this.id && data.id) {
         this.id = data.id;
         const urlObj = new URL(this.url);
-        this.domain = `${this.id}.${urlObj.hostname}`; // payloadUrl도 여기서 생성
+        this.domain = `${this.id}.${urlObj.hostname}`; // Generate payloadUrl here as well
         this.payloadUrl = `http://${this.domain}`;
       }
 
@@ -69,25 +69,25 @@ export class BoastService implements OASTService {
 
   public getDomain(): string | null {
     return this.domain;
-  } // 최초 호출 시 payloadUrl을 생성해 반환
+  } // Generate and return payloadUrl on first call
 
   public async registerAndGetPayload(): Promise<{
     id: string;
     payloadUrl: string;
   } | null> {
-    // Secret(token)이 없으면 에러 반환
+    // Return error if Secret(token) is empty
     if (!this.secret || this.secret.trim() === "") {
       this.sdk.console.error(
         "BOAST provider requires a non-empty token (Secret) for registration.",
       );
       throw new Error("BOAST provider requires a non-empty token (Secret).");
-    } // 이미 payloadUrl이 있으면 바로 반환
+    } // Return immediately if payloadUrl already exists
 
     if (this.payloadUrl && this.id) {
       return { id: this.id!, payloadUrl: this.payloadUrl! };
     }
     try {
-      // Caido SDK의 RequestSpec 생성 및 헤더 설정
+      // Create RequestSpec for Caido SDK and set headers
       const spec = new RequestSpec(this.url);
       spec.setHeader("Authorization", `Secret ${this.secret}`);
       const res: RequestResponse = await this.sdk.requests.send(spec);
@@ -108,7 +108,7 @@ export class BoastService implements OASTService {
       }
 
       this.id = data.id;
-      const urlObj = new URL(this.url); // canary 기반 payloadUrl 생성 (http/https는 원본 url 기준)
+      const urlObj = new URL(this.url); // Create canary-based payloadUrl (http/https based on original url)
       const protocol = urlObj.protocol === "https:" ? "https" : "http";
       this.payloadUrl = `${protocol}://${data.id}.${urlObj.hostname}`;
 

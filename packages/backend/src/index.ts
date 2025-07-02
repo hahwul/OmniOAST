@@ -20,20 +20,20 @@ export type API = DefineAPI<{
     id: string,
     enabled: boolean,
   ) => Promise<Provider | null>;
-  // OASTService 관련 기능 노출
+  // Expose OAST service related functionality
   registerAndGetPayload: (
     provider: Provider,
   ) => Promise<{ id: string; payloadUrl: string } | null>;
   getOASTEvents: (provider: Provider) => Promise<any[]>;
 }>;
 
-// Accept sdk as CaidoBackendSDK for provider service compatibility
+// Accept sdk as CaidoBackendSDK to ensure compatibility with provider service
 export function init(sdk: CaidoBackendSDK) {
   initProviderService(sdk);
   const providerService = getProviderService();
 
   (sdk as any).api?.register?.("createProvider", (...args: any[]) => {
-    // provider 데이터는 args[1]에 위치
+    // Provider data is located at args[1]
     const provider = args[1];
     return providerService.createProvider(provider);
   });
@@ -41,7 +41,7 @@ export function init(sdk: CaidoBackendSDK) {
     providerService.getProvider(id),
   );
   (sdk as any).api?.register?.("updateProvider", (...args: any[]) => {
-    // args[1]이 배열이면 [id, updates] 구조
+    // If args[1] is an array, it has [id, updates] structure
     let id, updates;
     if (args[1] && Array.isArray(args[1])) {
       [id, updates] = args[1];
@@ -74,7 +74,7 @@ export function init(sdk: CaidoBackendSDK) {
     return providerService.toggleProviderEnabled(id, enabled);
   });
 
-  // OASTService 관련 기능 노출
+  // Expose OAST service related functionality
   (sdk as any).api?.register?.(
     "registerAndGetPayload",
     async (...args: any[]) => {

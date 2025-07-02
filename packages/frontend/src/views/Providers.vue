@@ -13,10 +13,7 @@ import type { Provider } from "../../../backend/src/validation/schemas";
 
 import { useSDK } from "@/plugins/sdk";
 
-// 'id'가 보장된 Provider 타입을 정의합니다.
 type FetchedProvider = Provider & { id: string };
-
-// 폼 데이터를 위한 타입을 정의합니다.
 type ProviderFormData = Partial<Provider> & { id?: string };
 
 const sdk = useSDK();
@@ -91,7 +88,6 @@ const saveProvider = async () => {
 
     try {
         if (isEdit.value && providerData.id) {
-            // 수정 모드: providerData.id가 string임을 보장합니다.
             const payload = JSON.parse(JSON.stringify(providerData));
             await sdk.backend.updateProvider(providerData.id, payload);
             toast.add({
@@ -105,11 +101,11 @@ const saveProvider = async () => {
             const payload = {
                 name: providerData.name,
                 type: providerData.type,
-                url: providerData.url, // URL은 위에서 검증되었습니다.
+                url: providerData.url,
                 token: providerData.token ?? "",
                 enabled: providerData.enabled ?? true,
             };
-            await sdk.backend.createProvider(payload as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+            await sdk.backend.createProvider(payload as any);
             toast.add({
                 severity: "success",
                 summary: "Success",
@@ -155,7 +151,6 @@ const deleteProvider = async (id: string) => {
 };
 
 const handleDelete = (provider: FetchedProvider) => {
-    // 실제 Confirm 로직을 여기에 추가하는 것을 권장합니다.
     deleteProvider(provider.id);
 };
 
@@ -168,7 +163,6 @@ const toggleEnabled = async (provider: FetchedProvider) => {
             detail: "Provider status updated",
             life: 3000,
         });
-        // UI 즉시 피드백을 위해 상태를 바로 변경하고, 실패 시 롤백하는 것도 좋은 방법입니다.
         await loadProviders();
     } catch (error) {
         toast.add({
@@ -218,7 +212,7 @@ const addPublicInteractshProvider = async () => {
             token: "",
             enabled: true,
         };
-        await sdk.backend.createProvider(payload as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+        await sdk.backend.createProvider(payload as any);
         toast.add({
             severity: "success",
             summary: "Success",
