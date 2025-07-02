@@ -6,7 +6,7 @@ import Oast from "./Oast.vue";
 import Providers from "./Providers.vue";
 import Guide from "./Guide.vue";
 
-const page = ref<"OAST" | "Providers" | "Help & Docs">("OAST");
+const page = ref<"OAST" | "Providers" | "Guide">("OAST");
 const items = [
     {
         label: "OAST",
@@ -21,9 +21,9 @@ const items = [
         },
     },
     {
-        label: "Help & Docs",
+        label: "Guide",
         command: () => {
-            page.value = "Help & Docs";
+            page.value = "Guide";
         },
     },
 ];
@@ -34,7 +34,7 @@ const component = computed(() => {
             return Oast;
         case "Providers":
             return Providers;
-        case "Help & Docs":
+        case "Guide":
             return Guide;
         default:
             return undefined;
