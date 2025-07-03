@@ -13,3 +13,14 @@ export const ProviderSchema = z.object({
 });
 
 export type Provider = z.infer<typeof ProviderSchema>;
+
+export const SettingsSchema = z
+  .object({
+    id: z.string().optional(),
+    pollingInterval: z.number().int().positive().default(30),
+    maxPollingPeriod: z.string().default("session"),
+    payloadPrefix: z.string().default(""),
+  })
+  .partial({ id: true });
+
+export type Settings = z.infer<typeof SettingsSchema>;

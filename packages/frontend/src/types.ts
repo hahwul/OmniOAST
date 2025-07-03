@@ -1,5 +1,8 @@
 import { type Caido } from "@caido/sdk-frontend";
-import { type Provider } from "../../backend/src/validation/schemas";
+import {
+  type Provider,
+  type Settings,
+} from "../../backend/src/validation/schemas";
 
 type API = {
   createProvider: (provider: {
@@ -18,6 +21,17 @@ type API = {
     provider: Provider,
   ) => Promise<{ id: string; payloadUrl: string } | null>;
   getOASTEvents: (provider: Provider) => Promise<any[]>;
+
+  // Settings API
+  createSettings: (settings: Omit<Settings, "id">) => Promise<Settings | null>;
+  getSettings: (id: string) => Promise<Settings | null>;
+  getCurrentSettings: () => Promise<Settings | null>;
+  updateSettings: (
+    id: string,
+    updates: Partial<Settings>,
+  ) => Promise<Settings | null>;
+  deleteSettings: (id: string) => Promise<boolean>;
+  listSettings: () => Promise<Settings[]>;
 };
 
 export type FrontendSDK = Caido<API, {}>;
