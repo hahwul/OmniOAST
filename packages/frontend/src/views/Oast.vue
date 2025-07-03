@@ -107,11 +107,15 @@ async function getPayload() {
 
     if (currentProvider.type === "interactsh") {
         try {
+            // Get settings for both URL generation and polling interval
+            const settings = await sdk.backend.getCurrentSettings();
+            const pollingInterval = settings?.pollingInterval || 5;
+
             await clientService.start(
                 {
                     serverURL: currentProvider.url,
                     token: currentProvider.token || "",
-                    keepAliveInterval: 5000,
+                    keepAliveInterval: pollingInterval * 1000,
                 },
                 (interaction) => {
                     console.log(interaction);
@@ -132,8 +136,8 @@ async function getPayload() {
             );
 
             const { url: payloadUrl } = clientService.generateUrl();
-            const currentSettings = await sdk.backend.getCurrentSettings();
-            const prefix = currentSettings?.payloadPrefix;
+            const prefix = settings?.payloadPrefix;
+            console.log("Payload prefix:", prefix);
             if (prefix !== "" && prefix !== undefined) {
                 payloadInput.value = prefix + "." + payloadUrl;
             } else {
@@ -154,16 +158,22 @@ async function getPayload() {
                 await sdk.backend.registerAndGetPayload(currentProvider);
 
             if (payloadInfo && payloadInfo.payloadUrl) {
-                const currentSettings = await sdk.backend.getCurrentSettings();
-                const prefix = currentSettings?.payloadPrefix;
+                // Get settings once for both prefix and polling interval
+                const settings = await sdk.backend.getCurrentSettings();
+                const prefix = settings?.payloadPrefix;
+                const pollingInterval = settings?.pollingInterval || 5;
+
                 if (prefix !== "" && prefix !== undefined) {
                     payloadInput.value = prefix + "." + payloadInfo.payloadUrl;
                 } else {
                     payloadInput.value = payloadInfo.payloadUrl;
                 }
 
-                // Call the new pollBoastEvents function every 5 seconds
-                setInterval(() => pollBoastEvents(currentProvider), 5000);
+                // Call the new pollBoastEvents function with the configured polling interval
+                setInterval(
+                    () => pollBoastEvents(currentProvider),
+                    pollingInterval * 1000,
+                );
 
                 toast.add({
                     severity: "success",
