@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import Button from "primevue/button";
 import Card from "primevue/card";
-import Dropdown from "primevue/dropdown";
 import InputNumber from "primevue/inputnumber";
 import InputText from "primevue/inputtext";
 import { useToast } from "primevue/usetoast";
@@ -16,30 +15,18 @@ const toast = useToast();
 interface SettingsData {
     id?: string;
     pollingInterval: number;
-    maxPollingPeriod: string;
     payloadPrefix: string;
 }
 
-// 타입 단언을 통해 API에 전달될 데이터 형식 지정
 type ApiPayload = {
     pollingInterval: number;
-    maxPollingPeriod: string;
     payloadPrefix: string;
 };
 
 const settings = ref<SettingsData>({
     pollingInterval: 30,
-    maxPollingPeriod: "session",
     payloadPrefix: "",
 });
-
-const pollingPeriodOptions = [
-    { name: "Session", value: "session" },
-    { name: "1 hour", value: "1h" },
-    { name: "6 hours", value: "6h" },
-    { name: "12 hours", value: "12h" },
-    { name: "24 hours", value: "24h" },
-];
 
 // Load settings from backend
 const loadSettings = () => {
@@ -66,7 +53,6 @@ const saveSettings = () => {
     // 명시적으로 원시 타입으로 변환하여 API 호출에 사용
     const payload: ApiPayload = {
         pollingInterval: Number(settings.value.pollingInterval),
-        maxPollingPeriod: String(settings.value.maxPollingPeriod),
         payloadPrefix: String(settings.value.payloadPrefix || ""),
     };
 
@@ -129,7 +115,6 @@ const resetToDefaults = () => {
     settings.value = {
         ...(currentId ? { id: currentId } : {}),
         pollingInterval: 30,
-        maxPollingPeriod: "session",
         payloadPrefix: "",
     };
 
@@ -199,28 +184,6 @@ onMounted(loadSettings);
                                     <small class="text-gray-500">
                                         How often to check for new events
                                         (default: 30s)
-                                    </small>
-                                </div>
-
-                                <div class="flex flex-col gap-1">
-                                    <label
-                                        for="maxPollingPeriod"
-                                        class="font-medium"
-                                    >
-                                        Max Polling Period
-                                    </label>
-                                    <Dropdown
-                                        id="maxPollingPeriod"
-                                        v-model="settings.maxPollingPeriod"
-                                        :options="pollingPeriodOptions"
-                                        option-label="name"
-                                        option-value="value"
-                                        placeholder="Select a polling period"
-                                        class="w-full"
-                                    />
-                                    <small class="text-gray-500">
-                                        Maximum duration to poll for events
-                                        (default: session)
                                     </small>
                                 </div>
                             </div>

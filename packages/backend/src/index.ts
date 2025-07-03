@@ -119,7 +119,6 @@ export function init(sdk: CaidoBackendSDK) {
     // Ensure we have primitive values
     const settings: Partial<Settings> = {
       pollingInterval: Number(settingsInput.pollingInterval || 30),
-      maxPollingPeriod: String(settingsInput.maxPollingPeriod || "session"),
       payloadPrefix: settingsInput.payloadPrefix
         ? String(settingsInput.payloadPrefix)
         : "",
@@ -170,9 +169,6 @@ export function init(sdk: CaidoBackendSDK) {
     if (updateData && typeof updateData === "object") {
       if (updateData.pollingInterval !== undefined) {
         safeUpdates.pollingInterval = Number(updateData.pollingInterval);
-      }
-      if (updateData.maxPollingPeriod !== undefined) {
-        safeUpdates.maxPollingPeriod = String(updateData.maxPollingPeriod);
       }
       if (updateData.payloadPrefix !== undefined) {
         safeUpdates.payloadPrefix = String(updateData.payloadPrefix);

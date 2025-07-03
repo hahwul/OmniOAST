@@ -21,7 +21,6 @@ export class SettingsService {
       CREATE TABLE IF NOT EXISTS settings (
         id TEXT PRIMARY KEY,
         pollingInterval INTEGER NOT NULL,
-        maxPollingPeriod TEXT NOT NULL,
         payloadPrefix TEXT
       );
     `);
@@ -46,7 +45,6 @@ export class SettingsService {
       const newSettings = {
         id: uuidv4(),
         pollingInterval: Number(settings.pollingInterval || 30),
-        maxPollingPeriod: String(settings.maxPollingPeriod || "session"),
         payloadPrefix:
           settings.payloadPrefix !== undefined
             ? String(settings.payloadPrefix)
@@ -63,13 +61,12 @@ export class SettingsService {
       const db = await this.getDb();
 
       const statement = await db.prepare(
-        "INSERT INTO settings (id, pollingInterval, maxPollingPeriod, payloadPrefix) VALUES (?, ?, ?, ?)",
+        "INSERT INTO settings (id, pollingInterval, payloadPrefix) VALUES (?, ?, ?)",
       );
 
       await statement.run(
         validatedSettings.id!,
         validatedSettings.pollingInterval,
-        validatedSettings.maxPollingPeriod,
         validatedSettings.payloadPrefix || "",
       );
 
@@ -107,9 +104,6 @@ export class SettingsService {
           result.pollingInterval !== undefined
             ? Number(result.pollingInterval)
             : 30,
-        maxPollingPeriod: result.maxPollingPeriod
-          ? String(result.maxPollingPeriod)
-          : "session",
         payloadPrefix: result.payloadPrefix ? String(result.payloadPrefix) : "",
       };
 
@@ -150,7 +144,6 @@ export class SettingsService {
       const settingsData = {
         id: String(result.id),
         pollingInterval: Number(result.pollingInterval),
-        maxPollingPeriod: String(result.maxPollingPeriod),
         payloadPrefix: result.payloadPrefix ? String(result.payloadPrefix) : "",
       };
 
@@ -170,7 +163,6 @@ export class SettingsService {
   async createDefaultSettings(): Promise<Settings | null> {
     const defaultSettings = {
       pollingInterval: 30,
-      maxPollingPeriod: "session",
       payloadPrefix: "",
     };
     return this.createSettings(defaultSettings);
@@ -204,10 +196,6 @@ export class SettingsService {
           updates && updates.pollingInterval !== undefined
             ? Number(updates.pollingInterval)
             : existingSettings.pollingInterval,
-        maxPollingPeriod:
-          updates && updates.maxPollingPeriod !== undefined
-            ? String(updates.maxPollingPeriod)
-            : existingSettings.maxPollingPeriod,
         payloadPrefix:
           updates && updates.payloadPrefix !== undefined
             ? String(updates.payloadPrefix)
@@ -227,12 +215,11 @@ export class SettingsService {
       const db = await this.getDb();
 
       const statement = await db.prepare(
-        "UPDATE settings SET pollingInterval = ?, maxPollingPeriod = ?, payloadPrefix = ? WHERE id = ?",
+        "UPDATE settings SET pollingInterval = ?, payloadPrefix = ? WHERE id = ?",
       );
 
       await statement.run(
         validatedSettings.pollingInterval,
-        validatedSettings.maxPollingPeriod,
         validatedSettings.payloadPrefix || "",
         id,
       );
@@ -271,7 +258,6 @@ export class SettingsService {
         SettingsSchema.parse({
           id: String(settings.id),
           pollingInterval: Number(settings.pollingInterval),
-          maxPollingPeriod: String(settings.maxPollingPeriod),
           payloadPrefix: settings.payloadPrefix || "",
         }),
       );

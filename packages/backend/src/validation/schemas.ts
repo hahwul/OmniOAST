@@ -18,7 +18,6 @@ export const SettingsSchema = z
   .object({
     id: z.string().optional(),
     pollingInterval: z.number().int().positive().default(30),
-    maxPollingPeriod: z.string().default("session"),
     payloadPrefix: z.string().default(""),
   })
   .partial({ id: true });
