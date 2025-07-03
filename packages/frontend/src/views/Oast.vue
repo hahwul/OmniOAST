@@ -132,7 +132,13 @@ async function getPayload() {
             );
 
             const { url: payloadUrl } = clientService.generateUrl();
-            payloadInput.value = payloadUrl;
+            const currentSettings = await sdk.backend.getCurrentSettings();
+            const prefix = currentSettings?.payloadPrefix;
+            if (prefix !== "" && prefix !== undefined) {
+                payloadInput.value = prefix + "." + payloadUrl;
+            } else {
+                payloadInput.value = payloadUrl;
+            }
         } catch (error) {
             console.error("Registration failed:", error);
             toast.add({
@@ -148,7 +154,13 @@ async function getPayload() {
                 await sdk.backend.registerAndGetPayload(currentProvider);
 
             if (payloadInfo && payloadInfo.payloadUrl) {
-                payloadInput.value = payloadInfo.payloadUrl;
+                const currentSettings = await sdk.backend.getCurrentSettings();
+                const prefix = currentSettings?.payloadPrefix;
+                if (prefix !== "" && prefix !== undefined) {
+                    payloadInput.value = prefix + "." + payloadInfo.payloadUrl;
+                } else {
+                    payloadInput.value = payloadInfo.payloadUrl;
+                }
 
                 // Call the new pollBoastEvents function every 5 seconds
                 setInterval(() => pollBoastEvents(currentProvider), 5000);

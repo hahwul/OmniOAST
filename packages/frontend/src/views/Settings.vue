@@ -39,7 +39,6 @@ const pollingPeriodOptions = [
     { name: "6 hours", value: "6h" },
     { name: "12 hours", value: "12h" },
     { name: "24 hours", value: "24h" },
-    { name: "Forever", value: "forever" },
 ];
 
 // Load settings from backend

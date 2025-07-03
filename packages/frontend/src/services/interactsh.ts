@@ -384,7 +384,7 @@ class InteractshClient {
     view.setUint32(0, timestamp, false);
     view.setUint32(4, increment, false);
     const randomId = generateRandomString(this.correlationIdNonceLength);
-    const url = `https://${this.correlationID.value}${randomId}.${this.serverURL.value.host}`;
+    const url = `${this.correlationID.value}${randomId}.${this.serverURL.value.host}`;
     const uniqueId = `${this.correlationID.value}${randomId}`;
     return { url, uniqueId };
   }

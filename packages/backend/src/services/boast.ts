@@ -109,8 +109,7 @@ export class BoastService implements OASTService {
 
       this.id = data.id;
       const urlObj = new URL(this.url); // Create canary-based payloadUrl (http/https based on original url)
-      const protocol = urlObj.protocol === "https:" ? "https" : "http";
-      this.payloadUrl = `${protocol}://${data.id}.${urlObj.hostname}`;
+      this.payloadUrl = `${data.id}.${urlObj.hostname}`;
 
       return { id: this.id!, payloadUrl: this.payloadUrl! };
     } catch (err) {
