@@ -2,94 +2,53 @@
 
 ---
 
-OmniOAST is the all-in-one [Caido](https://caido.io) plugin for managing all your OAST providers and Interactions. It's designed to streamline workflows for security professionals by efficiently handling multiple OAST (Out-of-Band Application Security Testing) providers.
+OmniOAST is a [Caido](https://caido.io) plugin designed to streamline your Out-of-Band Application Security Testing by centralizing all provider management and interaction logs. It eliminates the need to switch between different tools by allowing you to manage various providers, from public services to private servers, and view all their callbacks in a single, unified interface directly within Caido.
 
 ![Showcase](./images/showcase.jpg)
 
+## Features
+
+- **Centralized Management**: Manage public (Interact.sh, BOAST) and private OAST providers from a single interface.
+- **Unified Interaction Log**: View, search, and filter all OAST callbacks in one place, directly within Caido.
+- **Streamlined Workflow**: Generate payloads and monitor interactions without switching between tools.
+- **Flexible Configuration**: Supports public and self-hosted providers like Interactsh and BOAST.
+
 ## Installation
 
-Download the latest package from the [Releases page](https://github.com/hahwul/OmniOAST/releases) and install it in Caido via the `Plugins` > `Install Package` menu. OmniOAST will be available on the official marketplace in the future.
+1.  Download the latest `plugin_package.zip` from the [Releases page](https://github.com/hahwul/OmniOAST/releases).
+2.  In Caido, navigate to the `Plugins` page and install the package.
 
-## Concept
-
-OmniOAST serves as a centralized hub for managing multiple OAST (Out-of-Band Application Security Testing) providers within Caido. By integrating various providers across different network environments, OmniOAST enables security professionals to:
-
-| Feature | Description |
-|---------|-------------|
-| **Unify OAST Management** | Seamlessly control both public and private OAST providers through a single interface |
-| **Maximize Testing Coverage** | Leverage different providers for comprehensive security testing across various network environments |
-| **Monitor Interactions** | Centrally track and analyze all callbacks from injected payloads in real-time |
-| **Enhance Testing Flexibility** | Switch between providers based on testing requirements without workflow disruption |
-
-The architecture supports multiple provider types including:
-
-```mermaid
-mindmap
-  root((Caido))
-    OmniOAST
-      Public IP Interactsh
-        Easy external callback detection
-        Zero configuration setup
-      Private IP Interactsh
-        Internal network testing
-        Greater control over callback data
-      Private IP BOAST
-        Self-hosted alternative
-        Enhanced security for sensitive testing
-```
-
-By supporting both public and private network providers, OmniOAST enables security testers to detect vulnerabilities across various network boundaries and contexts, making it an essential tool for comprehensive application security assessment.
+OmniOAST will also be available on the official Caido marketplace soon.
 
 ## Usage
 
-### 1. Managing Providers
+1.  **Add a Provider**:
+    - Go to the **Provider** tab.
+    - Use the quick-add buttons for public Interactsh or BOAST servers.
+    - To add a private provider, specify its name, type (Interactsh/BOAST), URL, and an optional token.
 
-Navigate to the **Provider** tab to create and manage OAST providers:
+2.  **Generate Payloads & Monitor Interactions**:
+    - Go to the **OAST** tab.
+    - Select a provider from the dropdown to generate a new payload.
+    - All interactions from your providers will appear in this tab in real-time. You can search and filter the results.
 
-- Create a new provider by entering:
-  - **Name**: A unique identifier for your provider
-  - **Type**: Select the provider type (Interactsh, BOAST, etc.)
-  - **URL**: The provider's URL endpoint
-  - **Token**: Authentication token (if required)
+3.  **Settings**:
+    - Navigate to the **Settings** tab to customize the polling interval for fetching interactions.
 
-For convenience, you can quickly add pre-configured public providers using:
-- **Add Public BOAST Provider** button
-- **Add Public Interactsh Provider** button
+## Development
 
-### 2. Working with Payloads and Interactions
+### Build from Source
 
-In the **OAST** tab, you can:
-
-- **Generate Payloads**: Select a provider from the dropdown to create custom OAST payloads
-- **Monitor Interactions**: View all interactions received from your OAST providers
-  - Search for specific interactions using the search functionality
-  - Filter interactions by provider
-  - Track detailed information for each interaction
-
-### 3. Configuration Settings
-
-Access the **Settings** tab to customize:
-
-- **Polling Interval**: Adjust how frequently OmniOAST checks for new interactions
-- **Payload Prefix**: Configure custom prefixes for your generated payloads
-
-## Dev
-
-### Build
-
-To build the project from the source, follow these steps:
+To build the plugin from the source code:
 
 ```bash
-git clone https://github.com/hahwul/OmniOAST
+git clone [https://github.com/hahwul/OmniOAST](https://github.com/hahwul/OmniOAST)
 cd OmniOAST
-```
-
-```bash
 pnpm install
 pnpm build
-
-# ./dist/plugin_package.zip
 ```
+
+The packaged plugin will be available at `./dist/plugin_package.zip`.
 
 ### Type Check
 

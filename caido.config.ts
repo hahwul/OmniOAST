@@ -12,12 +12,12 @@ export default defineConfig({
   id,
   name: "OmniOAST",
   description:
-    "The all-in-one Caido plugin for managing all your OAST providers.",
+    "Unify your OAST provider management and consolidate all interactions into a single, streamlined workflow.",
   version: "0.1.0",
   author: {
     name: "hahwul",
     email: "hahwul@gmail.com",
-    url: "https://github.com/hahwul/OmniOAST",
+    url: "https://www.hahwul.com",
   },
   plugins: [
     {
