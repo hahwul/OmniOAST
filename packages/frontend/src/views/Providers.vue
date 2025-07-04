@@ -303,7 +303,11 @@ onMounted(loadProviders);
             <Column field="name" header="Name" :sortable="true"></Column>
             <Column field="type" header="Type" :sortable="true"></Column>
             <Column field="url" header="URL"></Column>
-            <Column field="token" header="Token"></Column>
+            <Column field="token" header="Token">
+                <template #body="slotProps">
+                    {{ slotProps.data.token ? "********" : "" }}
+                </template>
+            </Column>
             <Column header="Enabled">
                 <template #body="slotProps">
                     <InputSwitch
@@ -405,6 +409,7 @@ onMounted(loadProviders);
                     <InputText
                         id="token"
                         v-model.trim="currentProvider.token"
+                        type="password"
                         class="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 transition border-gray-300"
                     />
                 </div>
