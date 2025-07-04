@@ -5,9 +5,9 @@ import { computed, ref } from "vue";
 import Oast from "./Oast.vue";
 import Providers from "./Providers.vue";
 import Settings from "./Settings.vue";
-import Guide from "./Guide.vue";
+import About from "./About.vue";
 
-const page = ref<"OAST" | "Providers" | "Settings" | "Guide">("OAST");
+const page = ref<"OAST" | "Providers" | "Settings" | "About">("OAST");
 const items = [
     {
         label: "OAST",
@@ -28,9 +28,9 @@ const items = [
         },
     },
     {
-        label: "Guide",
+        label: "About",
         command: () => {
-            page.value = "Guide";
+            page.value = "About";
         },
     },
 ];
@@ -43,8 +43,8 @@ const component = computed(() => {
             return Providers;
         case "Settings":
             return Settings;
-        case "Guide":
-            return Guide;
+        case "About":
+            return About;
         default:
             return undefined;
     }

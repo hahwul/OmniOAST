@@ -262,17 +262,12 @@
                         class="bg-surface-50 dark:bg-surface-900 rounded-lg p-4"
                     >
                         <p class="leading-relaxed">
-                            OmniOAST is the all-in-one
-                            <a
-                                href="https://caido.io"
-                                class="text-primary-500 hover:underline font-medium"
-                                >Caido</a
-                            >
-                            plugin for managing all your OAST providers and
-                            Interactions. It's designed to streamline workflows
-                            for security professionals by efficiently handling
-                            multiple OAST (Out-of-Band Application Security
-                            Testing) providers.
+                            OmniOAST is the all-in-one Caido plugin for managing
+                            all your OAST providers and Interactions. It's
+                            designed to streamline workflows for security
+                            professionals by efficiently handling multiple OAST
+                            (Out-of-Band Application Security Testing)
+                            providers.
                         </p>
                     </div>
 
@@ -280,26 +275,15 @@
                         <h3
                             class="text-xl font-semibold mb-3 flex items-center"
                         >
-                            <i class="pi pi-user mr-2 text-primary"></i>
                             Creator
                         </h3>
                         <div class="flex items-center gap-3 mb-4">
                             <div>
-                                <div class="font-medium">Created by</div>
-                                <b
-                                    class="text-primary-500 hover:underline text-lg font-bold"
-                                >
+                                <div class="text-primary-500 text-lg font-bold">
                                     @hahwul
-                                </b>
+                                </div>
                             </div>
                         </div>
-
-                        <Button
-                            icon="pi pi-github"
-                            label="GitHub Repository"
-                            class="p-button-secondary"
-                            onClick="window.open('https://github.com/hahwul/OmniOAST', '_blank')"
-                        />
                     </div>
                 </div>
             </template>
@@ -307,12 +291,11 @@
     </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 // Import PrimeVue components
 import Card from "primevue/card";
 import Button from "primevue/button";
 import Panel from "primevue/panel";
 import Badge from "primevue/badge";
-import Avatar from "primevue/avatar";
 import Divider from "primevue/divider";
 </script>
