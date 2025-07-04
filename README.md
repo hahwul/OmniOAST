@@ -10,6 +10,36 @@ OmniOAST is the all-in-one [Caido](https://caido.io) plugin for managing all you
 
 Download the latest package from the [Releases page](https://github.com/hahwul/OmniOAST/releases) and install it in Caido via the `Plugins` > `Install Package` menu. OmniOAST will be available on the official marketplace in the future.
 
+## Concept
+
+OmniOAST serves as a centralized hub for managing multiple OAST (Out-of-Band Application Security Testing) providers within Caido. By integrating various providers across different network environments, OmniOAST enables security professionals to:
+
+| Feature | Description |
+|---------|-------------|
+| **Unify OAST Management** | Seamlessly control both public and private OAST providers through a single interface |
+| **Maximize Testing Coverage** | Leverage different providers for comprehensive security testing across various network environments |
+| **Monitor Interactions** | Centrally track and analyze all callbacks from injected payloads in real-time |
+| **Enhance Testing Flexibility** | Switch between providers based on testing requirements without workflow disruption |
+
+The architecture supports multiple provider types including:
+
+```mermaid
+mindmap
+  root((Caido))
+    OmniOAST
+      Public IP Interactsh
+        Easy external callback detection
+        Zero configuration setup
+      Private IP Interactsh
+        Internal network testing
+        Greater control over callback data
+      Private IP BOAST
+        Self-hosted alternative
+        Enhanced security for sensitive testing
+```
+
+By supporting both public and private network providers, OmniOAST enables security testers to detect vulnerabilities across various network boundaries and contexts, making it an essential tool for comprehensive application security assessment.
+
 ## Usage
 
 ### 1. Managing Providers
@@ -25,15 +55,6 @@ Navigate to the **Provider** tab to create and manage OAST providers:
 For convenience, you can quickly add pre-configured public providers using:
 - **Add Public BOAST Provider** button
 - **Add Public Interactsh Provider** button
-
-```mermaid
-mindmap
-  root((Caido))
-    OmniOAST
-      Public IP Interactsh
-      Private IP Interactsh
-      Private IP BOAST
-```
 
 ### 2. Working with Payloads and Interactions
 
