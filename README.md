@@ -4,16 +4,7 @@
 
 OmniOAST is the all-in-one [Caido](https://caido.io) plugin for managing all your OAST providers and Interactions. It's designed to streamline workflows for security professionals by efficiently handling multiple OAST (Out-of-Band Application Security Testing) providers.
 
-```mermaid
-mindmap
-  root((Caido))
-    OmniOAST
-      Public IP Interactsh
-      Private IP Interactsh
-      Private IP BOAST
-```
-
-![](./images/showcase.jpg)
+![Showcase](./images/showcase.jpg)
 
 ## Installation
 
@@ -35,6 +26,15 @@ For convenience, you can quickly add pre-configured public providers using:
 - **Add Public BOAST Provider** button
 - **Add Public Interactsh Provider** button
 
+```mermaid
+mindmap
+  root((Caido))
+    OmniOAST
+      Public IP Interactsh
+      Private IP Interactsh
+      Private IP BOAST
+```
+
 ### 2. Working with Payloads and Interactions
 
 In the **OAST** tab, you can:
@@ -51,8 +51,6 @@ Access the **Settings** tab to customize:
 
 - **Polling Interval**: Adjust how frequently OmniOAST checks for new interactions
 - **Payload Prefix**: Configure custom prefixes for your generated payloads
-
-
 
 ## Dev
 
