@@ -13,6 +13,8 @@ mindmap
       Private IP BOAST
 ```
 
+![](./images/showcase.jpg)
+
 ## Installation
 
 Download the latest package from the [Releases page](https://github.com/hahwul/OmniOAST/releases) and install it in Caido via the `Plugins` > `Install Package` menu. OmniOAST will be available on the official marketplace in the future.
