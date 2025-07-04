@@ -18,7 +18,7 @@ OmniOAST is a [Caido](https://caido.io) plugin designed to streamline your Out-o
 1.  Download the latest `plugin_package.zip` from the [Releases page](https://github.com/hahwul/OmniOAST/releases).
 2.  In Caido, navigate to the `Plugins` page and install the package.
 
-OmniOAST will also be available on the official Caido marketplace soon.
+*We hope to see you on the Caido Plugin Marketplace!*
 
 ## Usage
 
