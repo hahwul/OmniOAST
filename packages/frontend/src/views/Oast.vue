@@ -23,6 +23,11 @@ const clientService = useClientService();
 
 const props = defineProps<{ active: boolean }>();
 
+const requestEditor = ref<any | null>(null);
+const responseEditor = ref<any | null>(null);
+const requestContainer = ref<HTMLElement | null>(null);
+const responseContainer = ref<HTMLElement | null>(null);
+
 const selectedProviderA = ref<string | undefined>(undefined); // Get Payload용
 const selectedProviderB = ref<string | undefined>(undefined); // Interaction 필터용
 const availableProviders = ref<Provider[]>([]);
@@ -319,7 +324,29 @@ function showDetails(event: any) {
 }
 
 onMounted(() => {
-    loadProviders();
+  loadProviders();
+
+  requestEditor.value = sdk.ui.httpRequestEditor();
+  responseEditor.value = sdk.ui.httpResponseEditor();
+
+  if (requestContainer.value) {
+    requestContainer.value.appendChild(requestEditor.value.getElement());
+  }
+
+  if (responseContainer.value) {
+    responseContainer.value.appendChild(responseEditor.value.getElement());
+  }
+});
+
+watch(selectedInteraction, (interaction) => {
+  if (interaction && requestEditor.value && responseEditor.value) {
+    requestEditor.value.setRequest(
+      new TextEncoder().encode(interaction.rawRequest),
+    );
+    responseEditor.value.setResponse(
+      new TextEncoder().encode(interaction.rawResponse),
+    );
+  }
 });
 
 watch(
@@ -526,31 +553,13 @@ watch(
         <div class="w-full h-2/5 flex flex-col">
             <div v-if="selectedInteraction" class="flex gap-1 w-full h-full">
                 <div
-                    class="field mb-4 w-1/2 p-4 h-full bg-surface-0 dark:bg-surface-800 rounded"
-                >
-                    <label for="rawRequest" class="font-bold block mb-2"
-                        >Raw Request</label
-                    >
-                    <pre
-                        id="rawRequest"
-                        class="w-full bg-transparent border-none outline-none whitespace-pre-wrap"
-                        style="font-family: inherit; font-size: inherit"
-                        >{{ selectedInteraction.rawRequest }}</pre
-                    >
-                </div>
+                    ref="requestContainer"
+                    class="field mb-4 w-1/2 h-full bg-surface-0 dark:bg-surface-800 rounded"
+                ></div>
                 <div
-                    class="field w-1/2 p-4 h-full bg-surface-0 dark:bg-surface-800 rounded"
-                >
-                    <label for="rawResponse" class="font-bold block mb-2"
-                        >Raw Response</label
-                    >
-                    <pre
-                        id="rawResponse"
-                        class="w-full bg-transparent border-none outline-none whitespace-pre-wrap"
-                        style="font-family: inherit; font-size: inherit"
-                        >{{ selectedInteraction.rawResponse }}</pre
-                    >
-                </div>
+                    ref="responseContainer"
+                    class="field w-1/2 h-full bg-surface-0 dark:bg-surface-800 rounded"
+                ></div>
             </div>
             <div
                 v-else
