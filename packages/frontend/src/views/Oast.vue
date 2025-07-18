@@ -23,8 +23,8 @@ const clientService = useClientService();
 
 const props = defineProps<{ active: boolean }>();
 
-const requestEditor = ref<any | null>(null);
-const responseEditor = ref<any | null>(null);
+const requestEditor = ref<any>(null);
+const responseEditor = ref<any>(null);
 const requestContainer = ref<HTMLElement | null>(null);
 const responseContainer = ref<HTMLElement | null>(null);
 
