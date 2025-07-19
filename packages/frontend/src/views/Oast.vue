@@ -324,29 +324,76 @@ function showDetails(event: any) {
 }
 
 onMounted(() => {
-  loadProviders();
+    loadProviders();
 
-  requestEditor.value = sdk.ui.httpRequestEditor();
-  responseEditor.value = sdk.ui.httpResponseEditor();
+    requestEditor.value = sdk.ui.httpRequestEditor();
+    responseEditor.value = sdk.ui.httpResponseEditor();
 
-  if (requestContainer.value) {
-    requestContainer.value.appendChild(requestEditor.value.getElement());
-  }
+    console.log("requestEditor.value:", requestEditor.value);
+    console.log("responseEditor.value:", responseEditor.value);
 
-  if (responseContainer.value) {
-    responseContainer.value.appendChild(responseEditor.value.getElement());
-  }
+    if (requestContainer.value) {
+        const reqEl = requestEditor.value.getElement(); // bind 제거: 불필요
+        console.log(
+            "requestEditor.getElement():",
+            reqEl,
+            reqEl?.outerHTML,
+            reqEl instanceof HTMLElement,
+        );
+        requestContainer.value.appendChild(reqEl);
+    } else {
+        console.warn("requestContainer.value is not defined");
+    }
+
+    if (responseContainer.value) {
+        const resEl = responseEditor.value.getElement();
+        console.log(
+            "responseEditor.getElement():",
+            resEl,
+            resEl?.outerHTML,
+            resEl instanceof HTMLElement,
+        );
+        responseContainer.value.appendChild(resEl);
+    } else {
+        console.warn("responseContainer.value is not defined");
+    }
 });
 
 watch(selectedInteraction, (interaction) => {
-  if (interaction && requestEditor.value && responseEditor.value) {
-    requestEditor.value.setRequest(
-      new TextEncoder().encode(interaction.rawRequest),
-    );
-    responseEditor.value.setResponse(
-      new TextEncoder().encode(interaction.rawResponse),
-    );
-  }
+    // requestEditor에 대한 안전성 체크
+    if (
+        interaction &&
+        requestEditor.value &&
+        typeof requestEditor.value.getEditorView === "function"
+    ) {
+        const reqEditorView = requestEditor.value.getEditorView();
+        if (reqEditorView) {
+            reqEditorView.dispatch({
+                changes: {
+                    from: 0,
+                    to: reqEditorView.state.doc.length,
+                    insert: interaction.rawRequest,
+                },
+            });
+        }
+    }
+    // responseEditor에 대한 안전성 체크
+    if (
+        interaction &&
+        responseEditor.value &&
+        typeof responseEditor.value.getEditorView === "function"
+    ) {
+        const resEditorView = responseEditor.value.getEditorView();
+        if (resEditorView) {
+            resEditorView.dispatch({
+                changes: {
+                    from: 0,
+                    to: resEditorView.state.doc.length,
+                    insert: interaction.rawResponse,
+                },
+            });
+        }
+    }
 });
 
 watch(
@@ -364,7 +411,6 @@ watch(
         <div
             class="w-full h-3/5 bg-surface-0 dark:bg-surface-800 rounded flex flex-col"
         >
-            <!-- 도구바 -->
             <div class="flex flex-col gap-2 p-4 flex-shrink-0">
                 <div class="flex items-center justify-between">
                     <div class="flex space-x-2 items-center">
@@ -551,7 +597,7 @@ watch(
         </div>
 
         <div class="w-full h-2/5 flex flex-col">
-            <div v-if="selectedInteraction" class="flex gap-1 w-full h-full">
+            <div v-show="selectedInteraction" class="flex gap-1 w-full h-full">
                 <div
                     ref="requestContainer"
                     class="field mb-4 w-1/2 h-full bg-surface-0 dark:bg-surface-800 rounded"
@@ -562,10 +608,10 @@ watch(
                 ></div>
             </div>
             <div
-                v-else
+                v-show="!selectedInteraction"
                 class="flex items-center justify-center h-full text-gray-400 bg-surface-0 dark:bg-surface-800 rounded"
             >
-                No selected inteaction.
+                No selected interaction.
             </div>
         </div>
     </div>
