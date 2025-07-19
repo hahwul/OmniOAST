@@ -208,6 +208,7 @@ async function getPayload() {
 
 function clearInteractions() {
     oastStore.clearInteractions();
+    selectedInteraction.value = "";
     toast.add({
         severity: "success",
         summary: "Success",
