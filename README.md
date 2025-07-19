@@ -1,6 +1,13 @@
 ![](./images/omnioast-banner.jpg)
 
----
+<p align="center">
+<a href="https://github.com/hahwul/OmniOAST/blob/main/CONTRIBUTING.md">
+<img src="https://img.shields.io/badge/CONTRIBUTIONS-WELCOME-221328?style=for-the-badge&labelColor=221328"></a>
+<a href="https://github.com/hahwul/OmniOAST/releases">
+<img src="https://img.shields.io/github/v/release/hahwul/OmniOAST?style=for-the-badge&color=221328&labelColor=221328&logo=web"></a>
+<a href="https://caido.io">
+<img src="https://img.shields.io/badge/Caido%20Plugin-221328?style=for-the-badge&logo=caido&logoColor=white"></a>
+</p>
 
 OmniOAST is a [Caido](https://caido.io) plugin designed to streamline your Out-of-Band Application Security Testing by centralizing all provider management and interaction logs. It eliminates the need to switch between different tools by allowing you to manage various providers, from public services to private servers, and view all their callbacks in a single, unified interface directly within Caido.
 
@@ -57,6 +64,10 @@ Run the following command to type-check the codebase:
 ```bash
 pnpm typecheck
 ```
+
+## Contributing
+
+OmniOAST is open-source project and made it with ❤️ if you want contribute this project, please see [CONTRIBUTING.md](./CONTRIBUTING.md) and Pull-Request with cool your contents.
 
 ---
 
