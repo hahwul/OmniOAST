@@ -22,6 +22,7 @@ const toast = useToast();
 const providerTypes = ref([
     { name: "Interactsh", code: "interactsh" as const },
     { name: "BOAST", code: "BOAST" as const },
+    { name: "Webhook.site", code: "webhooksite" as const },
 ]);
 
 const providers = ref<FetchedProvider[]>([]);

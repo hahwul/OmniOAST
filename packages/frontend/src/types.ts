@@ -7,7 +7,7 @@ import {
 type API = {
   createProvider: (provider: {
     name: string;
-    type: "interactsh" | "BOAST";
+    type: "interactsh" | "BOAST" | "webhooksite";
     url: string;
     token: string;
   }) => Promise<any>;
