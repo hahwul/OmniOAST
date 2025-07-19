@@ -22,6 +22,8 @@ const toast = useToast();
 const providerTypes = ref([
     { name: "Interactsh", code: "interactsh" as const },
     { name: "BOAST", code: "BOAST" as const },
+    { name: "Webhook.site", code: "webhooksite" as const },
+    { name: "PostBin", code: "postbin" as const },
 ]);
 
 const providers = ref<FetchedProvider[]>([]);
@@ -273,6 +275,76 @@ const addPublicBoastProvider = async () => {
     }
 };
 
+const addPublicWebhooksiteProvider = async () => {
+    try {
+        const provider = await sdk.backend.createProvider({
+            name: "Public Webhook.site",
+            type: "webhooksite",
+            url: "https://webhook.site",
+            token: "",
+        });
+        if (provider) {
+            toast.add({
+                severity: "success",
+                summary: "Success",
+                detail: "Public Webhook.site Provider created",
+                life: 3000,
+            });
+            await loadProviders();
+        } else {
+            toast.add({
+                severity: "error",
+                summary: "Error",
+                detail: "Failed to add public Webhook.site provider.",
+                life: 3000,
+            });
+        }
+    } catch (error) {
+        toast.add({
+            severity: "error",
+            summary: "Error",
+            detail: "Failed to create Public Webhook.site Provider",
+            life: 3000,
+        });
+        console.error("Failed to create Public Webhook.site Provider:", error);
+    }
+};
+
+const addPublicPostbinProvider = async () => {
+    try {
+        const provider = await sdk.backend.createProvider({
+            name: "Public PostBin",
+            type: "postbin",
+            url: "https://www.postb.in",
+            token: "",
+        });
+        if (provider) {
+            toast.add({
+                severity: "success",
+                summary: "Success",
+                detail: "Public PostBin Provider created",
+                life: 3000,
+            });
+            await loadProviders();
+        } else {
+            toast.add({
+                severity: "error",
+                summary: "Error",
+                detail: "Failed to add public PostBin provider.",
+                life: 3000,
+            });
+        }
+    } catch (error) {
+        toast.add({
+            severity: "error",
+            summary: "Error",
+            detail: "Failed to create Public PostBin Provider",
+            life: 3000,
+        });
+        console.error("Failed to create Public PostBin Provider:", error);
+    }
+};
+
 onMounted(loadProviders);
 </script>
 
@@ -297,6 +369,20 @@ onMounted(loadProviders);
             class="p-button-info mb-4 ml-2"
             style="float: right"
             @click="addPublicBoastProvider"
+        />
+        <Button
+            label="Add Public Webhook.site Provider"
+            icon="fa fa-w"
+            class="p-button-info mb-4 ml-2"
+            style="float: right"
+            @click="addPublicWebhooksiteProvider"
+        />
+        <Button
+            label="Add Public PostBin Provider"
+            icon="fa fa-p"
+            class="p-button-info mb-4 ml-2"
+            style="float: right"
+            @click="addPublicPostbinProvider"
         />
 
         <DataTable :value="providers" responsive-layout="scroll">
