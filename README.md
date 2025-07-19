@@ -71,6 +71,8 @@ pnpm typecheck
 
 OmniOAST is open-source project and made it with ❤️ if you want contribute this project, please see [CONTRIBUTING.md](./CONTRIBUTING.md) and Pull-Request with cool your contents.
 
+![](images/CONTRIBUTORS.svg)
+
 ---
 
 ## Inspiration
