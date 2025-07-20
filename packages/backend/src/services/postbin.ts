@@ -76,7 +76,7 @@ export class PostbinService implements OASTService {
             id: request.reqId,
             type: "postbin",
             destination: this.payloadUrl,
-            timestamp: new Date(request.inserted || Date.now()),
+            timestamp: request.inserted ? new Date(request.inserted).getTime() : Date.now(),
             data: request,
             method: request.method || "UNKNOWN",
             source: request.ip || "unknown",
