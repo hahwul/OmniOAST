@@ -15,10 +15,10 @@ OmniOAST is a [Caido](https://caido.io) plugin designed to streamline your Out-o
 
 ## Features
 
-- **Centralized Management**: Manage public (Interact.sh, BOAST) and private OAST providers from a single interface.
+- **Centralized Management**: Manage public (Interact.sh, BOAST, Webhook.site, PostBin) and private OAST providers from a single interface.
 - **Unified Interaction Log**: View, search, and filter all OAST callbacks in one place, directly within Caido.
 - **Streamlined Workflow**: Generate payloads and monitor interactions without switching between tools.
-- **Flexible Configuration**: Supports public and self-hosted providers like Interactsh and BOAST.
+- **Flexible Configuration**: Supports public and self-hosted providers like Interactsh, BOAST, Webhook.site, and PostBin.
 
 ## Installation
 
@@ -32,7 +32,9 @@ OmniOAST is a [Caido](https://caido.io) plugin designed to streamline your Out-o
 1.  **Add a Provider**:
     - Go to the **Provider** tab.
     - Use the quick-add buttons for public Interactsh or BOAST servers.
-    - To add a private provider, specify its name, type (Interactsh/BOAST), URL, and an optional token.
+    - For manual setup, specify the provider's name, type (Interactsh/BOAST/Webhook.site/PostBin), URL, and an optional token.
+    - **Webhook.site**: Use existing webhook URLs or let the plugin auto-generate new ones.
+    - **PostBin**: Auto-creates temporary bins (30-minute expiry) for quick testing.
 
 2.  **Generate Payloads & Monitor Interactions**:
     - Go to the **OAST** tab.

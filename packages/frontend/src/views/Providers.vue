@@ -6,8 +6,10 @@ import Dialog from "primevue/dialog";
 import Dropdown from "primevue/dropdown";
 import InputSwitch from "primevue/inputswitch";
 import InputText from "primevue/inputtext";
+import SplitButton from "primevue/splitbutton";
+import Checkbox from "primevue/checkbox";
 import { useToast } from "primevue/usetoast";
-import { onMounted, ref } from "vue";
+import { onMounted, ref, computed } from "vue";
 
 import type { Provider } from "../../../backend/src/validation/schemas";
 
@@ -23,10 +25,36 @@ const providerTypes = ref([
     { name: "Interactsh", code: "interactsh" as const },
     { name: "BOAST", code: "BOAST" as const },
     { name: "Webhook.site", code: "webhooksite" as const },
+    { name: "PostBin", code: "postbin" as const },
 ]);
 
 const providers = ref<FetchedProvider[]>([]);
 const displayDialog = ref(false);
+const autoGenerate = ref(false);
+
+// Quick add menu items
+const quickAddItems = ref([
+    {
+        label: "Interactsh",
+        icon: "fa fa-globe",
+        command: () => addPublicInteractshProvider()
+    },
+    {
+        label: "BOAST",
+        icon: "fa fa-server",
+        command: () => addPublicBoastProvider()
+    },
+    {
+        label: "Webhook.site",
+        icon: "fa fa-link", 
+        command: () => addPublicWebhooksiteProvider()
+    },
+    {
+        label: "PostBin",
+        icon: "fa fa-inbox",
+        command: () => addPublicPostbinProvider()
+    }
+]);
 const isEdit = ref(false);
 
 const currentProvider = ref<ProviderFormData>({
@@ -35,6 +63,12 @@ const currentProvider = ref<ProviderFormData>({
     url: "",
     token: "",
     enabled: true,
+});
+
+// Check if current provider type supports auto-generation
+const supportsAutoGenerate = computed(() => {
+    return currentProvider.value.type && 
+           ['webhooksite', 'postbin', 'BOAST'].includes(currentProvider.value.type);
 });
 
 const loadProviders = async () => {
@@ -62,6 +96,7 @@ const openNew = () => {
         enabled: true,
     };
     isEdit.value = false;
+    autoGenerate.value = false;
     displayDialog.value = true;
 };
 
@@ -77,11 +112,12 @@ const saveProvider = async () => {
 
     const providerData = currentProvider.value;
 
-    if (!isValidUrl(providerData.url)) {
+    // Skip URL validation if auto-generate is enabled
+    if (!autoGenerate.value && !isValidUrl(providerData.url)) {
         toast.add({
             severity: "error",
             summary: "Validation Error",
-            detail: "URL must start with http:// or https://",
+            detail: "URL must start with http:// or https:// (or enable auto-generate)",
             life: 3000,
         });
         return;
@@ -98,23 +134,61 @@ const saveProvider = async () => {
                 life: 3000,
             });
         } else {
-            // 생성 모드
+            // Creation mode
+            let url = providerData.url;
+            if (autoGenerate.value) {
+                if (providerData.type === 'webhooksite') {
+                    url = 'https://webhook.site';
+                } else if (providerData.type === 'postbin') {
+                    url = 'https://www.postb.in';
+                } else if (providerData.type === 'BOAST') {
+                    url = 'https://odiss.eu:2096/events';
+                }
+            }
+            
             const payload = {
                 name: providerData.name,
                 type: providerData.type,
-                url: providerData.url,
+                url: url,
                 token: providerData.token ?? "",
                 enabled: providerData.enabled ?? true,
             };
-            await sdk.backend.createProvider(payload as any);
-            toast.add({
-                severity: "success",
-                summary: "Success",
-                detail: "Provider created",
-                life: 3000,
-            });
+            
+            const createdProvider = await sdk.backend.createProvider(payload as any);
+            
+            // Auto-generate payload if requested
+            if (autoGenerate.value && createdProvider && supportsAutoGenerate.value) {
+                try {
+                    const payloadInfo = await sdk.backend.registerAndGetPayload(createdProvider);
+                    if (payloadInfo?.payloadUrl) {
+                        await sdk.backend.updateProvider(createdProvider.id, { url: payloadInfo.payloadUrl });
+                        toast.add({
+                            severity: "success",
+                            summary: "Success",
+                            detail: "Provider created with auto-generated URL",
+                            life: 4000,
+                        });
+                    }
+                } catch (autoGenError) {
+                    console.error("Auto-generation failed:", autoGenError);
+                    toast.add({
+                        severity: "warn",
+                        summary: "Warning", 
+                        detail: "Provider created but auto-generation failed",
+                        life: 4000,
+                    });
+                }
+            } else {
+                toast.add({
+                    severity: "success",
+                    summary: "Success",
+                    detail: "Provider created",
+                    life: 3000,
+                });
+            }
         }
         displayDialog.value = false;
+        autoGenerate.value = false;
         await loadProviders();
     } catch (error) {
         toast.add({
@@ -274,31 +348,97 @@ const addPublicBoastProvider = async () => {
     }
 };
 
+const addPublicWebhooksiteProvider = async () => {
+    try {
+        const provider = await sdk.backend.createProvider({
+            name: "Public Webhook.site",
+            type: "webhooksite",
+            url: "https://webhook.site",
+            token: "",
+        });
+        if (provider) {
+            toast.add({
+                severity: "success",
+                summary: "Success",
+                detail: "Public Webhook.site Provider created",
+                life: 3000,
+            });
+            await loadProviders();
+        } else {
+            toast.add({
+                severity: "error",
+                summary: "Error",
+                detail: "Failed to add public Webhook.site provider.",
+                life: 3000,
+            });
+        }
+    } catch (error) {
+        toast.add({
+            severity: "error",
+            summary: "Error",
+            detail: "Failed to create Public Webhook.site Provider",
+            life: 3000,
+        });
+        console.error("Failed to create Public Webhook.site Provider:", error);
+    }
+};
+
+const addPublicPostbinProvider = async () => {
+    try {
+        const provider = await sdk.backend.createProvider({
+            name: "Public PostBin",
+            type: "postbin",
+            url: "https://www.postb.in",
+            token: "",
+        });
+        if (provider) {
+            toast.add({
+                severity: "success",
+                summary: "Success",
+                detail: "Public PostBin Provider created",
+                life: 3000,
+            });
+            await loadProviders();
+        } else {
+            toast.add({
+                severity: "error",
+                summary: "Error",
+                detail: "Failed to add public PostBin provider.",
+                life: 3000,
+            });
+        }
+    } catch (error) {
+        toast.add({
+            severity: "error",
+            summary: "Error",
+            detail: "Failed to create Public PostBin Provider",
+            life: 3000,
+        });
+        console.error("Failed to create Public PostBin Provider:", error);
+    }
+};
+
 onMounted(loadProviders);
 </script>
 
 <template>
     <div class="p-4 h-full bg-surface-0 dark:bg-surface-800 rounded">
-        <Button
-            label="New Provider"
-            icon="fa fa-plus"
-            class="p-button-success mb-4"
-            @click="openNew"
-        />
-        <Button
-            label="Add Public Interactsh Provider"
-            icon="fa fa-i"
-            class="p-button-info mb-4 ml-2"
-            style="float: right"
-            @click="addPublicInteractshProvider"
-        />
-        <Button
-            label="Add Public BOAST Provider"
-            icon="fa fa-b"
-            class="p-button-info mb-4 ml-2"
-            style="float: right"
-            @click="addPublicBoastProvider"
-        />
+        <div class="flex justify-between items-center mb-4">
+            <Button
+                label="New Provider"
+                icon="fa fa-plus"
+                class="p-button-success"
+                @click="openNew"
+            />
+            <SplitButton
+                label="Quick Add"
+                icon="fa fa-bolt"
+                class="p-button-info"
+                :model="quickAddItems"
+                @click="addPublicInteractshProvider"
+                menuButtonIcon="fa fa-chevron-down"
+            />
+        </div>
 
         <DataTable :value="providers" responsive-layout="scroll">
             <Column field="name" header="Name" :sortable="true"></Column>
@@ -413,6 +553,17 @@ onMounted(loadProviders);
                         type="password"
                         class="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 transition border-gray-300"
                     />
+                </div>
+                <div class="flex items-center gap-2" v-if="supportsAutoGenerate">
+                    <Checkbox
+                        id="autoGenerate"
+                        v-model="autoGenerate"
+                        binary
+                    />
+                    <label for="autoGenerate" class="font-semibold text-sm"
+                        >Auto-generate URL after creation</label
+                    >
+                    <small class="text-gray-600">(Creates new webhook/bin automatically)</small>
                 </div>
                 <div class="flex justify-end gap-2 mt-4">
                     <Button

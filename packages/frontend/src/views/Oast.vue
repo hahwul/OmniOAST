@@ -196,7 +196,121 @@ async function getPayload() {
             });
         }
     } else if (currentProvider.type === "webhooksite") {
-        payloadInput.value = currentProvider.url;
+        try {
+            const payloadInfo =
+                await sdk.backend.registerAndGetPayload(currentProvider);
+
+            if (payloadInfo && payloadInfo.payloadUrl) {
+                // Get settings for payload prefix
+                const settings = await sdk.backend.getCurrentSettings();
+                const prefix = settings?.payloadPrefix;
+                const pollingInterval = settings?.pollingInterval || 5;
+
+                if (prefix !== "" && prefix !== undefined) {
+                    payloadInput.value = prefix + "." + payloadInfo.payloadUrl;
+                } else {
+                    payloadInput.value = payloadInfo.payloadUrl;
+                }
+
+                // Update provider URL in database for polling
+                if (currentProvider.id) {
+                    await sdk.backend.updateProvider(currentProvider.id, { url: payloadInfo.payloadUrl });
+                }
+                
+                // Update the current provider object for polling
+                currentProvider.url = payloadInfo.payloadUrl;
+
+                // Start polling for webhook.site events
+                setInterval(
+                    () => pollWebhooksiteEvents(currentProvider),
+                    pollingInterval * 1000,
+                );
+
+                toast.add({
+                    severity: "success",
+                    summary: "Success",
+                    detail: "Webhook.site payload generated",
+                    life: 3000,
+                });
+            } else {
+                // Fallback to existing URL if registration fails
+                payloadInput.value = currentProvider.url;
+                toast.add({
+                    severity: "info",
+                    summary: "Info",
+                    detail: "Using existing webhook URL",
+                    life: 3000,
+                });
+            }
+        } catch (error) {
+            console.error("Webhook.site registration failed:", error);
+            // Fallback to existing URL
+            payloadInput.value = currentProvider.url;
+            toast.add({
+                severity: "warn",
+                summary: "Warning",
+                detail: "Failed to generate new webhook, using existing URL",
+                life: 3000,
+            });
+        }
+    } else if (currentProvider.type === "postbin") {
+        try {
+            const payloadInfo =
+                await sdk.backend.registerAndGetPayload(currentProvider);
+
+            if (payloadInfo && payloadInfo.payloadUrl) {
+                // Get settings for payload prefix
+                const settings = await sdk.backend.getCurrentSettings();
+                const prefix = settings?.payloadPrefix;
+                const pollingInterval = settings?.pollingInterval || 5;
+
+                if (prefix !== "" && prefix !== undefined) {
+                    payloadInput.value = prefix + "." + payloadInfo.payloadUrl;
+                } else {
+                    payloadInput.value = payloadInfo.payloadUrl;
+                }
+
+                // Update provider URL in database for polling
+                if (currentProvider.id) {
+                    await sdk.backend.updateProvider(currentProvider.id, { url: payloadInfo.payloadUrl });
+                }
+                
+                // Update the current provider object for polling
+                currentProvider.url = payloadInfo.payloadUrl;
+
+                // Start polling for postbin events
+                setInterval(
+                    () => pollPostbinEvents(currentProvider),
+                    pollingInterval * 1000,
+                );
+
+                toast.add({
+                    severity: "success",
+                    summary: "Success",
+                    detail: "Postbin payload generated",
+                    life: 3000,
+                });
+            } else {
+                // Fallback to existing URL if registration fails
+                payloadInput.value = currentProvider.url;
+                toast.add({
+                    severity: "info",
+                    summary: "Info",
+                    detail: "Using existing postbin URL",
+                    life: 3000,
+                });
+            }
+        } catch (error) {
+            console.error("Postbin registration failed:", error);
+            // Fallback to existing URL
+            payloadInput.value = currentProvider.url;
+            toast.add({
+                severity: "warn",
+                summary: "Warning",
+                detail: "Failed to generate new postbin, using existing URL",
+                life: 3000,
+            });
+        }
     } else {
         toast.add({
             severity: "warn",
@@ -312,6 +426,53 @@ async function pollWebhooksiteEvents(provider: Provider) {
     }
 }
 
+// Helper function for PostBin polling
+async function pollPostbinEvents(provider: Provider) {
+    if (!provider) {
+        console.error("PostBin polling called without a provider.");
+        return;
+    }
+    try {
+        const events = await sdk.backend.getOASTEvents(provider);
+        if (events && events.length > 0) {
+            events.forEach((event: any) => {
+                const exists = oastStore.interactions.some(
+                    (i) => i.id === event.id,
+                );
+                if (!exists) {
+                    oastStore.addInteraction({
+                        id: event.id,
+                        type: "postbin",
+                        correlationId: event.correlationId,
+                        data: event,
+                        method: event.method,
+                        source: event.source,
+                        destination: event.destination,
+                        provider: provider.name,
+                        timestamp: event.timestamp,
+                        rawRequest: event.rawRequest,
+                        rawResponse: event.rawResponse,
+                    });
+                }
+            });
+            toast.add({
+                severity: "success",
+                summary: "Success",
+                detail: `Polled ${events.length} new PostBin event(s)`,
+                life: 2000,
+            });
+        }
+    } catch (pollError) {
+        console.error("Error polling PostBin events:", pollError);
+        toast.add({
+            severity: "error",
+            summary: "Error",
+            detail: "Failed to poll PostBin events",
+            life: 3000,
+        });
+    }
+}
+
 // Modified pollInteractions to handle both Interactsh and BOAST
 async function pollInteractions() {
     console.log("Poll Interactions clicked");
@@ -341,6 +502,8 @@ async function pollInteractions() {
         await pollBoastEvents(currentProvider);
     } else if (currentProvider.type === "webhooksite") {
         await pollWebhooksiteEvents(currentProvider);
+    } else if (currentProvider.type === "postbin") {
+        await pollPostbinEvents(currentProvider);
     } else {
         toast.add({
             severity: "warn",
