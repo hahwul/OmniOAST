@@ -96,6 +96,7 @@ export class PostbinService implements OASTService {
               : Date.now(),
             data: request,
             protocol: "HTTP",
+            method: request.method || "GET",
             source: request.ip || "unknown",
             correlationId: request.reqId,
             rawRequest: JSON.stringify(

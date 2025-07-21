@@ -122,20 +122,29 @@ async function getPayload() {
                     token: currentProvider.token || "",
                     keepAliveInterval: pollingInterval * 1000,
                 },
-                (interaction) => {
+                (interaction: { [key: string]: any }) => {
                     console.log(interaction);
+
+                    // q-type 또는 raw-request에서 method 값을 안전하게 추출
+                    const method = interaction["q-type"]
+                        ? String(interaction["q-type"])
+                        : typeof interaction["raw-request"] === "string"
+                          ? interaction["raw-request"].split(" ")[0] || ""
+                          : "";
+
                     oastStore.addInteraction({
                         id: uuidv4(),
                         type: "interactsh",
-                        correlationId: interaction["full-id"] as string,
+                        correlationId: String(interaction["full-id"]),
                         data: interaction,
-                        protocol: interaction.protocol as string,
-                        source: interaction["remote-address"] as string,
-                        destination: interaction["full-id"] as string,
+                        protocol: String(interaction.protocol),
+                        method: method,
+                        source: String(interaction["remote-address"]),
+                        destination: String(interaction["full-id"]),
                         provider: currentProvider.name,
-                        timestamp: interaction.timestamp as number,
-                        rawRequest: interaction["raw-request"] as string,
-                        rawResponse: interaction["raw-response"] as string,
+                        timestamp: interaction.timestamp,
+                        rawRequest: String(interaction["raw-request"]),
+                        rawResponse: String(interaction["raw-response"]),
                     });
                 },
             );
@@ -356,6 +365,7 @@ async function pollBoastEvents(provider: Provider) {
                         correlationId: event.correlationId,
                         data: event,
                         protocol: event.protocol,
+                        method: event.method,
                         source: event.source,
                         destination: event.destination,
                         provider: provider.name,
@@ -403,6 +413,7 @@ async function pollWebhooksiteEvents(provider: Provider) {
                         correlationId: event.correlationId,
                         data: event,
                         protocol: event.protocol,
+                        method: event.method,
                         source: event.source,
                         destination: event.destination,
                         provider: provider.name,
@@ -450,6 +461,7 @@ async function pollPostbinEvents(provider: Provider) {
                         correlationId: event.correlationId,
                         data: event,
                         protocol: event.protocol,
+                        method: event.method,
                         source: event.source,
                         destination: event.destination,
                         provider: provider.name,
@@ -792,6 +804,11 @@ watch(
                             </span>
                         </template>
                     </Column>
+                    <Column
+                        field="method"
+                        header="Method"
+                        :sortable="true"
+                    ></Column>
                     <Column
                         field="source"
                         header="Source"

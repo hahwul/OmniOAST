@@ -52,6 +52,7 @@ export class BoastService implements OASTService {
         timestamp: new Date(event.time),
         data: event,
         protocol: event.receiver,
+        method: event.QueryType,
         source: event.remoteAddress,
         correlationId: event.id,
         rawRequest: event.dump,

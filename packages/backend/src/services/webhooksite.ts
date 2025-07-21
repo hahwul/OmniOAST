@@ -73,9 +73,8 @@ export class WebhooksiteService implements OASTService {
         destination: this.payloadUrl,
         timestamp: new Date(event.created_at || event.updated_at || Date.now()),
         data: event,
-        protocol: "HTTP", // TODO: Currently, the method field is used to specify protocols.
-        // If a separate protocol field is introduced in the future, the method field will revert to event.method.
-        // For now, it represents protocols like HTTP and DNS.
+        protocol: "HTTP",
+        method: event.method,
         source: event.ip,
         correlationId: event.uuid,
         rawRequest: event.content || JSON.stringify(event),
