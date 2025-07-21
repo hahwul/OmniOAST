@@ -9,17 +9,23 @@ export class WebhooksiteService implements OASTService {
   private sdk: CaidoBackendSDK;
   private apiKey?: string;
 
-  constructor(apiKey: string | undefined, sdk: CaidoBackendSDK, existingUrl?: string) {
+  constructor(
+    apiKey: string | undefined,
+    sdk: CaidoBackendSDK,
+    existingUrl?: string,
+  ) {
     this.apiKey = apiKey;
     this.sdk = sdk;
-    
+
     // Extract token ID from existing webhook.site URL if provided
     if (existingUrl) {
       const match = existingUrl.match(/webhook\.site\/([a-f0-9\-]{36})/i);
       if (match && match[1]) {
         this.tokenId = match[1];
         this.payloadUrl = `https://webhook.site/${this.tokenId}`;
-        this.sdk.console.log(`Webhook.site: Using existing token ${this.tokenId}`);
+        this.sdk.console.log(
+          `Webhook.site: Using existing token ${this.tokenId}`,
+        );
       }
     }
   }
@@ -33,7 +39,7 @@ export class WebhooksiteService implements OASTService {
     try {
       const url = `https://webhook.site/token/${this.tokenId}/requests?sorting=newest`;
       this.sdk.console.log(`Webhook.site: Polling events from ${url}`);
-      
+
       const spec = new RequestSpec(url);
       if (this.apiKey) {
         spec.setHeader("Api-Key", this.apiKey);
@@ -53,9 +59,11 @@ export class WebhooksiteService implements OASTService {
 
       const data = body.toJson() as any;
       this.sdk.console.log(`Webhook.site: Received data:`, data);
-      
+
       if (!data.data || !Array.isArray(data.data)) {
-        this.sdk.console.log("Webhook.site: No events in response or invalid format");
+        this.sdk.console.log(
+          "Webhook.site: No events in response or invalid format",
+        );
         return [];
       }
 
@@ -65,7 +73,7 @@ export class WebhooksiteService implements OASTService {
         destination: this.payloadUrl,
         timestamp: new Date(event.created_at || event.updated_at || Date.now()),
         data: event,
-        method: "HTTP", // TODO: Currently, the method field is used to specify protocols.
+        protocol: "HTTP", // TODO: Currently, the method field is used to specify protocols.
         // If a separate protocol field is introduced in the future, the method field will revert to event.method.
         // For now, it represents protocols like HTTP and DNS.
         source: event.ip,
@@ -105,11 +113,13 @@ export class WebhooksiteService implements OASTService {
       if (this.apiKey) {
         spec.setHeader("Api-Key", this.apiKey);
       }
-      spec.setBody(JSON.stringify({
-        default_status: 200,
-        default_content: "Hello world!",
-        default_content_type: "text/html",
-      }));
+      spec.setBody(
+        JSON.stringify({
+          default_status: 200,
+          default_content: "Hello world!",
+          default_content_type: "text/html",
+        }),
+      );
 
       const res: RequestResponse = await this.sdk.requests.send(spec);
 

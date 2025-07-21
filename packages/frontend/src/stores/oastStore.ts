@@ -14,7 +14,7 @@ interface OastInteraction {
   provider: string; // Name of the provider
   correlationId: string;
   // Optional fields for specific interaction types
-  method?: string;
+  protocol?: string;
   source?: string;
   destination?: string;
   rawRequest?: string;

@@ -9,10 +9,16 @@ export class PostbinService implements OASTService {
   private sdk: CaidoBackendSDK;
   private processedRequestIds: Set<string> = new Set();
 
-  constructor(apiKey: string | undefined, sdk: CaidoBackendSDK, existingUrl?: string) {
+  constructor(
+    apiKey: string | undefined,
+    sdk: CaidoBackendSDK,
+    existingUrl?: string,
+  ) {
     this.sdk = sdk;
-    this.sdk.console.log(`PostBin: Constructor called with URL: ${existingUrl}`);
-    
+    this.sdk.console.log(
+      `PostBin: Constructor called with URL: ${existingUrl}`,
+    );
+
     // Extract bin ID from existing postb.in URL if provided
     if (existingUrl) {
       const match = existingUrl.match(/postb\.in\/([a-zA-Z0-9\-]+)/i);
@@ -29,7 +35,7 @@ export class PostbinService implements OASTService {
 
   public async getEvents(): Promise<OASTEvent[]> {
     this.sdk.console.log(`PostBin: getEvents called, binId: ${this.binId}`);
-    
+
     if (!this.binId) {
       this.sdk.console.log("PostBin: No bin ID available for polling");
       return [];
@@ -38,16 +44,19 @@ export class PostbinService implements OASTService {
     try {
       const events: OASTEvent[] = [];
       let requestCount = 0;
-      
+
       // Keep shifting requests until we get a 404 (no more requests)
-      while (requestCount < 100) { // Safety limit
+      while (requestCount < 100) {
+        // Safety limit
         const url = `https://www.postb.in/api/bin/${this.binId}/req/shift`;
         this.sdk.console.log(`PostBin: Shifting request from ${url}`);
-        
+
         const spec = new RequestSpec(url);
         const res: RequestResponse = await this.sdk.requests.send(spec);
-        
-        this.sdk.console.log(`PostBin: Response status: ${res.response.getCode()}`);
+
+        this.sdk.console.log(
+          `PostBin: Response status: ${res.response.getCode()}`,
+        );
 
         if (res.response.getCode() === 404) {
           // No more requests
@@ -56,7 +65,9 @@ export class PostbinService implements OASTService {
         }
 
         if (res.response.getCode() >= 300) {
-          this.sdk.console.error(`PostBin: HTTP error! status: ${res.response.getCode()}`);
+          this.sdk.console.error(
+            `PostBin: HTTP error! status: ${res.response.getCode()}`,
+          );
           throw new Error(`HTTP error! status: ${res.response.getCode()}`);
         }
 
@@ -68,33 +79,43 @@ export class PostbinService implements OASTService {
 
         const request = body.toJson() as any;
         this.sdk.console.log(`PostBin: Received request:`, request);
-        
-        if (request && request.reqId && !this.processedRequestIds.has(request.reqId)) {
+
+        if (
+          request &&
+          request.reqId &&
+          !this.processedRequestIds.has(request.reqId)
+        ) {
           this.processedRequestIds.add(request.reqId);
-          
+
           const event = {
             id: request.reqId,
             type: "postbin",
             destination: this.payloadUrl,
-            timestamp: request.inserted ? new Date(request.inserted).getTime() : Date.now(),
+            timestamp: request.inserted
+              ? new Date(request.inserted).getTime()
+              : Date.now(),
             data: request,
-            method: request.method || "UNKNOWN",
+            protocol: "HTTP",
             source: request.ip || "unknown",
             correlationId: request.reqId,
-            rawRequest: JSON.stringify({
-              method: request.method,
-              path: request.path,
-              headers: request.headers,
-              query: request.query,
-              body: request.body
-            }, null, 2),
+            rawRequest: JSON.stringify(
+              {
+                method: request.method,
+                path: request.path,
+                headers: request.headers,
+                query: request.query,
+                body: request.body,
+              },
+              null,
+              2,
+            ),
             rawResponse: "",
           };
-          
+
           events.push(event);
           this.sdk.console.log(`PostBin: Added event:`, event);
         }
-        
+
         requestCount++;
       }
 
@@ -147,7 +168,9 @@ export class PostbinService implements OASTService {
       this.binId = data.binId;
       this.payloadUrl = `https://www.postb.in/${this.binId}`;
 
-      this.sdk.console.log(`PostBin: Created new bin ${this.binId} (expires: ${new Date(data.expires)})`);
+      this.sdk.console.log(
+        `PostBin: Created new bin ${this.binId} (expires: ${new Date(data.expires)})`,
+      );
 
       return { id: this.binId!, payloadUrl: this.payloadUrl! };
     } catch (err) {
