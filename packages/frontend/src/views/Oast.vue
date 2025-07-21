@@ -55,7 +55,7 @@ const searchQuery = ref("");
 const filteredInteractions = computed(() =>
     oastStore.interactions.filter((i) => {
         const matchesSearch =
-            (i.method?.toLowerCase() ?? "").includes(
+            (i.protocol?.toLowerCase() ?? "").includes(
                 searchQuery.value.toLowerCase(),
             ) ||
             (i.source?.toLowerCase() ?? "").includes(
@@ -122,20 +122,29 @@ async function getPayload() {
                     token: currentProvider.token || "",
                     keepAliveInterval: pollingInterval * 1000,
                 },
-                (interaction) => {
+                (interaction: { [key: string]: any }) => {
                     console.log(interaction);
+
+                    // q-type 또는 raw-request에서 method 값을 안전하게 추출
+                    const method = interaction["q-type"]
+                        ? String(interaction["q-type"])
+                        : typeof interaction["raw-request"] === "string"
+                          ? interaction["raw-request"].split(" ")[0] || ""
+                          : "";
+
                     oastStore.addInteraction({
                         id: uuidv4(),
                         type: "interactsh",
-                        correlationId: interaction["full-id"] as string,
+                        correlationId: String(interaction["full-id"]),
                         data: interaction,
-                        method: interaction.protocol as string,
-                        source: interaction["remote-address"] as string,
-                        destination: interaction["full-id"] as string,
+                        protocol: String(interaction.protocol),
+                        method: method,
+                        source: String(interaction["remote-address"]),
+                        destination: String(interaction["full-id"]),
                         provider: currentProvider.name,
-                        timestamp: interaction.timestamp as number,
-                        rawRequest: interaction["raw-request"] as string,
-                        rawResponse: interaction["raw-response"] as string,
+                        timestamp: interaction.timestamp,
+                        rawRequest: String(interaction["raw-request"]),
+                        rawResponse: String(interaction["raw-response"]),
                     });
                 },
             );
@@ -214,9 +223,11 @@ async function getPayload() {
 
                 // Update provider URL in database for polling
                 if (currentProvider.id) {
-                    await sdk.backend.updateProvider(currentProvider.id, { url: payloadInfo.payloadUrl });
+                    await sdk.backend.updateProvider(currentProvider.id, {
+                        url: payloadInfo.payloadUrl,
+                    });
                 }
-                
+
                 // Update the current provider object for polling
                 currentProvider.url = payloadInfo.payloadUrl;
 
@@ -272,9 +283,11 @@ async function getPayload() {
 
                 // Update provider URL in database for polling
                 if (currentProvider.id) {
-                    await sdk.backend.updateProvider(currentProvider.id, { url: payloadInfo.payloadUrl });
+                    await sdk.backend.updateProvider(currentProvider.id, {
+                        url: payloadInfo.payloadUrl,
+                    });
                 }
-                
+
                 // Update the current provider object for polling
                 currentProvider.url = payloadInfo.payloadUrl;
 
@@ -351,6 +364,7 @@ async function pollBoastEvents(provider: Provider) {
                         type: "BOAST",
                         correlationId: event.correlationId,
                         data: event,
+                        protocol: event.protocol,
                         method: event.method,
                         source: event.source,
                         destination: event.destination,
@@ -398,6 +412,7 @@ async function pollWebhooksiteEvents(provider: Provider) {
                         type: "webhooksite",
                         correlationId: event.correlationId,
                         data: event,
+                        protocol: event.protocol,
                         method: event.method,
                         source: event.source,
                         destination: event.destination,
@@ -445,6 +460,7 @@ async function pollPostbinEvents(provider: Provider) {
                         type: "postbin",
                         correlationId: event.correlationId,
                         data: event,
+                        protocol: event.protocol,
                         method: event.method,
                         source: event.source,
                         destination: event.destination,
@@ -703,8 +719,8 @@ watch(
                     @row-select="showDetails"
                 >
                     <Column
-                        field="method"
-                        header="Method"
+                        field="protocol"
+                        header="Protocol"
                         :sortable="true"
                         class
                     >
@@ -712,10 +728,10 @@ watch(
                             <span class="flex items-center">
                                 <i
                                     v-if="
-                                        slotProps.data.method &&
-                                        (slotProps.data.method.toUpperCase() ===
+                                        slotProps.data.protocol &&
+                                        (slotProps.data.protocol.toUpperCase() ===
                                             'HTTP' ||
-                                            slotProps.data.method.toUpperCase() ===
+                                            slotProps.data.protocol.toUpperCase() ===
                                                 'HTTPS')
                                     "
                                     class="fa fa-globe mr-2 text-info"
@@ -723,8 +739,8 @@ watch(
                                 ></i>
                                 <i
                                     v-else-if="
-                                        slotProps.data.method &&
-                                        slotProps.data.method.toUpperCase() ===
+                                        slotProps.data.protocol &&
+                                        slotProps.data.protocol.toUpperCase() ===
                                             'DNS'
                                     "
                                     class="fa fa-globe-asia mr-2 text-success"
@@ -732,8 +748,8 @@ watch(
                                 ></i>
                                 <i
                                     v-else-if="
-                                        slotProps.data.method &&
-                                        slotProps.data.method.toUpperCase() ===
+                                        slotProps.data.protocol &&
+                                        slotProps.data.protocol.toUpperCase() ===
                                             'SMTP'
                                     "
                                     class="fa fa-at mr-2 text-info"
@@ -741,8 +757,8 @@ watch(
                                 ></i>
                                 <i
                                     v-else-if="
-                                        slotProps.data.method &&
-                                        slotProps.data.method.toUpperCase() ===
+                                        slotProps.data.protocol &&
+                                        slotProps.data.protocol.toUpperCase() ===
                                             'LDAP'
                                     "
                                     class="fa fa-user-circle mr-2 text-info"
@@ -750,8 +766,8 @@ watch(
                                 ></i>
                                 <i
                                     v-else-if="
-                                        slotProps.data.method &&
-                                        slotProps.data.method.toUpperCase() ===
+                                        slotProps.data.protocol &&
+                                        slotProps.data.protocol.toUpperCase() ===
                                             'SMB'
                                     "
                                     class="fa fa-server mr-2 text-warning"
@@ -759,8 +775,8 @@ watch(
                                 ></i>
                                 <i
                                     v-else-if="
-                                        slotProps.data.method &&
-                                        slotProps.data.method.toUpperCase() ===
+                                        slotProps.data.protocol &&
+                                        slotProps.data.protocol.toUpperCase() ===
                                             'FTP'
                                     "
                                     class="fa fa-cloud-upload mr-2 text-warning"
@@ -768,8 +784,8 @@ watch(
                                 ></i>
                                 <i
                                     v-else-if="
-                                        slotProps.data.method &&
-                                        slotProps.data.method.toUpperCase() ===
+                                        slotProps.data.protocol &&
+                                        slotProps.data.protocol.toUpperCase() ===
                                             'RESPONDER'
                                     "
                                     class="fa fa-arrow-down mr-2 text-warning"
@@ -781,13 +797,18 @@ watch(
                                     title="Other"
                                 ></i>
                                 <span>{{
-                                    slotProps.data.method
-                                        ? slotProps.data.method.toUpperCase()
+                                    slotProps.data.protocol
+                                        ? slotProps.data.protocol.toUpperCase()
                                         : ""
                                 }}</span>
                             </span>
                         </template>
                     </Column>
+                    <Column
+                        field="method"
+                        header="Method"
+                        :sortable="true"
+                    ></Column>
                     <Column
                         field="source"
                         header="Source"
