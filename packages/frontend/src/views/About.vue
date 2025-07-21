@@ -86,16 +86,8 @@
                         </p>
                         <div class="flex gap-2">
                             <Button
-                                icon="pi pi-plus"
-                                label="Add Public BOAST Provider"
-                                severity="info"
-                                outlined
-                                class="p-button-sm"
-                                disabled
-                            />
-                            <Button
-                                icon="pi pi-plus"
-                                label="Add Public Interactsh Provider"
+                                icon="fa fa-bolt"
+                                label="Quick Add"
                                 severity="info"
                                 outlined
                                 class="p-button-sm"
@@ -281,6 +273,21 @@
                             <div>
                                 <div class="text-primary-500 text-lg font-bold">
                                     @hahwul
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3
+                            class="text-xl font-semibold mb-3 flex items-center"
+                        >
+                            Main Contributors
+                        </h3>
+                        <div class="flex items-center gap-3 mb-4">
+                            <div>
+                                <div class="text-primary-500 text-lg font-bold">
+                                    @GangGreenTemperTatum
                                 </div>
                             </div>
                         </div>
