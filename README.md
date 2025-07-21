@@ -51,7 +51,7 @@ OmniOAST is a [Caido](https://caido.io) plugin designed to streamline your Out-o
 To build the plugin from the source code:
 
 ```bash
-git clone [https://github.com/hahwul/OmniOAST](https://github.com/hahwul/OmniOAST)
+git clone https://github.com/hahwul/OmniOAST
 cd OmniOAST
 pnpm install
 pnpm build
