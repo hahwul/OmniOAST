@@ -37,23 +37,23 @@ const quickAddItems = ref([
     {
         label: "Interactsh",
         icon: "fa fa-globe",
-        command: () => addPublicInteractshProvider()
+        command: () => addPublicInteractshProvider(),
     },
     {
         label: "BOAST",
         icon: "fa fa-server",
-        command: () => addPublicBoastProvider()
+        command: () => addPublicBoastProvider(),
     },
     {
         label: "Webhook.site",
-        icon: "fa fa-link", 
-        command: () => addPublicWebhooksiteProvider()
+        icon: "fa fa-link",
+        command: () => addPublicWebhooksiteProvider(),
     },
     {
         label: "PostBin",
         icon: "fa fa-inbox",
-        command: () => addPublicPostbinProvider()
-    }
+        command: () => addPublicPostbinProvider(),
+    },
 ]);
 const isEdit = ref(false);
 
@@ -67,8 +67,10 @@ const currentProvider = ref<ProviderFormData>({
 
 // Check if current provider type supports auto-generation
 const supportsAutoGenerate = computed(() => {
-    return currentProvider.value.type && 
-           ['webhooksite', 'postbin', 'BOAST'].includes(currentProvider.value.type);
+    return (
+        currentProvider.value.type &&
+        ["webhooksite", "postbin", "BOAST"].includes(currentProvider.value.type)
+    );
 });
 
 const loadProviders = async () => {
@@ -137,15 +139,15 @@ const saveProvider = async () => {
             // Creation mode
             let url = providerData.url;
             if (autoGenerate.value) {
-                if (providerData.type === 'webhooksite') {
-                    url = 'https://webhook.site';
-                } else if (providerData.type === 'postbin') {
-                    url = 'https://www.postb.in';
-                } else if (providerData.type === 'BOAST') {
-                    url = 'https://odiss.eu:2096/events';
+                if (providerData.type === "webhooksite") {
+                    url = "https://webhook.site";
+                } else if (providerData.type === "postbin") {
+                    url = "https://www.postb.in";
+                } else if (providerData.type === "BOAST") {
+                    url = "https://odiss.eu:2096/events";
                 }
             }
-            
+
             const payload = {
                 name: providerData.name,
                 type: providerData.type,
@@ -153,15 +155,26 @@ const saveProvider = async () => {
                 token: providerData.token ?? "",
                 enabled: providerData.enabled ?? true,
             };
-            
-            const createdProvider = await sdk.backend.createProvider(payload as any);
-            
+
+            const createdProvider = await sdk.backend.createProvider(
+                payload as any,
+            );
+
             // Auto-generate payload if requested
-            if (autoGenerate.value && createdProvider && supportsAutoGenerate.value) {
+            if (
+                autoGenerate.value &&
+                createdProvider &&
+                supportsAutoGenerate.value
+            ) {
                 try {
-                    const payloadInfo = await sdk.backend.registerAndGetPayload(createdProvider);
+                    const payloadInfo =
+                        await sdk.backend.registerAndGetPayload(
+                            createdProvider,
+                        );
                     if (payloadInfo?.payloadUrl) {
-                        await sdk.backend.updateProvider(createdProvider.id, { url: payloadInfo.payloadUrl });
+                        await sdk.backend.updateProvider(createdProvider.id, {
+                            url: payloadInfo.payloadUrl,
+                        });
                         toast.add({
                             severity: "success",
                             summary: "Success",
@@ -173,7 +186,7 @@ const saveProvider = async () => {
                     console.error("Auto-generation failed:", autoGenError);
                     toast.add({
                         severity: "warn",
-                        summary: "Warning", 
+                        summary: "Warning",
                         detail: "Provider created but auto-generation failed",
                         life: 4000,
                     });
@@ -418,6 +431,19 @@ const addPublicPostbinProvider = async () => {
     }
 };
 
+// SplitButton 참조
+const splitButton = ref<InstanceType<typeof SplitButton> | null>(null);
+
+// 기본 버튼 클릭 핸들러: 메뉴 열기
+const onQuickAddClick = () => {
+    if (splitButton.value) {
+        const buttons = splitButton.value.$el.querySelectorAll("button");
+        if (buttons.length > 1) {
+            buttons[1].click(); // 드롭다운 메뉴 버튼 클릭
+        }
+    }
+};
+
 onMounted(loadProviders);
 </script>
 
@@ -431,11 +457,12 @@ onMounted(loadProviders);
                 @click="openNew"
             />
             <SplitButton
+                ref="splitButton"
                 label="Quick Add"
                 icon="fa fa-bolt"
                 class="p-button-info"
                 :model="quickAddItems"
-                @click="addPublicInteractshProvider"
+                @click="onQuickAddClick"
                 menuButtonIcon="fa fa-chevron-down"
             />
         </div>
@@ -554,16 +581,17 @@ onMounted(loadProviders);
                         class="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 transition border-gray-300"
                     />
                 </div>
-                <div class="flex items-center gap-2" v-if="supportsAutoGenerate">
-                    <Checkbox
-                        id="autoGenerate"
-                        v-model="autoGenerate"
-                        binary
-                    />
+                <div
+                    class="flex items-center gap-2"
+                    v-if="supportsAutoGenerate"
+                >
+                    <Checkbox id="autoGenerate" v-model="autoGenerate" binary />
                     <label for="autoGenerate" class="font-semibold text-sm"
                         >Auto-generate URL after creation</label
                     >
-                    <small class="text-gray-600">(Creates new webhook/bin automatically)</small>
+                    <small class="text-gray-600"
+                        >(Creates new webhook/bin automatically)</small
+                    >
                 </div>
                 <div class="flex justify-end gap-2 mt-4">
                     <Button
