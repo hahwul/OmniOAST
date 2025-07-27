@@ -6,29 +6,45 @@ import Oast from "./Oast.vue";
 import Providers from "./Providers.vue";
 import Settings from "./Settings.vue";
 import About from "./About.vue";
+import Polling from "./Polling.vue";
 
-const page = ref<"OAST" | "Providers" | "Settings" | "About">("OAST");
-const items = [
+const page = ref<"OAST" | "Providers" | "Settings" | "About" | "Polling">("OAST");
+
+const leftItems = [
     {
         label: "OAST",
+        icon: "fa fa-shield-alt",
         command: () => {
             page.value = "OAST";
         },
     },
     {
         label: "Providers",
+        icon: "fa fa-server",
         command: () => {
             page.value = "Providers";
         },
     },
     {
+        label: "Polling Tasks",
+        icon: "fa fa-arrows-rotate",
+        command: () => {
+            page.value = "Polling";
+        },
+    },
+];
+
+const rightItems = [
+    {
         label: "Settings",
+        icon: "fa fa-cog",
         command: () => {
             page.value = "Settings";
         },
     },
     {
         label: "About",
+        icon: "fa fa-info-circle",
         command: () => {
             page.value = "About";
         },
@@ -41,6 +57,8 @@ const component = computed(() => {
             return Oast;
         case "Providers":
             return Providers;
+        case "Polling":
+            return Polling;
         case "Settings":
             return Settings;
         case "About":
@@ -58,16 +76,34 @@ const component = computed(() => {
                 <template #start>
                     <div class="flex">
                         <div
-                            v-for="(item, index) in items"
+                            v-for="(item, index) in leftItems"
                             :key="index"
-                            class="px-3 py-2 cursor-pointer rounded-xl font-bold"
+                            class="px-3 py-2 cursor-pointer rounded-xl font-bold flex items-center gap-2 transition-all duration-300 ease-in-out"
                             :class="{
-                                'bg-surface-900 shadow-md': page === item.label,
-                                'hover:bg-surface-900': page !== item.label,
+                                'text-primary-500 dark:text-primary-400': page === item.label,
+                                'hover:bg-surface-700': page !== item.label,
                             }"
                             @click="item.command"
                         >
-                            {{ item.label }}
+                            <i :class="['fa', item.icon]"></i>
+                            <span>{{ item.label }}</span>
+                        </div>
+                    </div>
+                </template>
+                <template #end>
+                    <div class="flex">
+                        <div
+                            v-for="(item, index) in rightItems"
+                            :key="index"
+                            v-tooltip.bottom="item.label"
+                            class="px-3 py-2 cursor-pointer rounded-xl font-bold flex items-center justify-center transition-all duration-300 ease-in-out"
+                            :class="{
+                                'text-primary-500 dark:text-primary-400': page === item.label,
+                                'hover:bg-surface-700': page !== item.label,
+                            }"
+                            @click="item.command"
+                        >
+                            <i :class="['fa', item.icon]"></i>
                         </div>
                     </div>
                 </template>

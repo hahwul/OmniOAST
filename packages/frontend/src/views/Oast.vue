@@ -50,6 +50,7 @@ onMounted(() => {
 });
 const selectedInteraction = ref<any>(null);
 const payloadInput = ref("");
+const activePollingSessions = ref<Record<string, any>>({});
 
 const searchQuery = ref("");
 const filteredInteractions = computed(() =>
@@ -100,32 +101,45 @@ async function getPayload() {
     const currentProvider = availableProviders.value.find(
         (p) => p.id === selectedProviderA.value,
     );
-    if (!currentProvider) {
+    if (!currentProvider || !currentProvider.id) {
         toast.add({
             severity: "warn",
             summary: "Warning",
-            detail: "Please select a provider",
+            detail: "Please select a valid provider",
             life: 3000,
         });
         return;
     }
 
+    if (activePollingSessions.value[currentProvider.id]) {
+        toast.add({
+            severity: "info",
+            summary: "Info",
+            detail: "Polling is already active for this provider.",
+            life: 3000,
+        });
+        return;
+    }
+
+    const settings = await sdk.backend.getCurrentSettings();
+    const pollingInterval = (settings?.pollingInterval || 5) * 1000;
+
+    let payloadUrl = "";
+    let stopPolling: () => void;
+
+    const updateLastPolled = () => {
+        oastStore.updatePollingLastPolled(pollingId, Date.now());
+    };
+
     if (currentProvider.type === "interactsh") {
         try {
-            // Get settings for both URL generation and polling interval
-            const settings = await sdk.backend.getCurrentSettings();
-            const pollingInterval = settings?.pollingInterval || 5;
-
             await clientService.start(
                 {
                     serverURL: currentProvider.url,
                     token: currentProvider.token || "",
-                    keepAliveInterval: pollingInterval * 1000,
+                    keepAliveInterval: pollingInterval,
                 },
                 (interaction: { [key: string]: any }) => {
-                    console.log(interaction);
-
-                    // q-type 또는 raw-request에서 method 값을 안전하게 추출
                     const method = interaction["q-type"]
                         ? String(interaction["q-type"])
                         : typeof interaction["raw-request"] === "string"
@@ -146,17 +160,14 @@ async function getPayload() {
                         rawRequest: String(interaction["raw-request"]),
                         rawResponse: String(interaction["raw-response"]),
                     });
+                    updateLastPolled();
                 },
             );
 
-            const { url: payloadUrl } = clientService.generateUrl();
-            const prefix = settings?.payloadPrefix;
-            console.log("Payload prefix:", prefix);
-            if (prefix !== "" && prefix !== undefined) {
-                payloadInput.value = prefix + "." + payloadUrl;
-            } else {
-                payloadInput.value = payloadUrl;
-            }
+            const { url } = clientService.generateUrl();
+            payloadUrl = url;
+            stopPolling = () => clientService.stop();
+
         } catch (error) {
             console.error("Registration failed:", error);
             toast.add({
@@ -165,173 +176,90 @@ async function getPayload() {
                 detail: "Failed to register interactsh provider",
                 life: 3000,
             });
+            return;
         }
-    } else if (currentProvider.type === "BOAST") {
+    } else {
         try {
             const payloadInfo =
                 await sdk.backend.registerAndGetPayload(currentProvider);
 
             if (payloadInfo && payloadInfo.payloadUrl) {
-                // Get settings once for both prefix and polling interval
-                const settings = await sdk.backend.getCurrentSettings();
-                const prefix = settings?.payloadPrefix;
-                const pollingInterval = settings?.pollingInterval || 5;
+                payloadUrl = payloadInfo.payloadUrl;
 
-                if (prefix !== "" && prefix !== undefined) {
-                    payloadInput.value = prefix + "." + payloadInfo.payloadUrl;
-                } else {
-                    payloadInput.value = payloadInfo.payloadUrl;
-                } // Call the new pollBoastEvents function with the configured polling interval
+                if (currentProvider.id) {
+                    await sdk.backend.updateProvider(currentProvider.id, {
+                        url: payloadInfo.payloadUrl,
+                    });
+                }
+                currentProvider.url = payloadInfo.payloadUrl;
 
-                setInterval(
-                    () => pollBoastEvents(currentProvider),
-                    pollingInterval * 1000,
-                );
+                const pollFunction = () => {
+                    switch (currentProvider.type) {
+                        case "BOAST":
+                            pollBoastEvents(currentProvider);
+                            break;
+                        case "webhooksite":
+                            pollWebhooksiteEvents(currentProvider);
+                            break;
+                        case "postbin":
+                            pollPostbinEvents(currentProvider);
+                            break;
+                    }
+                    updateLastPolled();
+                };
+
+                const intervalId = setInterval(pollFunction, pollingInterval);
+                stopPolling = () => clearInterval(intervalId);
 
                 toast.add({
                     severity: "success",
                     summary: "Success",
-                    detail: "BOAST Payload generated",
+                    detail: `${currentProvider.type} Payload generated`,
+                    life: 3000,
+                });
+            } else {
+                payloadUrl = currentProvider.url;
+                toast.add({
+                    severity: "info",
+                    summary: "Info",
+                    detail: `Using existing ${currentProvider.type} URL`,
                     life: 3000,
                 });
             }
         } catch (error) {
-            console.error("BOAST registration failed:", error);
+            console.error(`${currentProvider.type} registration failed:`, error);
             toast.add({
                 severity: "error",
                 summary: "Error",
-                detail: "Failed to register BOAST provider",
+                detail: `Failed to register ${currentProvider.type} provider`,
                 life: 3000,
             });
+            return;
         }
-    } else if (currentProvider.type === "webhooksite") {
-        try {
-            const payloadInfo =
-                await sdk.backend.registerAndGetPayload(currentProvider);
-
-            if (payloadInfo && payloadInfo.payloadUrl) {
-                // Get settings for payload prefix
-                const settings = await sdk.backend.getCurrentSettings();
-                const prefix = settings?.payloadPrefix;
-                const pollingInterval = settings?.pollingInterval || 5;
-
-                if (prefix !== "" && prefix !== undefined) {
-                    payloadInput.value = prefix + "." + payloadInfo.payloadUrl;
-                } else {
-                    payloadInput.value = payloadInfo.payloadUrl;
-                }
-
-                // Update provider URL in database for polling
-                if (currentProvider.id) {
-                    await sdk.backend.updateProvider(currentProvider.id, {
-                        url: payloadInfo.payloadUrl,
-                    });
-                }
-
-                // Update the current provider object for polling
-                currentProvider.url = payloadInfo.payloadUrl;
-
-                // Start polling for webhook.site events
-                setInterval(
-                    () => pollWebhooksiteEvents(currentProvider),
-                    pollingInterval * 1000,
-                );
-
-                toast.add({
-                    severity: "success",
-                    summary: "Success",
-                    detail: "Webhook.site payload generated",
-                    life: 3000,
-                });
-            } else {
-                // Fallback to existing URL if registration fails
-                payloadInput.value = currentProvider.url;
-                toast.add({
-                    severity: "info",
-                    summary: "Info",
-                    detail: "Using existing webhook URL",
-                    life: 3000,
-                });
-            }
-        } catch (error) {
-            console.error("Webhook.site registration failed:", error);
-            // Fallback to existing URL
-            payloadInput.value = currentProvider.url;
-            toast.add({
-                severity: "warn",
-                summary: "Warning",
-                detail: "Failed to generate new webhook, using existing URL",
-                life: 3000,
-            });
-        }
-    } else if (currentProvider.type === "postbin") {
-        try {
-            const payloadInfo =
-                await sdk.backend.registerAndGetPayload(currentProvider);
-
-            if (payloadInfo && payloadInfo.payloadUrl) {
-                // Get settings for payload prefix
-                const settings = await sdk.backend.getCurrentSettings();
-                const prefix = settings?.payloadPrefix;
-                const pollingInterval = settings?.pollingInterval || 5;
-
-                if (prefix !== "" && prefix !== undefined) {
-                    payloadInput.value = prefix + "." + payloadInfo.payloadUrl;
-                } else {
-                    payloadInput.value = payloadInfo.payloadUrl;
-                }
-
-                // Update provider URL in database for polling
-                if (currentProvider.id) {
-                    await sdk.backend.updateProvider(currentProvider.id, {
-                        url: payloadInfo.payloadUrl,
-                    });
-                }
-
-                // Update the current provider object for polling
-                currentProvider.url = payloadInfo.payloadUrl;
-
-                // Start polling for postbin events
-                setInterval(
-                    () => pollPostbinEvents(currentProvider),
-                    pollingInterval * 1000,
-                );
-
-                toast.add({
-                    severity: "success",
-                    summary: "Success",
-                    detail: "Postbin payload generated",
-                    life: 3000,
-                });
-            } else {
-                // Fallback to existing URL if registration fails
-                payloadInput.value = currentProvider.url;
-                toast.add({
-                    severity: "info",
-                    summary: "Info",
-                    detail: "Using existing postbin URL",
-                    life: 3000,
-                });
-            }
-        } catch (error) {
-            console.error("Postbin registration failed:", error);
-            // Fallback to existing URL
-            payloadInput.value = currentProvider.url;
-            toast.add({
-                severity: "warn",
-                summary: "Warning",
-                detail: "Failed to generate new postbin, using existing URL",
-                life: 3000,
-            });
-        }
-    } else {
-        toast.add({
-            severity: "warn",
-            summary: "Warning",
-            detail: "This Provider type is not supported",
-            life: 3000,
-        });
     }
+
+    const prefix = settings?.payloadPrefix;
+    if (prefix) {
+        payloadInput.value = `${prefix}.${payloadUrl}`;
+    } else {
+        payloadInput.value = payloadUrl;
+    }
+
+    const providerId = currentProvider.id;
+    const pollingId = uuidv4();
+    activePollingSessions.value[providerId] = pollingId;
+
+    oastStore.addPolling({
+        id: pollingId,
+        payload: payloadInput.value,
+        provider: currentProvider.name,
+        lastPolled: Date.now(),
+        interval: pollingInterval,
+        stop: () => {
+            stopPolling();
+            delete activePollingSessions.value[providerId];
+        },
+    });
 }
 
 function clearInteractions() {
