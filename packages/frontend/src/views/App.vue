@@ -80,7 +80,7 @@ const component = computed(() => {
                             :key="index"
                             class="px-3 py-2 cursor-pointer rounded-xl font-bold flex items-center gap-2 transition-all duration-300 ease-in-out"
                             :class="{
-                                'bg-primary-500 dark:bg-primary-400 text-primary-contrast shadow-md': page === item.label,
+                                'text-primary-500 dark:text-primary-400': page === item.label,
                                 'hover:bg-surface-700': page !== item.label,
                             }"
                             @click="item.command"
@@ -98,7 +98,7 @@ const component = computed(() => {
                             v-tooltip.bottom="item.label"
                             class="px-3 py-2 cursor-pointer rounded-xl font-bold flex items-center justify-center transition-all duration-300 ease-in-out"
                             :class="{
-                                'bg-primary-500 dark:bg-primary-400 text-primary-contrast shadow-md': page === item.label,
+                                'text-primary-500 dark:text-primary-400': page === item.label,
                                 'hover:bg-surface-700': page !== item.label,
                             }"
                             @click="item.command"
