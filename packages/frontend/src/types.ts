@@ -34,4 +34,12 @@ type API = {
   listSettings: () => Promise<Settings[]>;
 };
 
-export type FrontendSDK = Caido<API, {}>;
+type SidebarSDKPatched = {
+  registerItem: (label: string, path: string, options?: any) => void;
+  setCount: (label: string, count: number) => void;
+  // Optionally add getCount if needed
+};
+
+export type FrontendSDK = Caido<API, {}> & {
+  sidebar: SidebarSDKPatched;
+};
