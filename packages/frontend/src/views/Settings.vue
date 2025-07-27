@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import Button from "primevue/button";
-import Card from "primevue/card";
 import InputNumber from "primevue/inputnumber";
 import InputText from "primevue/inputtext";
 import { useToast } from "primevue/usetoast";
