@@ -26,7 +26,7 @@ const leftItems = [
         },
     },
     {
-        label: "Polling",
+        label: "Polling Tasks",
         icon: "fa fa-arrows-rotate",
         command: () => {
             page.value = "Polling";

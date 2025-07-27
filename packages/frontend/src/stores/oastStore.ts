@@ -30,7 +30,17 @@ interface Polling {
   id: string;
   payload: string;
   provider: string;
+  lastPolled: number; // Timestamp
+  interval: number; // Polling interval in milliseconds
   stop: () => void;
+}
+
+interface PollingListItem {
+  id: string;
+  payload: string;
+  provider: string;
+  lastPolled: number;
+  interval: number;
 }
 
 /**
@@ -41,7 +51,7 @@ export const useOastStore = defineStore("oast", () => {
   const sdk = useSDK();
   const interactions = ref<OastInteraction[]>([]);
   const activeProviders = ref<Record<string, any>>({}); // Stores data for active providers by type
-  const pollingList = ref<Omit<Polling, 'stop'>[]>([]);
+  const pollingList = ref<PollingListItem[]>([]);
   const pollingFunctions = ref<Record<string, () => void>>({});
 
   // Storage keys for persisting data between sessions
@@ -125,7 +135,18 @@ export const useOastStore = defineStore("oast", () => {
   const loadPollingList = () => {
     const storage = sdk.storage.get() as Record<string, any> | null;
     if (storage && storage[storageKeyPollingList]) {
-      pollingList.value = storage[storageKeyPollingList];
+      const rawList = storage[storageKeyPollingList];
+      if (Array.isArray(rawList)) {
+        pollingList.value = rawList.filter((item: any): item is PollingListItem => {
+          return (
+            typeof item.id === 'string' &&
+            typeof item.payload === 'string' &&
+            typeof item.provider === 'string' &&
+            typeof item.lastPolled === 'number' &&
+            typeof item.interval === 'number'
+          );
+        });
+      }
     }
   };
 
@@ -143,10 +164,31 @@ export const useOastStore = defineStore("oast", () => {
    * @param polling The new OAST polling to add
    */
   const addPolling = async (polling: Polling) => {
-    const { stop, ...rest } = polling;
-    pollingList.value.push(rest);
-    pollingFunctions.value[polling.id] = stop;
+    const newPollingItem: PollingListItem = {
+      id: polling.id,
+      payload: polling.payload,
+      provider: polling.provider,
+      lastPolled: polling.lastPolled,
+      interval: polling.interval,
+    };
+    pollingList.value.push(newPollingItem);
+    pollingFunctions.value[polling.id] = polling.stop;
     await savePollingList();
+  };
+
+  /**
+   * Updates the last polled timestamp for a specific polling entry.
+   * @param pollingId The ID of the polling entry to update.
+   * @param timestamp The new timestamp.
+   */
+  const updatePollingLastPolled = async (pollingId: string, timestamp: number) => {
+    const index = pollingList.value.findIndex(p => p.id === pollingId);
+    if (index !== -1) {
+      const currentPolling = pollingList.value[index] as PollingListItem;
+      const updatedPolling: PollingListItem = { ...currentPolling, lastPolled: timestamp };
+      pollingList.value.splice(index, 1, updatedPolling);
+      await savePollingList();
+    }
   };
 
   /**
@@ -179,6 +221,7 @@ export const useOastStore = defineStore("oast", () => {
     loadInteractions,
     loadProviderData,
     addPolling,
+    updatePollingLastPolled,
     removePolling,
   };
 });

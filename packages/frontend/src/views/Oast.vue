@@ -127,6 +127,10 @@ async function getPayload() {
     let payloadUrl = "";
     let stopPolling: () => void;
 
+    const updateLastPolled = () => {
+        oastStore.updatePollingLastPolled(pollingId, Date.now());
+    };
+
     if (currentProvider.type === "interactsh") {
         try {
             await clientService.start(
@@ -156,6 +160,7 @@ async function getPayload() {
                         rawRequest: String(interaction["raw-request"]),
                         rawResponse: String(interaction["raw-response"]),
                     });
+                    updateLastPolled();
                 },
             );
 
@@ -200,6 +205,7 @@ async function getPayload() {
                             pollPostbinEvents(currentProvider);
                             break;
                     }
+                    updateLastPolled();
                 };
 
                 const intervalId = setInterval(pollFunction, pollingInterval);
@@ -247,6 +253,8 @@ async function getPayload() {
         id: pollingId,
         payload: payloadInput.value,
         provider: currentProvider.name,
+        lastPolled: Date.now(),
+        interval: pollingInterval,
         stop: () => {
             stopPolling();
             delete activePollingSessions.value[providerId];
