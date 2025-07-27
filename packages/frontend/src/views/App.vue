@@ -9,33 +9,42 @@ import About from "./About.vue";
 import Polling from "./Polling.vue";
 
 const page = ref<"OAST" | "Providers" | "Settings" | "About" | "Polling">("OAST");
-const items = [
+
+const leftItems = [
     {
         label: "OAST",
+        icon: "fa fa-shield-alt",
         command: () => {
             page.value = "OAST";
         },
     },
     {
         label: "Providers",
+        icon: "fa fa-server",
         command: () => {
             page.value = "Providers";
         },
     },
+];
+
+const rightItems = [
     {
         label: "Polling",
+        icon: "fa fa-arrows-rotate",
         command: () => {
             page.value = "Polling";
         },
     },
     {
         label: "Settings",
+        icon: "fa fa-cog",
         command: () => {
             page.value = "Settings";
         },
     },
     {
         label: "About",
+        icon: "fa fa-info-circle",
         command: () => {
             page.value = "About";
         },
@@ -67,16 +76,34 @@ const component = computed(() => {
                 <template #start>
                     <div class="flex">
                         <div
-                            v-for="(item, index) in items"
+                            v-for="(item, index) in leftItems"
                             :key="index"
-                            class="px-3 py-2 cursor-pointer rounded-xl font-bold"
+                            class="px-3 py-2 cursor-pointer rounded-xl font-bold flex items-center gap-2"
                             :class="{
                                 'bg-surface-900 shadow-md': page === item.label,
                                 'hover:bg-surface-900': page !== item.label,
                             }"
                             @click="item.command"
                         >
-                            {{ item.label }}
+                            <i :class="['fa', item.icon]"></i>
+                            <span>{{ item.label }}</span>
+                        </div>
+                    </div>
+                </template>
+                <template #end>
+                    <div class="flex">
+                        <div
+                            v-for="(item, index) in rightItems"
+                            :key="index"
+                            v-tooltip.bottom="item.label"
+                            class="px-3 py-2 cursor-pointer rounded-xl font-bold flex items-center justify-center"
+                            :class="{
+                                'bg-surface-900 shadow-md': page === item.label,
+                                'hover:bg-surface-900': page !== item.label,
+                            }"
+                            @click="item.command"
+                        >
+                            <i :class="['fa', item.icon]"></i>
                         </div>
                     </div>
                 </template>
