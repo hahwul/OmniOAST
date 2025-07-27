@@ -53,12 +53,15 @@ export const useOastStore = defineStore("oast", () => {
   const activeProviders = ref<Record<string, any>>({}); // Stores data for active providers by type
   const pollingList = ref<PollingListItem[]>([]);
   const pollingFunctions = ref<Record<string, () => void>>({});
+  // Unread count for sidebar badge
+  const unreadCount = ref(0);
+  // OAST 탭 활성화 상태
+  const isOastTabActive = ref(false);
 
   // Storage keys for persisting data between sessions
   const storageKeyInteractions = "omnioast.interactions";
   const storageKeyActiveProviders = "omnioast.activeProviders";
   const storageKeyPollingList = "omnioast.pollingList";
-
 
   /**
    * Loads saved interactions from storage
@@ -86,6 +89,15 @@ export const useOastStore = defineStore("oast", () => {
   const addInteraction = async (interaction: OastInteraction) => {
     interactions.value.unshift(interaction);
     await saveInteractions();
+    // OAST 탭이 활성화되어 있지 않을 때만 count 증가
+    if (!isOastTabActive.value) {
+      unreadCount.value += 1;
+      // SidebarItem의 setCount 사용
+      const sidebarItem = (window as any).oastSidebarItem;
+      if (sidebarItem && typeof sidebarItem.setCount === "function") {
+        sidebarItem.setCount(unreadCount.value);
+      }
+    }
   };
 
   /**
@@ -137,15 +149,17 @@ export const useOastStore = defineStore("oast", () => {
     if (storage && storage[storageKeyPollingList]) {
       const rawList = storage[storageKeyPollingList];
       if (Array.isArray(rawList)) {
-        pollingList.value = rawList.filter((item: any): item is PollingListItem => {
-          return (
-            typeof item.id === 'string' &&
-            typeof item.payload === 'string' &&
-            typeof item.provider === 'string' &&
-            typeof item.lastPolled === 'number' &&
-            typeof item.interval === 'number'
-          );
-        });
+        pollingList.value = rawList.filter(
+          (item: any): item is PollingListItem => {
+            return (
+              typeof item.id === "string" &&
+              typeof item.payload === "string" &&
+              typeof item.provider === "string" &&
+              typeof item.lastPolled === "number" &&
+              typeof item.interval === "number"
+            );
+          },
+        );
       }
     }
   };
@@ -181,11 +195,17 @@ export const useOastStore = defineStore("oast", () => {
    * @param pollingId The ID of the polling entry to update.
    * @param timestamp The new timestamp.
    */
-  const updatePollingLastPolled = async (pollingId: string, timestamp: number) => {
-    const index = pollingList.value.findIndex(p => p.id === pollingId);
+  const updatePollingLastPolled = async (
+    pollingId: string,
+    timestamp: number,
+  ) => {
+    const index = pollingList.value.findIndex((p) => p.id === pollingId);
     if (index !== -1) {
       const currentPolling = pollingList.value[index] as PollingListItem;
-      const updatedPolling: PollingListItem = { ...currentPolling, lastPolled: timestamp };
+      const updatedPolling: PollingListItem = {
+        ...currentPolling,
+        lastPolled: timestamp,
+      };
       pollingList.value.splice(index, 1, updatedPolling);
       await savePollingList();
     }
@@ -210,6 +230,25 @@ export const useOastStore = defineStore("oast", () => {
   loadProviderData();
   loadPollingList();
 
+  /**
+   * Clears the unread count and updates the sidebar badge
+   */
+  const clearUnreadCount = () => {
+    unreadCount.value = 0;
+    // SidebarItem의 setCount 사용
+    const sidebarItem = (window as any).oastSidebarItem;
+    if (sidebarItem && typeof sidebarItem.setCount === "function") {
+      sidebarItem.setCount(0);
+    }
+  };
+
+  /**
+   * OAST 탭 활성화 상태를 설정
+   */
+  const setOastTabActive = (active: boolean) => {
+    isOastTabActive.value = active;
+  };
+
   return {
     interactions,
     activeProviders,
@@ -223,5 +262,8 @@ export const useOastStore = defineStore("oast", () => {
     addPolling,
     updatePollingLastPolled,
     removePolling,
+    clearUnreadCount,
+    unreadCount,
+    setOastTabActive,
   };
 });

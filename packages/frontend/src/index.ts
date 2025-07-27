@@ -52,7 +52,8 @@ export const init = (sdk: FrontendSDK) => {
   });
 
   // Add a sidebar item
-  sdk.sidebar.registerItem("OmniOAST", "/omnioast", {
+  const oastSidebarItem = sdk.sidebar.registerItem("OmniOAST", "/omnioast", {
     icon: "fas fa-satellite-dish",
   });
+  (window as any).oastSidebarItem = oastSidebarItem;
 };

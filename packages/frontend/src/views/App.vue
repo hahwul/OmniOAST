@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import MenuBar from "primevue/menubar";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
+import { useOastStore } from "@/stores/oastStore";
 
 import Oast from "./Oast.vue";
 import Providers from "./Providers.vue";
@@ -8,7 +9,18 @@ import Settings from "./Settings.vue";
 import About from "./About.vue";
 import Polling from "./Polling.vue";
 
-const page = ref<"OAST" | "Providers" | "Settings" | "About" | "Polling">("OAST");
+const page = ref<"OAST" | "Providers" | "Settings" | "About" | "Polling">(
+    "OAST",
+);
+const oastStore = useOastStore();
+
+// OAST 탭 진입 시 unreadCount 초기화
+watch(page, (newPage) => {
+    oastStore.setOastTabActive(newPage === "OAST");
+    if (newPage === "OAST") {
+        oastStore.clearUnreadCount();
+    }
+});
 
 const leftItems = [
     {
@@ -80,7 +92,8 @@ const component = computed(() => {
                             :key="index"
                             class="px-3 py-2 cursor-pointer rounded-xl font-bold flex items-center gap-2 transition-all duration-300 ease-in-out"
                             :class="{
-                                'text-primary-500 dark:text-primary-400': page === item.label,
+                                'text-primary-500 dark:text-primary-400':
+                                    page === item.label,
                                 'hover:bg-surface-700': page !== item.label,
                             }"
                             @click="item.command"
@@ -98,7 +111,8 @@ const component = computed(() => {
                             v-tooltip.bottom="item.label"
                             class="px-3 py-2 cursor-pointer rounded-xl font-bold flex items-center justify-center transition-all duration-300 ease-in-out"
                             :class="{
-                                'text-primary-500 dark:text-primary-400': page === item.label,
+                                'text-primary-500 dark:text-primary-400':
+                                    page === item.label,
                                 'hover:bg-surface-700': page !== item.label,
                             }"
                             @click="item.command"
