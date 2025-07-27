@@ -25,7 +25,7 @@ watch(page, (newPage) => {
 const leftItems = [
     {
         label: "OAST",
-        icon: "fa fa-shield-alt",
+        icon: "fas fa-satellite-dish",
         command: () => {
             page.value = "OAST";
         },
