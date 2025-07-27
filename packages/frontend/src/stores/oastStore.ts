@@ -30,6 +30,7 @@ interface Polling {
   id: string;
   payload: string;
   provider: string;
+  stop: () => void;
 }
 
 /**
@@ -40,7 +41,8 @@ export const useOastStore = defineStore("oast", () => {
   const sdk = useSDK();
   const interactions = ref<OastInteraction[]>([]);
   const activeProviders = ref<Record<string, any>>({}); // Stores data for active providers by type
-  const pollingList = ref<Polling[]>([]);
+  const pollingList = ref<Omit<Polling, 'stop'>[]>([]);
+  const pollingFunctions = ref<Record<string, () => void>>({});
 
   // Storage keys for persisting data between sessions
   const storageKeyInteractions = "omnioast.interactions";
@@ -141,7 +143,9 @@ export const useOastStore = defineStore("oast", () => {
    * @param polling The new OAST polling to add
    */
   const addPolling = async (polling: Polling) => {
-    pollingList.value.push(polling);
+    const { stop, ...rest } = polling;
+    pollingList.value.push(rest);
+    pollingFunctions.value[polling.id] = stop;
     await savePollingList();
   };
 
@@ -150,6 +154,11 @@ export const useOastStore = defineStore("oast", () => {
    * @param pollingId The ID of the polling to remove
    */
   const removePolling = async (pollingId: string) => {
+    const stopFn = pollingFunctions.value[pollingId];
+    if (stopFn) {
+      stopFn();
+      delete pollingFunctions.value[pollingId];
+    }
     pollingList.value = pollingList.value.filter((p) => p.id !== pollingId);
     await savePollingList();
   };
