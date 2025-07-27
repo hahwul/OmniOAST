@@ -101,11 +101,11 @@ async function getPayload() {
     const currentProvider = availableProviders.value.find(
         (p) => p.id === selectedProviderA.value,
     );
-    if (!currentProvider) {
+    if (!currentProvider || !currentProvider.id) {
         toast.add({
             severity: "warn",
             summary: "Warning",
-            detail: "Please select a provider",
+            detail: "Please select a valid provider",
             life: 3000,
         });
         return;
@@ -239,8 +239,9 @@ async function getPayload() {
         payloadInput.value = payloadUrl;
     }
 
+    const providerId = currentProvider.id;
     const pollingId = uuidv4();
-    activePollingSessions.value[currentProvider.id] = pollingId;
+    activePollingSessions.value[providerId] = pollingId;
 
     oastStore.addPolling({
         id: pollingId,
@@ -248,7 +249,7 @@ async function getPayload() {
         provider: currentProvider.name,
         stop: () => {
             stopPolling();
-            delete activePollingSessions.value[currentProvider.id];
+            delete activePollingSessions.value[providerId];
         },
     });
 }
