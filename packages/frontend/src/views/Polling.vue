@@ -1,73 +1,37 @@
 <template>
-    <div class="c-card">
-        <div class="c-card__header">
-            <h2 class="c-card__title">Polling List</h2>
-        </div>
-        <div class="c-card__body">
-            <div v-if="pollingList.length === 0" class="c-empty-state">
-                <p>No payloads are currently being polled.</p>
-            </div>
-            <div v-else>
-                <table class="c-table">
-                    <thead>
-                        <tr>
-                            <th>Provider</th>
-                            <th>Payload</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="polling in pollingList" :key="polling.id">
-                            <td>{{ polling.provider }}</td>
-                            <td>{{ polling.payload }}</td>
-                            <td>
-                                <button
-                                    class="c-button c-button--destructive"
-                                    @click="stopPolling(polling.id)"
-                                >
-                                    Stop Polling
-                                </button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+  <div class="p-4 h-full bg-surface-0 dark:bg-surface-800 rounded">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold">Polling List</h2>
     </div>
+
+    <DataTable :value="pollingList" responsive-layout="scroll">
+      <Column field="provider" header="Provider" :sortable="true"></Column>
+      <Column field="payload" header="Payload"></Column>
+      <Column :exportable="false" style="min-width: 8rem">
+        <template #body="slotProps">
+          <Button
+            icon="fa fa-stop-circle"
+            class="p-button-rounded p-button-warning"
+            @click="stopPolling(slotProps.data.id)"
+          />
+        </template>
+      </Column>
+    </DataTable>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { useOastStore } from "@/stores/oastStore";
+import { computed } from 'vue';
+import { useOastStore } from '@/stores/oastStore';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import Button from 'primevue/button';
 
 const oastStore = useOastStore();
 const pollingList = computed(() => oastStore.pollingList);
 
 const stopPolling = (pollingId: string) => {
-    oastStore.removePolling(pollingId);
+  oastStore.removePolling(pollingId);
 };
 </script>
 
-<style scoped>
-.c-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.c-table th,
-.c-table td {
-    padding: 12px;
-    border: 1px solid var(--c-border-color);
-    text-align: left;
-}
-
-.c-table th {
-    background-color: var(--c-background-color-secondary);
-}
-
-.c-empty-state {
-    text-align: center;
-    padding: 20px;
-    color: var(--c-text-color-secondary);
-}
-</style>
