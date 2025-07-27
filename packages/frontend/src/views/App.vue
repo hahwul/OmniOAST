@@ -6,8 +6,9 @@ import Oast from "./Oast.vue";
 import Providers from "./Providers.vue";
 import Settings from "./Settings.vue";
 import About from "./About.vue";
+import Polling from "./Polling.vue";
 
-const page = ref<"OAST" | "Providers" | "Settings" | "About">("OAST");
+const page = ref<"OAST" | "Providers" | "Settings" | "About" | "Polling">("OAST");
 const items = [
     {
         label: "OAST",
@@ -19,6 +20,12 @@ const items = [
         label: "Providers",
         command: () => {
             page.value = "Providers";
+        },
+    },
+    {
+        label: "Polling",
+        command: () => {
+            page.value = "Polling";
         },
     },
     {
@@ -41,6 +48,8 @@ const component = computed(() => {
             return Oast;
         case "Providers":
             return Providers;
+        case "Polling":
+            return Polling;
         case "Settings":
             return Settings;
         case "About":

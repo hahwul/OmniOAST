@@ -2,6 +2,7 @@ import axios, { type AxiosInstance } from "axios";
 import { ref, type Ref } from "vue";
 
 import { useCryptoService } from "@/services/crypto";
+import { useOastStore } from "@/stores/oastStore";
 import { tryCatch } from "@/utils/try-catch";
 import { generateRandomString } from "@/utils/utils";
 
@@ -48,6 +49,7 @@ class InteractshClient {
   private quitPollingFlag: Ref<boolean>;
   private pollingInterval: Ref<number>;
   private cryptoService = useCryptoService();
+  private oastStore = useOastStore();
 
   private httpClient: AxiosInstance;
   private correlationIdNonceLength: number;
@@ -386,6 +388,13 @@ class InteractshClient {
     const randomId = generateRandomString(this.correlationIdNonceLength);
     const url = `${this.correlationID.value}${randomId}.${this.serverURL.value.host}`;
     const uniqueId = `${this.correlationID.value}${randomId}`;
+
+    this.oastStore.addPolling({
+      id: uniqueId,
+      payload: url,
+      provider: "Interactsh",
+    });
+
     return { url, uniqueId };
   }
 }
