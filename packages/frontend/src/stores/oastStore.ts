@@ -10,7 +10,7 @@ import { useSDK } from "@/plugins/sdk";
 interface OastInteraction {
   id: string;
   type: string; // e.g., "BOAST", "interactsh"
-  timestamp: number;
+  timestamp: string;
   provider: string; // Name of the provider
   correlationId: string;
   // Optional fields for specific interaction types
