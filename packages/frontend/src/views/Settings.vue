@@ -135,87 +135,63 @@ onMounted(loadSettings);
 </script>
 
 <template>
-    <div class="h-full w-full flex gap-1">
-        <div
-            class="p-4 w-full h-full bg-surface-0 dark:bg-surface-800 rounded overflow-scroll"
-        >
-            <Card>
-                <template #title>
-                    <div class="flex justify-between items-center">
-                        <span>Settings</span>
-                        <div class="flex gap-2">
-                            <Button
-                                label="Reset to Defaults"
-                                icon="fa fa-undo"
-                                class="p-button-secondary"
-                                @click="resetToDefaults"
-                            />
-                            <Button
-                                label="Save"
-                                icon="fa fa-save"
-                                class="p-button-primary"
-                                @click="saveSettings"
-                            />
-                        </div>
-                    </div>
-                </template>
-                <template #content>
-                    <div class="flex flex-col gap-6">
-                        <div class="settings-section">
-                            <h3 class="text-lg font-semibold mb-3">
-                                Polling Settings
-                            </h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="flex flex-col gap-1">
-                                    <label
-                                        for="pollingInterval"
-                                        class="font-medium"
-                                    >
-                                        Polling Interval (seconds)
-                                    </label>
-                                    <InputNumber
-                                        id="pollingInterval"
-                                        v-model="settings.pollingInterval"
-                                        :min="5"
-                                        :max="600"
-                                        class="w-full"
-                                        :useGrouping="false"
-                                    />
-                                    <small class="text-gray-500">
-                                        How often to check for new events
-                                        (default: 30s)
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
+    <div
+        class="p-4 h-full bg-surface-0 dark:bg-surface-800 rounded overflow-scroll"
+    >
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">Settings</h2>
+            <div class="flex gap-2">
+                <Button
+                    label="Reset to Defaults"
+                    icon="fa fa-undo"
+                    class="p-button-warning"
+                    @click="resetToDefaults"
+                />
+                <Button label="Save" icon="fa fa-save" @click="saveSettings" />
+            </div>
+        </div>
 
-                        <div class="settings-section">
-                            <h3 class="text-lg font-semibold mb-3">
-                                Payload Settings
-                            </h3>
-                            <div class="grid grid-cols-1 gap-4">
-                                <div class="flex flex-col gap-1">
-                                    <label
-                                        for="payloadPrefix"
-                                        class="font-medium"
-                                    >
-                                        Payload Prefix
-                                    </label>
-                                    <InputText
-                                        id="payloadPrefix"
-                                        v-model="settings.payloadPrefix"
-                                        class="w-full"
-                                    />
-                                    <small class="text-gray-500">
-                                        Optional prefix to add to generated
-                                        payloads
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
+        <div class="flex flex-col gap-6">
+            <div class="settings-section">
+                <h3 class="text-lg font-semibold mb-3">Polling Settings</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label for="pollingInterval" class="font-medium">
+                            Polling Interval (seconds)
+                        </label>
+                        <InputNumber
+                            id="pollingInterval"
+                            v-model="settings.pollingInterval"
+                            :min="5"
+                            :max="600"
+                            class="w-full"
+                            :useGrouping="false"
+                        />
+                        <small class="text-gray-500">
+                            How often to check for new events (default: 30s)
+                        </small>
                     </div>
-                </template>
-            </Card>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3 class="text-lg font-semibold mb-3">Payload Settings</h3>
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label for="payloadPrefix" class="font-medium">
+                            Payload Prefix
+                        </label>
+                        <InputText
+                            id="payloadPrefix"
+                            v-model="settings.payloadPrefix"
+                            class="w-full"
+                        />
+                        <small class="text-gray-500">
+                            Optional prefix to add to generated payloads
+                        </small>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </template>
