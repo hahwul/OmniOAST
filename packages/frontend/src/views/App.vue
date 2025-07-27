@@ -25,9 +25,6 @@ const leftItems = [
             page.value = "Providers";
         },
     },
-];
-
-const rightItems = [
     {
         label: "Polling",
         icon: "fa fa-arrows-rotate",
@@ -35,6 +32,9 @@ const rightItems = [
             page.value = "Polling";
         },
     },
+];
+
+const rightItems = [
     {
         label: "Settings",
         icon: "fa fa-cog",
@@ -78,10 +78,10 @@ const component = computed(() => {
                         <div
                             v-for="(item, index) in leftItems"
                             :key="index"
-                            class="px-3 py-2 cursor-pointer rounded-xl font-bold flex items-center gap-2"
+                            class="px-3 py-2 cursor-pointer rounded-xl font-bold flex items-center gap-2 transition-all duration-300 ease-in-out"
                             :class="{
-                                'bg-surface-900 shadow-md': page === item.label,
-                                'hover:bg-surface-900': page !== item.label,
+                                'bg-primary-500 dark:bg-primary-400 text-primary-contrast shadow-md': page === item.label,
+                                'hover:bg-surface-700': page !== item.label,
                             }"
                             @click="item.command"
                         >
@@ -96,10 +96,10 @@ const component = computed(() => {
                             v-for="(item, index) in rightItems"
                             :key="index"
                             v-tooltip.bottom="item.label"
-                            class="px-3 py-2 cursor-pointer rounded-xl font-bold flex items-center justify-center"
+                            class="px-3 py-2 cursor-pointer rounded-xl font-bold flex items-center justify-center transition-all duration-300 ease-in-out"
                             :class="{
-                                'bg-surface-900 shadow-md': page === item.label,
-                                'hover:bg-surface-900': page !== item.label,
+                                'bg-primary-500 dark:bg-primary-400 text-primary-contrast shadow-md': page === item.label,
+                                'hover:bg-surface-700': page !== item.label,
                             }"
                             @click="item.command"
                         >
