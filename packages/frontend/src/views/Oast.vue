@@ -13,6 +13,7 @@ import type { Provider } from "../../../backend/src/validation/schemas";
 import { useSDK } from "@/plugins/sdk";
 import { useClientService } from "@/services/interactsh";
 import { useOastStore } from "@/stores/oastStore";
+import { formatTimestamp } from "@/utils/time";
 
 const { copy } = useClipboard();
 const sdk = useSDK();
@@ -156,7 +157,7 @@ async function getPayload() {
                         source: String(interaction["remote-address"]),
                         destination: String(interaction["full-id"]),
                         provider: currentProvider.name,
-                        timestamp: interaction.timestamp,
+                        timestamp: formatTimestamp(interaction.timestamp),
                         rawRequest: String(interaction["raw-request"]),
                         rawResponse: String(interaction["raw-response"]),
                     });
@@ -297,7 +298,7 @@ async function pollBoastEvents(provider: Provider) {
                         source: event.source,
                         destination: event.destination,
                         provider: provider.name,
-                        timestamp: event.timestamp,
+                        timestamp: formatTimestamp(event.timestamp),
                         rawRequest: event.rawRequest,
                         rawResponse: event.rawResponse,
                     });
@@ -345,7 +346,7 @@ async function pollWebhooksiteEvents(provider: Provider) {
                         source: event.source,
                         destination: event.destination,
                         provider: provider.name,
-                        timestamp: event.timestamp,
+                        timestamp: formatTimestamp(event.timestamp),
                         rawRequest: event.rawRequest,
                         rawResponse: event.rawResponse,
                     });
@@ -393,7 +394,7 @@ async function pollPostbinEvents(provider: Provider) {
                         source: event.source,
                         destination: event.destination,
                         provider: provider.name,
-                        timestamp: event.timestamp,
+                        timestamp: formatTimestamp(event.timestamp),
                         rawRequest: event.rawRequest,
                         rawResponse: event.rawResponse,
                     });
