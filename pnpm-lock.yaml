@@ -14,6 +14,9 @@ importers:
       '@caido/eslint-config':
         specifier: ^0.5.0
         version: 0.5.0(@typescript-eslint/parser@8.26.1(eslint@9.30.0(jiti@2.4.2))(typescript@5.5.4))(eslint@9.30.0(jiti@2.4.2))(prettier@3.6.2)(typescript@5.5.4)
+      '@caido/primevue':
+        specifier: ^0.2.1
+        version: 0.2.1(primevue@4.1.0(vue@3.4.37(typescript@5.5.4)))
       '@caido/tailwindcss':
         specifier: 0.0.1
         version: 0.0.1(ts-node@10.9.2(@types/node@24.0.7)(typescript@5.5.4))
@@ -32,6 +35,9 @@ importers:
       typescript:
         specifier: 5.5.4
         version: 5.5.4
+      uuid:
+        specifier: ^11.1.0
+        version: 11.1.0
 
   packages/backend:
     dependencies:
@@ -134,6 +140,11 @@ packages:
 
   '@caido/primevue@0.1.2':
     resolution: {integrity: sha512-PCv6qyvlWEKB97PLRzPHDjs7ZGW5JQrD6jvJiMEiprfu4IR5/dXiqRJ4M5g293qn+RAffBuiXcna0vWSxrg5lQ==}
+
+  '@caido/primevue@0.2.1':
+    resolution: {integrity: sha512-sAY5EsV5ADyvFoxP/ViVID6a4WcHxIwaV8TNZWZQWcjWmBbCPoY/zr8VzUo/sgiOXoF15uGVePvFKmKtZClJRA==}
+    peerDependencies:
+      primevue: 4.1.0
 
   '@caido/quickjs-types@0.17.2':
     resolution: {integrity: sha512-5kcucGORMNEbcdU91yKLYZG/TFDqsO6XmCZ1TnU6V48E61mmqrJg6kjrfOFP1WOugDm+ZcGd/Su3p3XkFXfaPg==}
@@ -2673,6 +2684,10 @@ snapshots:
       ajv: 8.17.1
 
   '@caido/primevue@0.1.2': {}
+
+  '@caido/primevue@0.2.1(primevue@4.1.0(vue@3.4.37(typescript@5.5.4)))':
+    dependencies:
+      primevue: 4.1.0(vue@3.4.37(typescript@5.5.4))
 
   '@caido/quickjs-types@0.17.2': {}
 
