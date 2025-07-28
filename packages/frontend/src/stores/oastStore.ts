@@ -49,7 +49,9 @@ interface PollingListItem {
  */
 export const useOastStore = defineStore("oast", () => {
   const sdk = useSDK();
-  const interactions = ref<OastInteraction[]>([]);
+  const tabs = ref([{ id: "default", name: "Tab 1" }]);
+  const activeTabId = ref("default");
+  const interactions = ref<Record<string, OastInteraction[]>>({ default: [] });
   const activeProviders = ref<Record<string, any>>({}); // Stores data for active providers by type
   const pollingList = ref<PollingListItem[]>([]);
   const pollingFunctions = ref<Record<string, () => void>>({});
@@ -59,26 +61,46 @@ export const useOastStore = defineStore("oast", () => {
   const isOastTabActive = ref(false);
 
   // Storage keys for persisting data between sessions
-  const storageKeyInteractions = "omnioast.interactions";
+  const storageKeyOastData = "omnioast.oastData";
   const storageKeyActiveProviders = "omnioast.activeProviders";
   const storageKeyPollingList = "omnioast.pollingList";
 
   /**
-   * Loads saved interactions from storage
+   * Loads saved interactions and tabs from storage
    */
   const loadInteractions = () => {
     const storage = sdk.storage.get() as Record<string, any> | null;
-    if (storage && storage[storageKeyInteractions]) {
-      interactions.value = storage[storageKeyInteractions];
+    if (storage && storage[storageKeyOastData]) {
+      const oastData = storage[storageKeyOastData];
+      if (oastData.tabs && oastData.interactions && oastData.activeTabId) {
+        tabs.value = oastData.tabs;
+        interactions.value = oastData.interactions;
+        activeTabId.value = oastData.activeTabId;
+        
+        if (tabs.value.length === 0) {
+            tabs.value = [{ id: "default", name: "Tab 1" }];
+            interactions.value = { default: [] };
+            activeTabId.value = "default";
+        }
+        return;
+      }
     }
+    
+    tabs.value = [{ id: "default", name: "Tab 1" }];
+    interactions.value = { default: [] };
+    activeTabId.value = "default";
   };
 
   /**
-   * Saves current interactions to persistent storage
+   * Saves current interactions and tabs to persistent storage
    */
   const saveInteractions = async () => {
     const storage = (sdk.storage.get() as Record<string, any>) || {};
-    storage[storageKeyInteractions] = interactions.value;
+    storage[storageKeyOastData] = {
+        tabs: tabs.value,
+        interactions: interactions.value,
+        activeTabId: activeTabId.value,
+    };
     await sdk.storage.set(storage);
   };
 
@@ -87,7 +109,10 @@ export const useOastStore = defineStore("oast", () => {
    * @param interaction The new OAST interaction to add
    */
   const addInteraction = async (interaction: OastInteraction) => {
-    interactions.value.unshift(interaction);
+    if (!interactions.value[activeTabId.value]) {
+      interactions.value[activeTabId.value] = [];
+    }
+    interactions.value[activeTabId.value].unshift(interaction);
     await saveInteractions();
     // OAST 탭이 활성화되어 있지 않을 때만 count 증가
     if (!isOastTabActive.value) {
@@ -101,10 +126,43 @@ export const useOastStore = defineStore("oast", () => {
   };
 
   /**
-   * Clears all stored interactions
+   * Clears all stored interactions for the active tab
    */
   const clearInteractions = async () => {
-    interactions.value = [];
+    if (interactions.value[activeTabId.value]) {
+      interactions.value[activeTabId.value] = [];
+      await saveInteractions();
+    }
+  };
+
+  const addTab = async () => {
+    const newTabId = `tab-${Date.now()}`;
+    const newTabName = `Tab ${tabs.value.length + 1}`;
+    tabs.value.push({ id: newTabId, name: newTabName });
+    interactions.value[newTabId] = [];
+    activeTabId.value = newTabId;
+    await saveInteractions();
+  };
+
+  const removeTab = async (tabId: string) => {
+    const tabIndex = tabs.value.findIndex(t => t.id === tabId);
+    if (tabIndex > -1) {
+        tabs.value.splice(tabIndex, 1);
+        delete interactions.value[tabId];
+
+        if (activeTabId.value === tabId) {
+            if (tabs.value.length > 0) {
+                activeTabId.value = tabs.value[Math.max(0, tabIndex - 1)].id;
+            } else {
+                addTab();
+            }
+        }
+        await saveInteractions();
+    }
+  };
+
+  const setActiveTab = async (tabId: string) => {
+    activeTabId.value = tabId;
     await saveInteractions();
   };
 
@@ -135,9 +193,22 @@ export const useOastStore = defineStore("oast", () => {
    * @param type Provider type to clear data for
    */
   const clearProviderData = async (type: string) => {
-    delete activeProviders.value[type];
-    const storage = (sdk.storage.get() as Record<string, any>) || {};
-    delete storage[storageKeyActiveProviders];
+    // Update local state first
+    const newActiveProviders = Object.fromEntries(
+      Object.entries(activeProviders.value).filter(([key]) => key !== type)
+    );
+    activeProviders.value = newActiveProviders;
+
+    // Update persistent storage
+    const storage = (sdk.storage.get() || {}) as Record<string, any>; 
+    
+    // Ensure storage[storageKeyActiveProviders] is an object, or initialize it
+    if (!storage[storageKeyActiveProviders] || typeof storage[storageKeyActiveProviders] !== 'object') {
+      storage[storageKeyActiveProviders] = {};
+    }
+    
+    // Now it's safe to delete the property
+    delete (storage[storageKeyActiveProviders] as Record<string, any>)[type];
     await sdk.storage.set(storage);
   };
 
@@ -201,13 +272,15 @@ export const useOastStore = defineStore("oast", () => {
   ) => {
     const index = pollingList.value.findIndex((p) => p.id === pollingId);
     if (index !== -1) {
-      const currentPolling = pollingList.value[index] as PollingListItem;
-      const updatedPolling: PollingListItem = {
-        ...currentPolling,
-        lastPolled: timestamp,
-      };
-      pollingList.value.splice(index, 1, updatedPolling);
-      await savePollingList();
+      const currentPolling = pollingList.value[index];
+      if (currentPolling) { // Explicit check for undefined
+        const updatedPolling: PollingListItem = {
+          ...currentPolling,
+          lastPolled: timestamp,
+        };
+        pollingList.value.splice(index, 1, updatedPolling);
+        await savePollingList();
+      }
     }
   };
 
@@ -250,6 +323,8 @@ export const useOastStore = defineStore("oast", () => {
   };
 
   return {
+    tabs,
+    activeTabId,
     interactions,
     activeProviders,
     pollingList,
@@ -265,5 +340,8 @@ export const useOastStore = defineStore("oast", () => {
     clearUnreadCount,
     unreadCount,
     setOastTabActive,
+    addTab,
+    removeTab,
+    setActiveTab,
   };
 });
