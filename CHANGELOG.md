@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 - No changes yet
 
+## 0.3.0
+### Added
+- Improved "Quick Add" button functionality
+- Added Polling Tasks page
+- Added sidebar count display
+- Added support for multiple tabs in OAST Tab
+
+### Changed
+- Standardized timestamp formats for OAST interactions by provider
+
 ## 0.2.0
 ### Added
 - Support for Webhook.site provider to enable external webhook testing
