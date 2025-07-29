@@ -5,6 +5,7 @@
     </div>
 
     <DataTable :value="pollingList" responsive-layout="scroll">
+      <Column field="tabName" header="Tab" :sortable="true"></Column>
       <Column field="provider" header="Provider" :sortable="true"></Column>
       <Column field="payload" header="Payload"></Column>
       <Column field="lastPolled" header="Last Polled" :sortable="true">
