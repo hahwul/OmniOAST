@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { ref, nextTick } from 'vue';
 import { useOastStore } from '@/stores/oastStore';
 
 const oastStore = useOastStore();
+const editingTabId = ref<string | null>(null);
+const editingName = ref('');
 
 const addTab = () => {
   oastStore.addTab();
@@ -14,6 +17,21 @@ const removeTab = (tabId: string) => {
 const setActiveTab = (tabId: string) => {
   oastStore.setActiveTab(tabId);
 };
+
+const startEditing = (tab: any) => {
+  editingTabId.value = tab.id;
+  editingName.value = tab.name;
+  nextTick(() => {
+    const input = document.getElementById(`tab-input-${tab.id}`);
+    input?.focus();
+  });
+};
+
+const finishEditing = (tabId: string) => {
+  if (editingName.value.trim() === '') return;
+  oastStore.updateTabName(tabId, editingName.value);
+  editingTabId.value = null;
+};
 </script>
 
 <template>
@@ -25,8 +43,19 @@ const setActiveTab = (tabId: string) => {
         class="tab-item"
         :class="{ 'active-tab': oastStore.activeTabId === tab.id }"
         @click="setActiveTab(tab.id)"
+        @dblclick="startEditing(tab)"
       >
-        <span>{{ tab.name }}</span>
+        <span v-if="editingTabId !== tab.id">{{ tab.name }}</span>
+        <input
+          v-else
+          :id="`tab-input-${tab.id}`"
+          v-model="editingName"
+          type="text"
+          class="tab-input"
+          @blur="finishEditing(tab.id)"
+          @keyup.enter="finishEditing(tab.id)"
+          @keyup.esc="editingTabId = null"
+        />
         <button class="close-tab-btn" @click.stop="removeTab(tab.id)">x</button>
       </div>
     </div>
@@ -64,6 +93,12 @@ const setActiveTab = (tabId: string) => {
 .active-tab {
   background-color: #e0e0e0;
   font-weight: bold;
+}
+
+.tab-input {
+  border: 1px solid #ccc;
+  padding: 2px 4px;
+  width: 80px;
 }
 
 .close-tab-btn {

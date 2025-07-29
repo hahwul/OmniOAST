@@ -122,14 +122,35 @@ export const useOastStore = defineStore("oast", () => {
    * Adds a new tab
    */
   const addTab = () => {
+    const existingNames = new Set(tabs.value.map(t => t.name));
+    let newName = 1;
+    while (existingNames.has(String(newName))) {
+      newName++;
+    }
+
     const newTab: OastTab = {
       id: uuidv4(),
-      name: `Tab ${tabs.value.length + 1}`,
+      name: String(newName),
       interactions: [],
     };
     tabs.value.push(newTab);
     activeTabId.value = newTab.id;
     saveTabs();
+  };
+
+  const updateTabName = async (tabId: string, newName: string) => {
+    const tab = tabs.value.find(t => t.id === tabId);
+    if (tab) {
+      tab.name = newName;
+      await saveTabs();
+
+      pollingList.value.forEach(p => {
+        if (p.tabId === tabId) {
+          p.tabName = newName;
+        }
+      });
+      await savePollingList();
+    }
   };
 
   /**
@@ -353,5 +374,6 @@ export const useOastStore = defineStore("oast", () => {
     clearUnreadCount,
     unreadCount,
     setOastTabActive,
+    updateTabName,
   };
 });
