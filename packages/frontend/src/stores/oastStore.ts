@@ -1,5 +1,6 @@
+import { v4 as uuidv4 } from "uuid";
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 
 import { useSDK } from "@/plugins/sdk";
 
@@ -33,6 +34,8 @@ interface Polling {
   lastPolled: number; // Timestamp
   interval: number; // Polling interval in milliseconds
   stop: () => void;
+  tabId: string;
+  tabName: string;
 }
 
 interface PollingListItem {
@@ -41,6 +44,17 @@ interface PollingListItem {
   provider: string;
   lastPolled: number;
   interval: number;
+  tabId: string;
+  tabName: string;
+}
+
+/**
+ * Interface representing a single OAST tab state
+ */
+interface OastTab {
+  id: string;
+  name: string;
+  interactions: OastInteraction[];
 }
 
 /**
@@ -49,7 +63,9 @@ interface PollingListItem {
  */
 export const useOastStore = defineStore("oast", () => {
   const sdk = useSDK();
-  const interactions = ref<OastInteraction[]>([]);
+  const tabs = ref<OastTab[]>([]);
+  const activeTabId = ref<string | null>(null);
+
   const activeProviders = ref<Record<string, any>>({}); // Stores data for active providers by type
   const pollingList = ref<PollingListItem[]>([]);
   const pollingFunctions = ref<Record<string, () => void>>({});
@@ -59,53 +75,142 @@ export const useOastStore = defineStore("oast", () => {
   const isOastTabActive = ref(false);
 
   // Storage keys for persisting data between sessions
-  const storageKeyInteractions = "omnioast.interactions";
+  const storageKeyTabs = "omnioast.tabs";
+  const storageKeyActiveTabId = "omnioast.activeTabId";
   const storageKeyActiveProviders = "omnioast.activeProviders";
   const storageKeyPollingList = "omnioast.pollingList";
 
+  const activeTab = computed(() => {
+    if (!activeTabId.value) return null;
+    return tabs.value.find((t) => t.id === activeTabId.value) || null;
+  });
+
+  const interactions = computed(() => {
+    return activeTab.value ? activeTab.value.interactions : [];
+  });
+
   /**
-   * Loads saved interactions from storage
+   * Loads saved tabs and active tab from storage
    */
-  const loadInteractions = () => {
+  const loadTabs = () => {
     const storage = sdk.storage.get() as Record<string, any> | null;
-    if (storage && storage[storageKeyInteractions]) {
-      interactions.value = storage[storageKeyInteractions];
+    if (storage && storage[storageKeyTabs]) {
+      tabs.value = storage[storageKeyTabs];
+      activeTabId.value = storage[storageKeyActiveTabId] || null;
+
+      if (tabs.value.length > 0 && !activeTabId.value) {
+        activeTabId.value = tabs.value[0]!.id;
+      }
+    }
+
+    if (tabs.value.length === 0) {
+      addTab();
     }
   };
 
   /**
-   * Saves current interactions to persistent storage
+   * Saves current tabs and active tab to persistent storage
    */
-  const saveInteractions = async () => {
+  const saveTabs = async () => {
     const storage = (sdk.storage.get() as Record<string, any>) || {};
-    storage[storageKeyInteractions] = interactions.value;
+    storage[storageKeyTabs] = tabs.value;
+    storage[storageKeyActiveTabId] = activeTabId.value;
     await sdk.storage.set(storage);
   };
 
   /**
-   * Adds a new interaction to the store and persists it
+   * Adds a new tab
+   */
+  const addTab = () => {
+    const existingNames = new Set(tabs.value.map((t) => t.name));
+    let newName = 1;
+    while (existingNames.has(String(newName))) {
+      newName++;
+    }
+
+    const newTab: OastTab = {
+      id: uuidv4(),
+      name: String(newName),
+      interactions: [],
+    };
+    tabs.value.push(newTab);
+    activeTabId.value = newTab.id;
+    saveTabs();
+  };
+
+  const updateTabName = async (tabId: string, newName: string) => {
+    const tab = tabs.value.find((t) => t.id === tabId);
+    if (tab) {
+      tab.name = newName;
+      await saveTabs();
+
+      pollingList.value.forEach((p) => {
+        if (p.tabId === tabId) {
+          p.tabName = newName;
+        }
+      });
+      await savePollingList();
+    }
+  };
+
+  /**
+   * Removes a tab
+   * @param tabId The ID of the tab to remove
+   */
+  const removeTab = (tabId: string) => {
+    const index = tabs.value.findIndex((t) => t.id === tabId);
+    if (index > -1) {
+      tabs.value.splice(index, 1);
+      if (activeTabId.value === tabId) {
+        activeTabId.value = tabs.value.length > 0 ? tabs.value[0]!.id : null;
+      }
+      saveTabs();
+    }
+  };
+
+  /**
+   * Sets the active tab
+   * @param tabId The ID of the tab to set as active
+   */
+  const setActiveTab = (tabId: string) => {
+    activeTabId.value = tabId;
+    saveTabs();
+  };
+
+  /**
+   * Adds a new interaction to the active tab and persists it
    * @param interaction The new OAST interaction to add
    */
-  const addInteraction = async (interaction: OastInteraction) => {
-    interactions.value.unshift(interaction);
-    await saveInteractions();
-    // OAST 탭이 활성화되어 있지 않을 때만 count 증가
-    if (!isOastTabActive.value) {
-      unreadCount.value += 1;
-      // SidebarItem의 setCount 사용
-      const sidebarItem = (window as any).oastSidebarItem;
-      if (sidebarItem && typeof sidebarItem.setCount === "function") {
-        sidebarItem.setCount(unreadCount.value);
+  const addInteraction = async (
+    interaction: OastInteraction,
+    tabId?: string,
+  ) => {
+    const targetTab = tabId
+      ? tabs.value.find((t) => t.id === tabId)
+      : activeTab.value;
+
+    if (targetTab) {
+      targetTab.interactions.unshift(interaction);
+      await saveTabs();
+
+      if (!isOastTabActive.value) {
+        unreadCount.value += 1;
+        const sidebarItem = (window as any).oastSidebarItem;
+        if (sidebarItem && typeof sidebarItem.setCount === "function") {
+          sidebarItem.setCount(unreadCount.value);
+        }
       }
     }
   };
 
   /**
-   * Clears all stored interactions
+   * Clears all stored interactions for the active tab
    */
   const clearInteractions = async () => {
-    interactions.value = [];
-    await saveInteractions();
+    if (activeTab.value) {
+      activeTab.value.interactions = [];
+      await saveTabs();
+    }
   };
 
   /**
@@ -156,7 +261,9 @@ export const useOastStore = defineStore("oast", () => {
               typeof item.payload === "string" &&
               typeof item.provider === "string" &&
               typeof item.lastPolled === "number" &&
-              typeof item.interval === "number"
+              typeof item.interval === "number" &&
+              typeof item.tabId === "string" &&
+              typeof item.tabName === "string"
             );
           },
         );
@@ -184,6 +291,8 @@ export const useOastStore = defineStore("oast", () => {
       provider: polling.provider,
       lastPolled: polling.lastPolled,
       interval: polling.interval,
+      tabId: polling.tabId,
+      tabName: polling.tabName,
     };
     pollingList.value.push(newPollingItem);
     pollingFunctions.value[polling.id] = polling.stop;
@@ -226,7 +335,7 @@ export const useOastStore = defineStore("oast", () => {
   };
 
   // Initial load of stored data when the store is created
-  loadInteractions();
+  loadTabs();
   loadProviderData();
   loadPollingList();
 
@@ -250,14 +359,19 @@ export const useOastStore = defineStore("oast", () => {
   };
 
   return {
+    tabs,
+    activeTabId,
+    activeTab,
     interactions,
     activeProviders,
     pollingList,
+    addTab,
+    removeTab,
+    setActiveTab,
     addInteraction,
     clearInteractions,
     saveProviderData,
     clearProviderData,
-    loadInteractions,
     loadProviderData,
     addPolling,
     updatePollingLastPolled,
@@ -265,5 +379,6 @@ export const useOastStore = defineStore("oast", () => {
     clearUnreadCount,
     unreadCount,
     setOastTabActive,
+    updateTabName,
   };
 });

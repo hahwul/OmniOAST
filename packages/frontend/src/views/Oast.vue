@@ -14,6 +14,7 @@ import { useSDK } from "@/plugins/sdk";
 import { useClientService } from "@/services/interactsh";
 import { useOastStore } from "@/stores/oastStore";
 import { formatTimestamp } from "@/utils/time";
+import OastTabs from "./OastTabs.vue";
 
 const { copy } = useClipboard();
 const sdk = useSDK();
@@ -99,6 +100,12 @@ const loadProviders = async () => {
 };
 
 async function getPayload() {
+    const activeTab = oastStore.activeTab;
+    if (!activeTab) {
+        toast.add({ severity: 'error', summary: 'Error', detail: 'No active tab found', life: 3000 });
+        return;
+    }
+
     const currentProvider = availableProviders.value.find(
         (p) => p.id === selectedProviderA.value,
     );
@@ -128,6 +135,7 @@ async function getPayload() {
     let payloadUrl = "";
     let stopPolling: () => void;
 
+    const pollingId = uuidv4();
     const updateLastPolled = () => {
         oastStore.updatePollingLastPolled(pollingId, Date.now());
     };
@@ -160,7 +168,7 @@ async function getPayload() {
                         timestamp: formatTimestamp(interaction.timestamp),
                         rawRequest: String(interaction["raw-request"]),
                         rawResponse: String(interaction["raw-response"]),
-                    });
+                    }, activeTab.id);
                     updateLastPolled();
                 },
             );
@@ -197,13 +205,13 @@ async function getPayload() {
                 const pollFunction = () => {
                     switch (currentProvider.type) {
                         case "BOAST":
-                            pollBoastEvents(currentProvider);
+                            pollBoastEvents(currentProvider, activeTab.id);
                             break;
                         case "webhooksite":
-                            pollWebhooksiteEvents(currentProvider);
+                            pollWebhooksiteEvents(currentProvider, activeTab.id);
                             break;
                         case "postbin":
-                            pollPostbinEvents(currentProvider);
+                            pollPostbinEvents(currentProvider, activeTab.id);
                             break;
                     }
                     updateLastPolled();
@@ -247,7 +255,6 @@ async function getPayload() {
     }
 
     const providerId = currentProvider.id;
-    const pollingId = uuidv4();
     activePollingSessions.value[providerId] = pollingId;
 
     oastStore.addPolling({
@@ -260,6 +267,8 @@ async function getPayload() {
             stopPolling();
             delete activePollingSessions.value[providerId];
         },
+        tabId: activeTab.id,
+        tabName: activeTab.name,
     });
 }
 
@@ -275,7 +284,7 @@ function clearInteractions() {
 }
 
 // Helper function for BOAST polling
-async function pollBoastEvents(provider: Provider) {
+async function pollBoastEvents(provider: Provider, tabId: string) {
     if (!provider) {
         console.error("BOAST polling called without a provider.");
         return;
@@ -301,7 +310,7 @@ async function pollBoastEvents(provider: Provider) {
                         timestamp: formatTimestamp(event.timestamp),
                         rawRequest: event.rawRequest,
                         rawResponse: event.rawResponse,
-                    });
+                    }, tabId);
                 }
             });
             toast.add({
@@ -323,7 +332,7 @@ async function pollBoastEvents(provider: Provider) {
 }
 
 // Helper function for webhook.site polling
-async function pollWebhooksiteEvents(provider: Provider) {
+async function pollWebhooksiteEvents(provider: Provider, tabId: string) {
     if (!provider) {
         console.error("Webhook.site polling called without a provider.");
         return;
@@ -349,7 +358,7 @@ async function pollWebhooksiteEvents(provider: Provider) {
                         timestamp: formatTimestamp(event.timestamp),
                         rawRequest: event.rawRequest,
                         rawResponse: event.rawResponse,
-                    });
+                    }, tabId);
                 }
             });
             toast.add({
@@ -371,7 +380,7 @@ async function pollWebhooksiteEvents(provider: Provider) {
 }
 
 // Helper function for PostBin polling
-async function pollPostbinEvents(provider: Provider) {
+async function pollPostbinEvents(provider: Provider, tabId: string) {
     if (!provider) {
         console.error("PostBin polling called without a provider.");
         return;
@@ -397,7 +406,7 @@ async function pollPostbinEvents(provider: Provider) {
                         timestamp: formatTimestamp(event.timestamp),
                         rawRequest: event.rawRequest,
                         rawResponse: event.rawResponse,
-                    });
+                    }, tabId);
                 }
             });
             toast.add({
@@ -418,44 +427,39 @@ async function pollPostbinEvents(provider: Provider) {
     }
 }
 
-// Modified pollInteractions to handle both Interactsh and BOAST
 async function pollInteractions() {
-    console.log("Poll Interactions clicked");
-    const currentProvider = availableProviders.value.find(
-        (p) => p.id === selectedProviderA.value,
-    );
-
-    if (!currentProvider) {
-        toast.add({
-            severity: "warn",
-            summary: "Warning",
-            detail: "Please select a provider first",
-            life: 3000,
-        });
+    const activeTab = oastStore.activeTab;
+    if (!activeTab) {
+        toast.add({ severity: 'error', summary: 'Error', detail: 'No active tab found', life: 3000 });
         return;
     }
 
-    if (currentProvider.type === "interactsh") {
-        clientService.poll();
-        toast.add({
-            severity: "info",
-            summary: "Info",
-            detail: "Polling for Interactsh events...",
-            life: 2000,
-        });
-    } else if (currentProvider.type === "BOAST") {
-        await pollBoastEvents(currentProvider);
-    } else if (currentProvider.type === "webhooksite") {
-        await pollWebhooksiteEvents(currentProvider);
-    } else if (currentProvider.type === "postbin") {
-        await pollPostbinEvents(currentProvider);
-    } else {
-        toast.add({
-            severity: "warn",
-            summary: "Warning",
-            detail: `Polling not implemented for provider type: ${currentProvider.type}`,
-            life: 3000,
-        });
+    const tabPollingTasks = oastStore.pollingList.filter(p => p.tabId === activeTab.id);
+    if (tabPollingTasks.length === 0) {
+        toast.add({ severity: 'info', summary: 'Info', detail: 'No active polling tasks for this tab', life: 3000 });
+        return;
+    }
+
+    toast.add({ severity: 'info', summary: 'Info', detail: `Polling ${tabPollingTasks.length} task(s) for this tab...`, life: 2000 });
+
+    for (const task of tabPollingTasks) {
+        const provider = availableProviders.value.find(p => p.name === task.provider);
+        if (!provider) continue;
+
+        switch (provider.type) {
+            case 'interactsh':
+                clientService.poll();
+                break;
+            case 'BOAST':
+                await pollBoastEvents(provider, activeTab.id);
+                break;
+            case 'webhooksite':
+                await pollWebhooksiteEvents(provider, activeTab.id);
+                break;
+            case 'postbin':
+                await pollPostbinEvents(provider, activeTab.id);
+                break;
+        }
     }
 }
 
@@ -566,6 +570,7 @@ watch(
 
 <template>
     <div class="h-full flex flex-col gap-1">
+        <OastTabs />
         <div
             class="w-full h-3/5 bg-surface-0 dark:bg-surface-800 rounded flex flex-col"
         >
