@@ -28,7 +28,7 @@ interface OastInteraction {
  * Interface representing a polling OAST payload
  */
 interface Polling {
-  id:string;
+  id: string;
   payload: string;
   provider: string;
   lastPolled: number; // Timestamp
@@ -99,7 +99,7 @@ export const useOastStore = defineStore("oast", () => {
       activeTabId.value = storage[storageKeyActiveTabId] || null;
 
       if (tabs.value.length > 0 && !activeTabId.value) {
-        activeTabId.value = tabs.value[0].id;
+        activeTabId.value = tabs.value[0]!.id;
       }
     }
 
@@ -122,7 +122,7 @@ export const useOastStore = defineStore("oast", () => {
    * Adds a new tab
    */
   const addTab = () => {
-    const existingNames = new Set(tabs.value.map(t => t.name));
+    const existingNames = new Set(tabs.value.map((t) => t.name));
     let newName = 1;
     while (existingNames.has(String(newName))) {
       newName++;
@@ -139,12 +139,12 @@ export const useOastStore = defineStore("oast", () => {
   };
 
   const updateTabName = async (tabId: string, newName: string) => {
-    const tab = tabs.value.find(t => t.id === tabId);
+    const tab = tabs.value.find((t) => t.id === tabId);
     if (tab) {
       tab.name = newName;
       await saveTabs();
 
-      pollingList.value.forEach(p => {
+      pollingList.value.forEach((p) => {
         if (p.tabId === tabId) {
           p.tabName = newName;
         }
@@ -162,7 +162,7 @@ export const useOastStore = defineStore("oast", () => {
     if (index > -1) {
       tabs.value.splice(index, 1);
       if (activeTabId.value === tabId) {
-        activeTabId.value = tabs.value.length > 0 ? tabs.value[0].id : null;
+        activeTabId.value = tabs.value.length > 0 ? tabs.value[0]!.id : null;
       }
       saveTabs();
     }
@@ -181,8 +181,13 @@ export const useOastStore = defineStore("oast", () => {
    * Adds a new interaction to the active tab and persists it
    * @param interaction The new OAST interaction to add
    */
-  const addInteraction = async (interaction: OastInteraction, tabId?: string) => {
-    const targetTab = tabId ? tabs.value.find((t) => t.id === tabId) : activeTab.value;
+  const addInteraction = async (
+    interaction: OastInteraction,
+    tabId?: string,
+  ) => {
+    const targetTab = tabId
+      ? tabs.value.find((t) => t.id === tabId)
+      : activeTab.value;
 
     if (targetTab) {
       targetTab.interactions.unshift(interaction);
