@@ -427,6 +427,42 @@ async function pollPostbinEvents(provider: Provider, tabId: string) {
     }
 }
 
+async function pollInteractions() {
+    const activeTab = oastStore.activeTab;
+    if (!activeTab) {
+        toast.add({ severity: 'error', summary: 'Error', detail: 'No active tab found', life: 3000 });
+        return;
+    }
+
+    const tabPollingTasks = oastStore.pollingList.filter(p => p.tabId === activeTab.id);
+    if (tabPollingTasks.length === 0) {
+        toast.add({ severity: 'info', summary: 'Info', detail: 'No active polling tasks for this tab', life: 3000 });
+        return;
+    }
+
+    toast.add({ severity: 'info', summary: 'Info', detail: `Polling ${tabPollingTasks.length} task(s) for this tab...`, life: 2000 });
+
+    for (const task of tabPollingTasks) {
+        const provider = availableProviders.value.find(p => p.name === task.provider);
+        if (!provider) continue;
+
+        switch (provider.type) {
+            case 'interactsh':
+                clientService.poll();
+                break;
+            case 'BOAST':
+                await pollBoastEvents(provider, activeTab.id);
+                break;
+            case 'webhooksite':
+                await pollWebhooksiteEvents(provider, activeTab.id);
+                break;
+            case 'postbin':
+                await pollPostbinEvents(provider, activeTab.id);
+                break;
+        }
+    }
+}
+
 function copyToClipboard(value: string, field: string) {
     if (!value) {
         toast.add({
@@ -569,6 +605,12 @@ watch(
                             icon="fa fa-trash"
                             class="p-button-warning"
                             @click="clearInteractions"
+                        />
+                        <Button
+                            label="Poll"
+                            icon="fa fa-refresh"
+                            class="p-button-secondary"
+                            @click="pollInteractions"
                         />
                     </div>
                 </div>
