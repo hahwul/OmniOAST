@@ -19,6 +19,7 @@ OmniOAST is a [Caido](https://caido.io) plugin designed to streamline your Out-o
 - **Unified Interaction Log**: View, search, and filter all OAST callbacks in one place, directly within Caido.
 - **Streamlined Workflow**: Generate payloads and monitor interactions without switching between tools.
 - **Flexible Configuration**: Supports public and self-hosted providers like Interactsh, BOAST, Webhook.site, and PostBin.
+- **Tab-based Management**: Manage interactions and polling on a per-tab basis, allowing you to separate OAST activities according to your testing objectives.
 
 ## Installation
 
