@@ -21,7 +21,7 @@ OmniOAST is a [Caido](https://caido.io) plugin designed to streamline your Out-o
 - **Flexible Configuration**: Supports public and self-hosted providers like Interactsh, BOAST, Webhook.site, and PostBin.
 - **Tab-based Management**: Manage interactions and polling on a per-tab basis, allowing you to separate OAST activities according to your testing objectives.
 
-## Get started in a flash! ⚡️
+## Getting Started ⚡️
 
 ### From the Community Store (Recommended)
 
