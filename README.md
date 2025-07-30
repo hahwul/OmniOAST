@@ -21,12 +21,24 @@ OmniOAST is a [Caido](https://caido.io) plugin designed to streamline your Out-o
 - **Flexible Configuration**: Supports public and self-hosted providers like Interactsh, BOAST, Webhook.site, and PostBin.
 - **Tab-based Management**: Manage interactions and polling on a per-tab basis, allowing you to separate OAST activities according to your testing objectives.
 
-## Installation
+## Get started in a flash! ⚡️
 
-1.  Download the latest `plugin_package.zip` from the [Releases page](https://github.com/hahwul/OmniOAST/releases).
-2.  In Caido, navigate to the `Plugins` page and install the package.
+### From the Community Store (Recommended)
 
-*We hope to see you on the Caido Plugin Marketplace!*
+Getting OmniOAST up and running is a breeze.
+
+1.  Head over to the **Plugins** page in Caido.
+2.  Open the **Community Store**.
+3.  Type **"OmniOAST"** into the search bar.
+4.  Click **Install**, and you're all set! ✨
+
+### The old-school way (Manual)
+
+If you prefer to do things by hand, we've got you covered.
+
+1.  Grab the latest `plugin_package.zip` from our [Releases page](https://github.com/hahwul/OmniOAST/releases).
+2.  In Caido, go to the **Plugins** page.
+3.  Click **'Install Package'** and select the file you just downloaded.
 
 ## Usage
 
