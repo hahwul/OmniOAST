@@ -38,7 +38,7 @@ If you prefer to do things by hand, we've got you covered.
 
 1.  Grab the latest `plugin_package.zip` from our [Releases page](https://github.com/hahwul/OmniOAST/releases).
 2.  In Caido, go to the **Plugins** page.
-3.  Click **'Install Package'** and select the file you just downloaded.
+3.  Click **Install Package** and select the file you just downloaded.
 
 ## Usage
 
