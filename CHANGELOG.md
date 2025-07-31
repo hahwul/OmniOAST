@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 - No changes yet
 
+## 0.3.1
+### Changed
+- Fixed bug in installation
+
 ## 0.3.0
 ### Added
 - Improved "Quick Add" button functionality
