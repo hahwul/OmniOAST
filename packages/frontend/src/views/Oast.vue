@@ -28,7 +28,14 @@ const responseEditor = ref<any>(null);
 const requestContainer = ref<HTMLElement | null>(null);
 const responseContainer = ref<HTMLElement | null>(null);
 
-const selectedProviderA = ref<string | undefined>(undefined); // Get Payload용
+const selectedProviderA = computed({
+    get: () => oastStore.activeTab ? oastStore.tabProviders[oastStore.activeTab.id] || '' : '',
+    set: (value) => {
+        if (oastStore.activeTab) {
+            oastStore.setTabProvider(oastStore.activeTab.id, value);
+        }
+    },
+});
 const selectedProviderB = ref<string | undefined>(undefined); // Interaction 필터용
 const availableProviders = ref<Provider[]>([]);
 
@@ -38,15 +45,6 @@ const availableProvidersWithAll = computed(() => [
 ]);
 
 onMounted(() => {
-    watch(
-        availableProviders,
-        (providers) => {
-            if (!selectedProviderA.value && providers.length > 0) {
-                selectedProviderA.value = providers[0]?.id;
-            }
-        },
-        { immediate: true },
-    );
 });
 const selectedInteraction = ref<any>(null);
 const payloadInput = computed({

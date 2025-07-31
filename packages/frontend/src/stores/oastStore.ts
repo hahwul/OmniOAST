@@ -68,6 +68,7 @@ export const useOastStore = defineStore("oast", () => {
 
   const activeProviders = ref<Record<string, any>>({}); // Stores data for active providers by type
   const tabPayloads = ref<Record<string, string>>({});
+  const tabProviders = ref<Record<string, string>>({});
   const pollingList = ref<PollingListItem[]>([]);
   const pollingFunctions = ref<Record<string, () => void>>({});
   // Unread count for sidebar badge
@@ -81,6 +82,7 @@ export const useOastStore = defineStore("oast", () => {
   const storageKeyActiveProviders = "omnioast.activeProviders";
   const storageKeyPollingList = "omnioast.pollingList";
   const storageKeyTabPayloads = "omnioast.tabPayloads";
+  const storageKeyTabProviders = "omnioast.tabProviders";
 
   const activeTab = computed(() => {
     if (!activeTabId.value) return null;
@@ -300,6 +302,24 @@ export const useOastStore = defineStore("oast", () => {
     await saveTabPayloads();
   };
 
+  const loadTabProviders = () => {
+    const storage = sdk.storage.get() as Record<string, any> | null;
+    if (storage && storage[storageKeyTabProviders]) {
+      tabProviders.value = storage[storageKeyTabProviders];
+    }
+  };
+
+  const saveTabProviders = async () => {
+    const storage = (sdk.storage.get() as Record<string, any>) || {};
+    storage[storageKeyTabProviders] = tabProviders.value;
+    await sdk.storage.set(storage);
+  };
+
+  const setTabProvider = async (tabId: string, provider: string) => {
+    tabProviders.value[tabId] = provider;
+    await saveTabProviders();
+  };
+
   /**
    * Adds a new polling to the store and persists it
    * @param polling The new OAST polling to add
@@ -359,6 +379,7 @@ export const useOastStore = defineStore("oast", () => {
   loadProviderData();
   loadPollingList();
   loadTabPayloads();
+  loadTabProviders();
 
   /**
    * Clears the unread count and updates the sidebar badge
@@ -387,6 +408,7 @@ export const useOastStore = defineStore("oast", () => {
     activeProviders,
     pollingList,
     tabPayloads,
+    tabProviders,
     addTab,
     removeTab,
     setActiveTab,
@@ -403,5 +425,6 @@ export const useOastStore = defineStore("oast", () => {
     setOastTabActive,
     updateTabName,
     setTabPayload,
+    setTabProvider,
   };
 });
