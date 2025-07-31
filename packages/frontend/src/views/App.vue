@@ -8,6 +8,7 @@ import Providers from "./Providers.vue";
 import Settings from "./Settings.vue";
 import About from "./About.vue";
 import Polling from "./Polling.vue";
+import ConfirmDialog from 'primevue/confirmdialog';
 
 const page = ref<"OAST" | "Providers" | "Settings" | "About" | "Polling">(
     "OAST",
@@ -125,6 +126,7 @@ const component = computed(() => {
             <div class="flex-1 min-h-0">
                 <component :is="component" />
             </div>
+            <ConfirmDialog />
         </div>
     </div>
 </template>

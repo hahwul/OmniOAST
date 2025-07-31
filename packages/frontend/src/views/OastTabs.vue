@@ -1,17 +1,26 @@
 <script setup lang="ts">
 import { ref, nextTick } from "vue";
 import { useOastStore } from "@/stores/oastStore";
+import { useConfirm } from "primevue/useconfirm";
 
 const oastStore = useOastStore();
 const editingTabId = ref<string | null>(null);
 const editingName = ref("");
+const confirm = useConfirm();
 
 const addTab = () => {
     oastStore.addTab();
 };
 
 const removeTab = (tabId: string) => {
-    oastStore.removeTab(tabId);
+    confirm.require({
+        message: "Are you sure you want to delete this tab?",
+        header: "Delete Tab",
+        icon: "pi pi-exclamation-triangle",
+        accept: () => {
+            oastStore.removeTab(tabId);
+        },
+    });
 };
 
 const setActiveTab = (tabId: string) => {
