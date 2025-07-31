@@ -7,8 +7,9 @@ All notable changes to this project will be documented in this file.
 
 ## 0.3.2
 ### Changed
-- Fixed 2 UI bug in OastTab
+- Fixed 2 UI bug in OAST Tab
 - Changed sub-tab size in OAST Tab
+- Add confirm when deleting sub tabs in the OAST tab
 
 ## 0.3.1
 ### Changed
