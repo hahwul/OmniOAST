@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 - No changes yet
 
+## 0.3.2
+### Changed
+- Fixed 2 UI bug in OastTab
+- Changed sub-tab size in OAST Tab
+
 ## 0.3.1
 ### Changed
 - Fixed bug in installation
