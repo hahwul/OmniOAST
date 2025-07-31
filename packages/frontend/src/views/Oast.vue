@@ -23,8 +23,6 @@ const oastStore = useOastStore();
 
 const clientService = useClientService();
 
-const props = defineProps<{ active: boolean }>();
-
 const requestEditor = ref<any>(null);
 const responseEditor = ref<any>(null);
 const requestContainer = ref<HTMLElement | null>(null);
@@ -51,7 +49,14 @@ onMounted(() => {
     );
 });
 const selectedInteraction = ref<any>(null);
-const payloadInput = ref("");
+const payloadInput = computed({
+    get: () => oastStore.activeTab ? oastStore.tabPayloads[oastStore.activeTab.id] || '' : '',
+    set: (value) => {
+        if (oastStore.activeTab) {
+            oastStore.setTabPayload(oastStore.activeTab.id, value);
+        }
+    },
+});
 const activePollingSessions = ref<Record<string, any>>({});
 
 const searchQuery = ref("");
@@ -248,11 +253,11 @@ async function getPayload() {
     }
 
     const prefix = settings?.payloadPrefix;
+    let finalPayload = payloadUrl;
     if (prefix) {
-        payloadInput.value = `${prefix}.${payloadUrl}`;
-    } else {
-        payloadInput.value = payloadUrl;
+        finalPayload = `${prefix}.${payloadUrl}`;
     }
+    payloadInput.value = finalPayload;
 
     const providerId = currentProvider.id;
     activePollingSessions.value[providerId] = pollingId;
@@ -558,14 +563,7 @@ watch(selectedInteraction, (interaction) => {
     }
 });
 
-watch(
-    () => props.active,
-    (isActive) => {
-        if (isActive) {
-            loadProviders();
-        }
-    },
-);
+
 </script>
 
 <template>
