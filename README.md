@@ -54,7 +54,12 @@ If you prefer to do things by hand, we've got you covered.
     - Select a provider from the dropdown to generate a new payload.
     - All interactions from your providers will appear in this tab in real-time. You can search and filter the results.
 
-3.  **Settings**:
+3.  **Polling Tasks**:
+    - In the **Polling** tab, you can view a list of all currently registered polling tasks.
+    - This allows you to monitor which payloads are actively being checked for interactions.
+    - If you no longer need to track a specific payload, you can select it from the list and click the "Remove" button to stop unnecessary polling.
+
+4.  **Settings**:
     - Navigate to the **Settings** tab to customize the polling interval for fetching interactions.
 
 ## Development
