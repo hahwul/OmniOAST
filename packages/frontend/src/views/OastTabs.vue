@@ -59,7 +59,10 @@ const finishEditing = (tabId: string) => {
                     @keyup.enter="finishEditing(tab.id)"
                     @keyup.esc="editingTabId = null"
                 />
-                <button class="close-tab-btn" @click.stop="removeTab(tab.id)">
+                <button
+                    class="close-tab-btn ml-8"
+                    @click.stop="removeTab(tab.id)"
+                >
                     x
                 </button>
             </div>
