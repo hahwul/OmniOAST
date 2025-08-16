@@ -567,6 +567,76 @@ watch(selectedInteraction, (interaction) => {
     }
 });
 
+// Function to poll all tabs - exposed globally for command access
+async function pollAllTabs() {
+    const allTabs = oastStore.tabs;
+    const allPollingTasks = oastStore.pollingList;
+    
+    if (allTabs.length === 0) {
+        toast.add({ 
+            severity: 'warn', 
+            summary: 'Warning', 
+            detail: 'No tabs available for polling', 
+            life: 3000 
+        });
+        return;
+    }
+
+    if (allPollingTasks.length === 0) {
+        toast.add({ 
+            severity: 'info', 
+            summary: 'Info', 
+            detail: 'No active polling tasks found across all tabs', 
+            life: 3000 
+        });
+        return;
+    }
+
+    let totalPolled = 0;
+    
+    for (const tab of allTabs) {
+        const tabPollingTasks = allPollingTasks.filter(p => p.tabId === tab.id);
+        if (tabPollingTasks.length === 0) continue;
+        
+        for (const task of tabPollingTasks) {
+            const provider = availableProviders.value.find(p => p.name === task.provider);
+            if (!provider) continue;
+
+            try {
+                switch (provider.type) {
+                    case 'interactsh':
+                        clientService.poll();
+                        break;
+                    case 'BOAST':
+                        await pollBoastEvents(provider, tab.id);
+                        break;
+                    case 'webhooksite':
+                        await pollWebhooksiteEvents(provider, tab.id);
+                        break;
+                    case 'postbin':
+                        await pollPostbinEvents(provider, tab.id);
+                        break;
+                }
+                totalPolled++;
+            } catch (error) {
+                console.error(`Error polling ${provider.type} for tab ${tab.name}:`, error);
+            }
+        }
+    }
+
+    toast.add({ 
+        severity: 'success', 
+        summary: 'Success', 
+        detail: `Polled ${totalPolled} task(s) across all tabs`, 
+        life: 3000 
+    });
+}
+
+// Expose function globally for command access
+onMounted(() => {
+    (window as any).omnioastPollAllTabs = pollAllTabs;
+});
+
 
 </script>
 

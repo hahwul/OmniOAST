@@ -56,4 +56,37 @@ export const init = (sdk: FrontendSDK) => {
     icon: "fas fa-satellite-dish",
   });
   (window as any).oastSidebarItem = oastSidebarItem;
+
+  // Register commands
+  // Command to navigate to OmniOAST page
+  sdk.commands.register("omnioast.goToOmniOAST", {
+    name: "Go to OmniOAST",
+    run: () => {
+      sdk.navigation.goTo("/omnioast");
+    },
+    group: "OmniOAST",
+  });
+
+  // Command to poll all tabs
+  sdk.commands.register("omnioast.pollAllTabs", {
+    name: "Polling All Tabs",
+    run: () => {
+      // Get the global polling function via window
+      const pollAllTabsFunction = (window as any).omnioastPollAllTabs;
+      if (pollAllTabsFunction && typeof pollAllTabsFunction === "function") {
+        pollAllTabsFunction();
+      } else {
+        console.warn("Poll all tabs function not available");
+      }
+    },
+    group: "OmniOAST",
+  });
+
+  // Register commands in command palette
+  sdk.commandPalette.register("omnioast.goToOmniOAST");
+  sdk.commandPalette.register("omnioast.pollAllTabs");
+
+  // Register keyboard shortcuts
+  sdk.shortcuts.register("omnioast.goToOmniOAST", ["ctrl+shift+o"]);
+  sdk.shortcuts.register("omnioast.pollAllTabs", ["ctrl+shift+p"]);
 };
