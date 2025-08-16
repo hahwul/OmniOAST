@@ -6,7 +6,9 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Support for Command Palette commands: "Go to OmniOAST" and "Polling All Tabs"
 - Keyboard shortcuts: Ctrl+Shift+O (Go to OmniOAST), Ctrl+Shift+P (Polling All Tabs)
-- Poll All Tabs functionality to poll interactions across all tabs simultaneously
+
+### Changed
+- Extend search functionality to include request and response content
 
 ## 0.3.2
 ### Changed
