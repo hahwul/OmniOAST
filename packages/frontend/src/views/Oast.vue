@@ -671,7 +671,8 @@ async function pollAllTabs() {
 
 // Expose function globally for command access
 onMounted(() => {
-  (window as { omnioastPollAllTabs?: () => void }).omnioastPollAllTabs = pollAllTabs;
+  (window as { omnioastPollAllTabs?: () => void }).omnioastPollAllTabs =
+    pollAllTabs;
 });
 </script>
 
