@@ -1,6 +1,6 @@
-import { v4 as uuidv4 } from "uuid";
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { v4 as uuidv4 } from "uuid";
+import { computed, ref } from "vue";
 
 import { useSDK } from "@/plugins/sdk";
 

@@ -1,5 +1,7 @@
 <template>
-  <div class="p-4 h-full bg-surface-0 dark:bg-surface-800 rounded overflow-scroll">
+  <div
+    class="p-4 h-full bg-surface-0 dark:bg-surface-800 rounded overflow-scroll"
+  >
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-xl font-bold">Polling List</h2>
     </div>
@@ -28,11 +30,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useOastStore } from '@/stores/oastStore';
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
-import Button from 'primevue/button';
+import Button from "primevue/button";
+import Column from "primevue/column";
+import DataTable from "primevue/datatable";
+import { computed } from "vue";
+
+import { useOastStore } from "@/stores/oastStore";
 
 const oastStore = useOastStore();
 const pollingList = computed(() => oastStore.pollingList);
