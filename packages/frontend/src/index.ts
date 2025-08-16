@@ -89,6 +89,6 @@ export const init = (sdk: FrontendSDK) => {
   sdk.commandPalette.register("omnioast.pollAllTabs");
 
   // Register keyboard shortcuts
-  sdk.shortcuts.register("omnioast.goToOmniOAST", ["ctrl+shift+o"]);
-  sdk.shortcuts.register("omnioast.pollAllTabs", ["ctrl+shift+p"]);
+  sdk.shortcuts.register("omnioast.goToOmniOAST", ["cmd", "shift", "O"]);
+  sdk.shortcuts.register("omnioast.pollAllTabs", []);
 };
