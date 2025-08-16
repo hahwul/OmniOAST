@@ -1,10 +1,12 @@
-import { OASTService } from "./provider";
-import { OASTEvent } from "../../types";
+import { type RequestResponse, RequestSpec } from "caido:utils";
+
+import { type OASTEvent } from "../../types";
 
 // Import all required classes and types from 'caido:utils'
 // Using regular 'import' instead of 'import type'
-import { RequestSpec, RequestResponse } from "caido:utils";
 import type { CaidoBackendSDK } from "../../types";
+
+import { type OASTService } from "./provider";
 
 export class BoastService implements OASTService {
   private url: string;
@@ -85,7 +87,7 @@ export class BoastService implements OASTService {
     } // Return immediately if payloadUrl already exists
 
     if (this.payloadUrl && this.id) {
-      return { id: this.id!, payloadUrl: this.payloadUrl! };
+      return { id: this.id, payloadUrl: this.payloadUrl };
     }
     try {
       // Create RequestSpec for Caido SDK and set headers
@@ -112,7 +114,7 @@ export class BoastService implements OASTService {
       const urlObj = new URL(this.url); // Create canary-based payloadUrl (http/https based on original url)
       this.payloadUrl = `${data.id}.${urlObj.hostname}`;
 
-      return { id: this.id!, payloadUrl: this.payloadUrl! };
+      return { id: this.id!, payloadUrl: this.payloadUrl };
     } catch (err) {
       this.sdk.console.error("Error during BOAST registration:", err);
       return null;

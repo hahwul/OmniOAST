@@ -1,7 +1,8 @@
-import { OASTService } from "./provider";
-import { OASTEvent } from "../../types";
-import { RequestSpec, RequestResponse } from "caido:utils";
-import type { CaidoBackendSDK } from "../../types";
+import { type RequestResponse, RequestSpec } from "caido:utils";
+
+import { type CaidoBackendSDK, type OASTEvent } from "../../types";
+
+import { type OASTService } from "./provider";
 
 export class WebhooksiteService implements OASTService {
   private tokenId: string | null = null;
@@ -140,7 +141,7 @@ export class WebhooksiteService implements OASTService {
       this.tokenId = data.uuid;
       this.payloadUrl = `https://webhook.site/${this.tokenId}`;
 
-      return { id: this.tokenId!, payloadUrl: this.payloadUrl! };
+      return { id: this.tokenId!, payloadUrl: this.payloadUrl };
     } catch (err) {
       this.sdk.console.error("Error during webhook.site registration:", err);
       return null;

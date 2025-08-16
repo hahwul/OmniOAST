@@ -2,9 +2,10 @@ import { v4 as uuidv4 } from "uuid";
 
 import type { CaidoBackendSDK } from "../../types";
 import { type Provider, ProviderSchema } from "../validation/schemas";
+
 import { BoastService } from "./boast";
-import { WebhooksiteService } from "./webhooksite";
 import { PostbinService } from "./postbin";
+import { WebhooksiteService } from "./webhooksite";
 
 export interface OASTService {
   getEvents(): Promise<any[]>;
