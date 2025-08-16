@@ -72,6 +72,12 @@ const filteredInteractions = computed(() =>
             ) ||
             (i.provider?.toLowerCase() ?? "").includes(
                 searchQuery.value.toLowerCase(),
+            ) ||
+            (i.rawRequest?.toLowerCase() ?? "").includes(
+                searchQuery.value.toLowerCase(),
+            ) ||
+            (i.rawResponse?.toLowerCase() ?? "").includes(
+                searchQuery.value.toLowerCase(),
             );
         const matchesProvider =
             !selectedProviderB.value ||
