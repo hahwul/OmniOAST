@@ -55,7 +55,7 @@ export const init = (sdk: FrontendSDK) => {
   const oastSidebarItem = sdk.sidebar.registerItem("OmniOAST", "/omnioast", {
     icon: "fas fa-satellite-dish",
   });
-  (window as any).oastSidebarItem = oastSidebarItem;
+  (window as { oastSidebarItem?: unknown }).oastSidebarItem = oastSidebarItem;
 
   // Register commands
   // Command to navigate to OmniOAST page
@@ -72,8 +72,10 @@ export const init = (sdk: FrontendSDK) => {
     name: "Polling All Tabs",
     run: () => {
       // Get the global polling function via window
-      const pollAllTabsFunction = (window as any).omnioastPollAllTabs;
-      if (pollAllTabsFunction && typeof pollAllTabsFunction === "function") {
+      const pollAllTabsFunction = (
+        window as { omnioastPollAllTabs?: () => void }
+      ).omnioastPollAllTabs;
+      if (typeof pollAllTabsFunction === "function") {
         pollAllTabsFunction();
       } else {
         console.warn("Poll all tabs function not available");

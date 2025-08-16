@@ -1,7 +1,8 @@
-import { OASTService } from "./provider";
-import { OASTEvent } from "../../types";
-import { RequestSpec, RequestResponse } from "caido:utils";
-import type { CaidoBackendSDK } from "../../types";
+import { type RequestResponse, RequestSpec } from "caido:utils";
+
+import { type CaidoBackendSDK, type OASTEvent } from "../../types";
+
+import { type OASTService } from "./provider";
 
 export class PostbinService implements OASTService {
   private binId: string | null = null;
@@ -173,7 +174,7 @@ export class PostbinService implements OASTService {
         `PostBin: Created new bin ${this.binId} (expires: ${new Date(data.expires)})`,
       );
 
-      return { id: this.binId!, payloadUrl: this.payloadUrl! };
+      return { id: this.binId!, payloadUrl: this.payloadUrl };
     } catch (err) {
       this.sdk.console.error("Error during PostBin registration:", err);
       return null;
