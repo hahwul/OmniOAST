@@ -227,7 +227,7 @@ async function getPayload() {
                 stopPolling = () => clearInterval(intervalId);
 
                 sdk.window.showToast(
-                    "Interactsh provider registered and polling started",
+                    "Provider registered and polling started",
                     { variant: "success" },
                 );
             } else {
@@ -407,7 +407,7 @@ async function pollPostbinEvents(provider: Provider, tabId: string) {
                     );
                 }
             });
-            sdk.window.showToast("webhook.site events polled successfully", {
+            sdk.window.showToast("postbin events polled successfully", {
                 variant: "success",
             });
         }
