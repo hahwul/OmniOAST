@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+
+## 0.4.0
 ### Added
 - Support for Command Palette commands: "Go to OmniOAST" and "Polling All Tabs"
 - Keyboard shortcuts: `Go to OmniOAST: Cmd+Shift+O`, `Polling All Tabs: Not set`
