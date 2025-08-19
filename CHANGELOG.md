@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Extend search functionality to include request and response content
+- Fixed toast message bug
 
 ## 0.3.2
 ### Changed
