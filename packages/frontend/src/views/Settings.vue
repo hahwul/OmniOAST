@@ -2,13 +2,11 @@
 import Button from "primevue/button";
 import InputNumber from "primevue/inputnumber";
 import InputText from "primevue/inputtext";
-import { useToast } from "primevue/usetoast";
 import { onMounted, ref } from "vue";
 
 import { useSDK } from "@/plugins/sdk";
 
 const sdk = useSDK();
-const toast = useToast();
 
 // Define settings interface
 interface SettingsData {
@@ -37,12 +35,7 @@ const loadSettings = () => {
       }
     })
     .catch((error: any) => {
-      toast.add({
-        severity: "error",
-        summary: "Error",
-        detail: "Failed to load settings",
-        life: 3000,
-      });
+      sdk.showToast("Failed to load settings", "error");
       console.error("Failed to load settings:", error);
     });
 };
@@ -61,20 +54,10 @@ const saveSettings = () => {
     sdk.backend
       .updateSettings(String(settings.value.id), payload)
       .then(() => {
-        toast.add({
-          severity: "success",
-          summary: "Success",
-          detail: "Settings updated successfully",
-          life: 3000,
-        });
+        sdk.showToast("Settings updated successfully", "success");
       })
       .catch((error: any) => {
-        toast.add({
-          severity: "error",
-          summary: "Error",
-          detail: "Failed to update settings",
-          life: 3000,
-        });
+        sdk.showToast("Failed to update settings", "error");
         console.error("Failed to update settings:", error);
       });
   } else {
@@ -86,20 +69,10 @@ const saveSettings = () => {
         if (result) {
           settings.value = result;
         }
-        toast.add({
-          severity: "success",
-          summary: "Success",
-          detail: "Settings created successfully",
-          life: 3000,
-        });
+        sdk.showToast("Settings created successfully", "success");
       })
       .catch((error: any) => {
-        toast.add({
-          severity: "error",
-          summary: "Error",
-          detail: "Failed to create settings",
-          life: 3000,
-        });
+        sdk.showToast("Failed to create settings", "error");
         console.error("Failed to create settings:", error);
       });
   }
@@ -117,12 +90,7 @@ const resetToDefaults = () => {
     payloadPrefix: "",
   };
 
-  toast.add({
-    severity: "info",
-    summary: "Reset",
-    detail: "Settings reset to defaults",
-    life: 3000,
-  });
+  sdk.showToast("Settings reset to defaults", "info");
 
   // If we have an ID, also save the reset settings
   if (currentId) {

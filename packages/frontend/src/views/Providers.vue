@@ -8,7 +8,6 @@ import Dropdown from "primevue/dropdown";
 import InputSwitch from "primevue/inputswitch";
 import InputText from "primevue/inputtext";
 import SplitButton from "primevue/splitbutton";
-import { useToast } from "primevue/usetoast";
 import { computed, onMounted, ref } from "vue";
 
 import type { Provider } from "../../../backend/src/validation/schemas";
@@ -19,7 +18,6 @@ type FetchedProvider = Provider & { id: string };
 type ProviderFormData = Partial<Provider> & { id?: string };
 
 const sdk = useSDK();
-const toast = useToast();
 
 const providerTypes = ref([
   { name: "Interactsh", code: "interactsh" as const },

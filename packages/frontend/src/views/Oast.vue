@@ -4,7 +4,6 @@ import Button from "primevue/button";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import Dropdown from "primevue/dropdown";
-import { useToast } from "primevue/usetoast";
 import { v4 as uuidv4 } from "uuid";
 import { computed, onMounted, ref, watch } from "vue";
 
@@ -19,7 +18,6 @@ import { formatTimestamp } from "@/utils/time";
 
 const { copy } = useClipboard();
 const sdk = useSDK();
-const toast = useToast();
 const oastStore = useOastStore();
 
 const clientService = useClientService();
@@ -101,12 +99,7 @@ const loadProviders = async () => {
     const allProviders = await sdk.backend.listProviders();
     availableProviders.value = allProviders.filter((p: Provider) => p.enabled);
   } catch (error) {
-    toast.add({
-      severity: "error",
-      summary: "Error",
-      detail: "Failed to load providers",
-      life: 3000,
-    });
+    sdk.showToast("Failed to load providers", "error");
     console.error("Failed to load providers:", error);
   }
 };
@@ -127,22 +120,12 @@ async function getPayload() {
     (p) => p.id === selectedProviderA.value,
   );
   if (!currentProvider || !currentProvider.id) {
-    toast.add({
-      severity: "warn",
-      summary: "Warning",
-      detail: "Please select a valid provider",
-      life: 3000,
-    });
+    sdk.showToast("Please select a valid provider", "warn");
     return;
   }
 
   if (activePollingSessions.value[currentProvider.id]) {
-    toast.add({
-      severity: "info",
-      summary: "Info",
-      detail: "Polling is already active for this provider.",
-      life: 3000,
-    });
+    sdk.showToast("Polling is already active for this provider.", "info");
     return;
   }
 
