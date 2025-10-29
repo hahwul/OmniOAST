@@ -407,6 +407,7 @@ export const useOastStore = defineStore("oast", () => {
     interactions,
     activeProviders,
     pollingList,
+    pollingFunctions,
     tabPayloads,
     tabProviders,
     addTab,
