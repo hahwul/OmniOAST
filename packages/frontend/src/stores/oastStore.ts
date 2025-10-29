@@ -400,6 +400,21 @@ export const useOastStore = defineStore("oast", () => {
     isOastTabActive.value = active;
   };
 
+  /**
+   * Clears all persisted OAST state (polling, payloads, providers)
+   */
+  const clearPersistedState = async () => {
+    pollingList.value = [];
+    tabPayloads.value = {};
+    tabProviders.value = {};
+    
+    const storage = (sdk.storage.get() as Record<string, any>) || {};
+    delete storage[storageKeyPollingList];
+    delete storage[storageKeyTabPayloads];
+    delete storage[storageKeyTabProviders];
+    await sdk.storage.set(storage);
+  };
+
   return {
     tabs,
     activeTabId,
@@ -427,5 +442,6 @@ export const useOastStore = defineStore("oast", () => {
     updateTabName,
     setTabPayload,
     setTabProvider,
+    clearPersistedState,
   };
 });

@@ -483,30 +483,29 @@ function showDetails(event: any) {
 async function restorePollingFromState() {
     const settings = await sdk.backend.getCurrentSettings();
     if (!settings?.persistState) {
-        // If persistence is disabled, clear any saved polling state
+        // If persistence is disabled, don't restore
         return;
     }
 
-    const activeTab = oastStore.activeTab;
-    if (!activeTab) {
+    // Restore polling for all tabs, not just the active one
+    const allPollingTasks = oastStore.pollingList;
+
+    if (allPollingTasks.length === 0) {
         return;
     }
 
-    // Get polling tasks for the current tab
-    const tabPollingTasks = oastStore.pollingList.filter(
-        (p) => p.tabId === activeTab.id,
-    );
-
-    if (tabPollingTasks.length === 0) {
-        return;
-    }
+    let restoredCount = 0;
+    let failedCount = 0;
 
     // Restore each polling task
-    for (const task of tabPollingTasks) {
+    for (const task of allPollingTasks) {
         const provider = availableProviders.value.find(
             (p) => p.name === task.provider,
         );
-        if (!provider || !provider.id) continue;
+        if (!provider || !provider.id) {
+            failedCount++;
+            continue;
+        }
 
         // Skip if already polling for this provider
         if (activePollingSessions.value[provider.id]) {
@@ -516,8 +515,15 @@ async function restorePollingFromState() {
         const pollingInterval = task.interval;
         let stopPolling: () => void;
 
-        if (provider.type === "interactsh") {
-            try {
+        // Find the tab for this polling task
+        const taskTab = oastStore.tabs.find((t) => t.id === task.tabId);
+        if (!taskTab) {
+            failedCount++;
+            continue;
+        }
+
+        try {
+            if (provider.type === "interactsh") {
                 await clientService.start(
                     {
                         serverURL: provider.url,
@@ -546,53 +552,63 @@ async function restorePollingFromState() {
                                 rawRequest: String(interaction["raw-request"]),
                                 rawResponse: String(interaction["raw-response"]),
                             },
-                            activeTab.id,
+                            taskTab.id,
                         );
                         oastStore.updatePollingLastPolled(task.id, Date.now());
                     },
                 );
 
                 stopPolling = () => clientService.stop();
-            } catch (error) {
-                console.error("Failed to restore interactsh polling:", error);
-                continue;
+            } else {
+                const pollFunction = () => {
+                    switch (provider.type) {
+                        case "BOAST":
+                            pollBoastEvents(provider, taskTab.id);
+                            break;
+                        case "webhooksite":
+                            pollWebhooksiteEvents(provider, taskTab.id);
+                            break;
+                        case "postbin":
+                            pollPostbinEvents(provider, taskTab.id);
+                            break;
+                    }
+                    oastStore.updatePollingLastPolled(task.id, Date.now());
+                };
+
+                const intervalId = setInterval(pollFunction, pollingInterval);
+                stopPolling = () => clearInterval(intervalId);
             }
-        } else {
-            const pollFunction = () => {
-                switch (provider.type) {
-                    case "BOAST":
-                        pollBoastEvents(provider, activeTab.id);
-                        break;
-                    case "webhooksite":
-                        pollWebhooksiteEvents(provider, activeTab.id);
-                        break;
-                    case "postbin":
-                        pollPostbinEvents(provider, activeTab.id);
-                        break;
-                }
-                oastStore.updatePollingLastPolled(task.id, Date.now());
-            };
 
-            const intervalId = setInterval(pollFunction, pollingInterval);
-            stopPolling = () => clearInterval(intervalId);
-        }
+            const providerId = provider.id;
+            activePollingSessions.value[providerId] = task.id;
 
-        const providerId = provider.id;
-        activePollingSessions.value[providerId] = task.id;
+            // Store the stop function for this polling task
+            if (oastStore.pollingFunctions) {
+                oastStore.pollingFunctions[task.id] = () => {
+                    stopPolling();
+                    delete activePollingSessions.value[providerId];
+                };
+            }
 
-        // Store the stop function for this polling task
-        if (oastStore.pollingFunctions) {
-            oastStore.pollingFunctions[task.id] = () => {
-                stopPolling();
-                delete activePollingSessions.value[providerId];
-            };
+            restoredCount++;
+        } catch (error) {
+            console.error(
+                `Failed to restore polling for ${provider.type}:`,
+                error,
+            );
+            failedCount++;
         }
     }
 
-    if (tabPollingTasks.length > 0) {
+    if (restoredCount > 0) {
         sdk.window.showToast(
-            `Restored ${tabPollingTasks.length} polling session(s)`,
+            `Restored ${restoredCount} polling session(s)${failedCount > 0 ? ` (${failedCount} failed)` : ""}`,
             { variant: "success" },
+        );
+    } else if (failedCount > 0) {
+        sdk.window.showToast(
+            `Failed to restore ${failedCount} polling session(s)`,
+            { variant: "error" },
         );
     }
 }
