@@ -11,204 +11,202 @@ const sdk = useSDK();
 
 // Define settings interface
 interface SettingsData {
-    id?: string;
-    pollingInterval: number;
-    payloadPrefix: string;
-    persistState: boolean;
+  id?: string;
+  pollingInterval: number;
+  payloadPrefix: string;
+  persistState: boolean;
 }
 
 type ApiPayload = {
-    pollingInterval: number;
-    payloadPrefix: string;
-    persistState: boolean;
+  pollingInterval: number;
+  payloadPrefix: string;
+  persistState: boolean;
 };
 
 const settings = ref<SettingsData>({
-    pollingInterval: 30,
-    payloadPrefix: "",
-    persistState: true,
+  pollingInterval: 30,
+  payloadPrefix: "",
+  persistState: true,
 });
 
 // Load settings from backend
 const loadSettings = () => {
-    sdk.backend
-        .getCurrentSettings()
-        .then((result: any) => {
-            if (result) {
-                settings.value = result;
-            }
-        })
-        .catch((error: any) => {
-            sdk.window.showToast("Failed to load settings", {
-                variant: "error",
-            });
-            console.error("Failed to load settings:", error);
-        });
+  sdk.backend
+    .getCurrentSettings()
+    .then((result: any) => {
+      if (result) {
+        settings.value = result;
+      }
+    })
+    .catch((error: any) => {
+      sdk.window.showToast("Failed to load settings", {
+        variant: "error",
+      });
+      console.error("Failed to load settings:", error);
+    });
 };
 
 // Save settings to backend
 const saveSettings = () => {
-    // 명시적으로 원시 타입으로 변환하여 API 호출에 사용
-    const payload: ApiPayload = {
-        pollingInterval: Number(settings.value.pollingInterval),
-        payloadPrefix: String(settings.value.payloadPrefix || ""),
-        persistState: Boolean(settings.value.persistState),
-    };
+  // 명시적으로 원시 타입으로 변환하여 API 호출에 사용
+  const payload: ApiPayload = {
+    pollingInterval: Number(settings.value.pollingInterval),
+    payloadPrefix: String(settings.value.payloadPrefix || ""),
+    persistState: Boolean(settings.value.persistState),
+  };
 
-    if (settings.value.id) {
-        // Update existing settings
-        // 명시적으로 타입을 지정하여 API 호출
-        sdk.backend
-            .updateSettings(String(settings.value.id), payload)
-            .then(() => {
-                sdk.window.showToast("Settings updated successfully", {
-                    variant: "success",
-                });
-            })
-            .catch((error: any) => {
-                sdk.window.showToast("Failed to update settings", {
-                    variant: "error",
-                });
-                console.error("Failed to update settings:", error);
-            });
-    } else {
-        // Create new settings
-        // 명시적으로 타입을 지정하여 API 호출
-        sdk.backend
-            .createSettings(payload)
-            .then((result: any) => {
-                if (result) {
-                    settings.value = result;
-                }
-                sdk.window.showToast("Settings created successfully", {
-                    variant: "success",
-                });
-            })
-            .catch((error: any) => {
-                sdk.window.showToast("Failed to create settings", {
-                    variant: "error",
-                });
-                console.error("Failed to create settings:", error);
-            });
-    }
+  if (settings.value.id) {
+    // Update existing settings
+    // 명시적으로 타입을 지정하여 API 호출
+    sdk.backend
+      .updateSettings(String(settings.value.id), payload)
+      .then(() => {
+        sdk.window.showToast("Settings updated successfully", {
+          variant: "success",
+        });
+      })
+      .catch((error: any) => {
+        sdk.window.showToast("Failed to update settings", {
+          variant: "error",
+        });
+        console.error("Failed to update settings:", error);
+      });
+  } else {
+    // Create new settings
+    // 명시적으로 타입을 지정하여 API 호출
+    sdk.backend
+      .createSettings(payload)
+      .then((result: any) => {
+        if (result) {
+          settings.value = result;
+        }
+        sdk.window.showToast("Settings created successfully", {
+          variant: "success",
+        });
+      })
+      .catch((error: any) => {
+        sdk.window.showToast("Failed to create settings", {
+          variant: "error",
+        });
+        console.error("Failed to create settings:", error);
+      });
+  }
 };
 
 // Reset settings to defaults
 const resetToDefaults = () => {
-    // 원래 ID 값을 보존
-    const currentId = settings.value.id ? String(settings.value.id) : undefined;
+  // 원래 ID 값을 보존
+  const currentId = settings.value.id ? String(settings.value.id) : undefined;
 
-    // 기본값으로 설정
-    settings.value = {
-        ...(currentId ? { id: currentId } : {}),
-        pollingInterval: 30,
-        payloadPrefix: "",
-        persistState: true,
-    };
+  // 기본값으로 설정
+  settings.value = {
+    ...(currentId ? { id: currentId } : {}),
+    pollingInterval: 30,
+    payloadPrefix: "",
+    persistState: true,
+  };
 
-    sdk.window.showToast("Settings reset to defaults", { variant: "info" });
+  sdk.window.showToast("Settings reset to defaults", { variant: "info" });
 
-    // If we have an ID, also save the reset settings
-    if (currentId) {
-        saveSettings();
-    }
+  // If we have an ID, also save the reset settings
+  if (currentId) {
+    saveSettings();
+  }
 };
 
 onMounted(loadSettings);
 </script>
 
 <template>
-    <div
-        class="p-4 h-full bg-surface-0 dark:bg-surface-800 rounded overflow-scroll"
-    >
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold">Settings</h2>
-            <div class="flex gap-2">
-                <Button
-                    label="Reset to Defaults"
-                    icon="fa fa-undo"
-                    class="p-button-warning"
-                    @click="resetToDefaults"
-                />
-                <Button label="Save" icon="fa fa-save" @click="saveSettings" />
-            </div>
-        </div>
-
-        <div class="flex flex-col gap-6">
-            <div class="settings-section">
-                <h3 class="text-lg font-semibold mb-3">Polling Settings</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="flex flex-col gap-1">
-                        <label for="pollingInterval" class="font-medium">
-                            Polling Interval (seconds)
-                        </label>
-                        <InputNumber
-                            id="pollingInterval"
-                            v-model="settings.pollingInterval"
-                            :min="5"
-                            :max="600"
-                            class="w-full"
-                            :use-grouping="false"
-                        />
-                        <small class="text-gray-500">
-                            How often to check for new events (default: 30s)
-                        </small>
-                    </div>
-                </div>
-            </div>
-
-            <div class="settings-section">
-                <h3 class="text-lg font-semibold mb-3">Payload Settings</h3>
-                <div class="grid grid-cols-1 gap-4">
-                    <div class="flex flex-col gap-1">
-                        <label for="payloadPrefix" class="font-medium">
-                            Payload Prefix
-                        </label>
-                        <InputText
-                            id="payloadPrefix"
-                            v-model="settings.payloadPrefix"
-                            class="w-full"
-                        />
-                        <small class="text-gray-500">
-                            Optional prefix to add to generated payloads
-                        </small>
-                    </div>
-                </div>
-            </div>
-
-            <div class="settings-section">
-                <h3 class="text-lg font-semibold mb-3">State Persistence</h3>
-                <div class="grid grid-cols-1 gap-4">
-                    <div class="flex flex-col gap-1">
-                        <label for="persistState" class="font-medium">
-                            Persist OAST State After Restart
-                        </label>
-                        <InputSwitch
-                            id="persistState"
-                            v-model="settings.persistState"
-                        />
-                        <small class="text-gray-500">
-                            When enabled, OAST links and polling tasks will be restored after Caido restarts
-                        </small>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <div
+    class="p-4 h-full bg-surface-0 dark:bg-surface-800 rounded overflow-scroll"
+  >
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold">Settings</h2>
+      <div class="flex gap-2">
+        <Button
+          label="Reset to Defaults"
+          icon="fa fa-undo"
+          class="p-button-warning"
+          @click="resetToDefaults"
+        />
+        <Button label="Save" icon="fa fa-save" @click="saveSettings" />
+      </div>
     </div>
+
+    <div class="flex flex-col gap-6">
+      <div class="settings-section">
+        <h3 class="text-lg font-semibold mb-3">Polling Settings</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1">
+            <label for="pollingInterval" class="font-medium">
+              Polling Interval (seconds)
+            </label>
+            <InputNumber
+              id="pollingInterval"
+              v-model="settings.pollingInterval"
+              :min="5"
+              :max="600"
+              class="w-full"
+              :use-grouping="false"
+            />
+            <small class="text-gray-500">
+              How often to check for new events (default: 30s)
+            </small>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="text-lg font-semibold mb-3">Payload Settings</h3>
+        <div class="grid grid-cols-1 gap-4">
+          <div class="flex flex-col gap-1">
+            <label for="payloadPrefix" class="font-medium">
+              Payload Prefix
+            </label>
+            <InputText
+              id="payloadPrefix"
+              v-model="settings.payloadPrefix"
+              class="w-full"
+            />
+            <small class="text-gray-500">
+              Optional prefix to add to generated payloads
+            </small>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="text-lg font-semibold mb-3">State Persistence</h3>
+        <div class="grid grid-cols-1 gap-4">
+          <div class="flex flex-col gap-1">
+            <label for="persistState" class="font-medium">
+              Persist OAST State After Restart
+            </label>
+            <InputSwitch id="persistState" v-model="settings.persistState" />
+            <small class="text-gray-500">
+              When enabled, OAST links and polling tasks will be restored after
+              Caido restarts
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
 .settings-section {
-    padding: 1rem;
-    border-radius: 0.5rem;
-    background-color: rgba(0, 0, 0, 0.02);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.02);
 }
 
 :deep(.p-dropdown) {
-    width: 100%;
+  width: 100%;
 }
 
 :deep(.p-inputnumber) {
-    width: 100%;
+  width: 100%;
 }
 </style>

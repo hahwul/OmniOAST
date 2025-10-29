@@ -50,9 +50,10 @@ export class SettingsService {
           settings.payloadPrefix !== undefined
             ? String(settings.payloadPrefix)
             : "",
-        persistState: settings.persistState !== undefined
-          ? Boolean(settings.persistState)
-          : true,
+        persistState:
+          settings.persistState !== undefined
+            ? Boolean(settings.persistState)
+            : true,
       };
 
       this.console.log(
@@ -110,9 +111,10 @@ export class SettingsService {
             ? Number(result.pollingInterval)
             : 30,
         payloadPrefix: result.payloadPrefix ? String(result.payloadPrefix) : "",
-        persistState: result.persistState !== undefined
-          ? Boolean(result.persistState)
-          : true,
+        persistState:
+          result.persistState !== undefined
+            ? Boolean(result.persistState)
+            : true,
       };
 
       this.console.log(
@@ -153,9 +155,10 @@ export class SettingsService {
         id: String(result.id),
         pollingInterval: Number(result.pollingInterval),
         payloadPrefix: result.payloadPrefix ? String(result.payloadPrefix) : "",
-        persistState: result.persistState !== undefined
-          ? Boolean(result.persistState)
-          : true,
+        persistState:
+          result.persistState !== undefined
+            ? Boolean(result.persistState)
+            : true,
       };
 
       this.console.log(
@@ -278,9 +281,10 @@ export class SettingsService {
           id: String(settings.id),
           pollingInterval: Number(settings.pollingInterval),
           payloadPrefix: settings.payloadPrefix || "",
-          persistState: settings.persistState !== undefined
-            ? Boolean(settings.persistState)
-            : true,
+          persistState:
+            settings.persistState !== undefined
+              ? Boolean(settings.persistState)
+              : true,
         }),
       );
     } catch (error) {

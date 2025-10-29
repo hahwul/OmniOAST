@@ -407,7 +407,7 @@ export const useOastStore = defineStore("oast", () => {
     pollingList.value = [];
     tabPayloads.value = {};
     tabProviders.value = {};
-    
+
     const storage = (sdk.storage.get() as Record<string, any>) || {};
     delete storage[storageKeyPollingList];
     delete storage[storageKeyTabPayloads];

@@ -20,6 +20,7 @@ OmniOAST is a [Caido](https://caido.io) plugin designed to streamline your Out-o
 - **Streamlined Workflow**: Generate payloads and monitor interactions without switching between tools.
 - **Flexible Configuration**: Supports public and self-hosted providers like Interactsh, BOAST, Webhook.site, and PostBin.
 - **Tab-based Management**: Manage interactions and polling on a per-tab basis, allowing you to separate OAST activities according to your testing objectives.
+- **State Persistence**: OAST links and polling tasks persist across Caido restarts, so you never lose your testing progress.
 
 ## Getting Started ⚡️
 
@@ -60,7 +61,10 @@ If you prefer to do things by hand, we've got you covered.
     - If you no longer need to track a specific payload, you can select it from the list and click the "Remove" button to stop unnecessary polling.
 
 4.  **Settings**:
-    - Navigate to the **Settings** tab to customize the polling interval for fetching interactions.
+    - Navigate to the **Settings** tab to customize:
+      - **Polling interval**: How frequently the plugin checks for new interactions (in seconds).
+      - **Payload prefix**: Optional prefix to add to generated payloads.
+      - **Persist State**: Enable to preserve OAST links and polling tasks after Caido restarts (enabled by default).
 
 ## Development
 
