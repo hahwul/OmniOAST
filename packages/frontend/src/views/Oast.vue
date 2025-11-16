@@ -502,12 +502,8 @@ async function restorePollingSessionsIfEnabled() {
         const settings = await sdk.backend.getCurrentSettings();
         if (!settings?.persistSessionData) {
             console.log(
-                "Session persistence is disabled, clearing polling list",
+                "Session persistence is disabled, skipping restoration",
             );
-            // Clear polling list if persistence is disabled
-            oastStore.pollingList.forEach((polling) => {
-                oastStore.removePolling(polling.id);
-            });
             return;
         }
 
@@ -634,8 +630,8 @@ async function restorePollingSessionsIfEnabled() {
     }
 }
 
-onMounted(() => {
-    loadProviders();
+onMounted(async () => {
+    await loadProviders();
 
     requestEditor.value = sdk.ui.httpRequestEditor();
     responseEditor.value = sdk.ui.httpResponseEditor();
@@ -670,9 +666,7 @@ onMounted(() => {
     }
 
     // Restore polling sessions after providers are loaded
-    setTimeout(() => {
-        restorePollingSessionsIfEnabled();
-    }, 1000);
+    await restorePollingSessionsIfEnabled();
 });
 
 watch(selectedInteraction, (interaction) => {
