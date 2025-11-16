@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Button from "primevue/button";
+import Checkbox from "primevue/checkbox";
 import InputNumber from "primevue/inputnumber";
 import InputText from "primevue/inputtext";
 import { onMounted, ref } from "vue";
@@ -13,16 +14,19 @@ interface SettingsData {
     id?: string;
     pollingInterval: number;
     payloadPrefix: string;
+    enablePersistentPolling: boolean;
 }
 
 type ApiPayload = {
     pollingInterval: number;
     payloadPrefix: string;
+    enablePersistentPolling: boolean;
 };
 
 const settings = ref<SettingsData>({
     pollingInterval: 30,
     payloadPrefix: "",
+    enablePersistentPolling: false,
 });
 
 // Load settings from backend
@@ -48,6 +52,7 @@ const saveSettings = () => {
     const payload: ApiPayload = {
         pollingInterval: Number(settings.value.pollingInterval),
         payloadPrefix: String(settings.value.payloadPrefix || ""),
+        enablePersistentPolling: Boolean(settings.value.enablePersistentPolling),
     };
 
     if (settings.value.id) {
@@ -98,6 +103,7 @@ const resetToDefaults = () => {
         ...(currentId ? { id: currentId } : {}),
         pollingInterval: 30,
         payloadPrefix: "",
+        enablePersistentPolling: false,
     };
 
     sdk.window.showToast("Settings reset to defaults", { variant: "info" });
@@ -146,6 +152,24 @@ onMounted(loadSettings);
                         />
                         <small class="text-gray-500">
                             How often to check for new events (default: 30s)
+                        </small>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label for="enablePersistentPolling" class="font-medium">
+                            Persistent Polling
+                        </label>
+                        <div class="flex items-center gap-2 mt-2">
+                            <Checkbox
+                                id="enablePersistentPolling"
+                                v-model="settings.enablePersistentPolling"
+                                :binary="true"
+                            />
+                            <label for="enablePersistentPolling" class="cursor-pointer">
+                                Enable persistent polling across restarts
+                            </label>
+                        </div>
+                        <small class="text-gray-500">
+                            When enabled, active polling tasks will be restored after application restart
                         </small>
                     </div>
                 </div>

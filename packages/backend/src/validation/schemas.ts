@@ -21,7 +21,27 @@ export const SettingsSchema = z
     id: z.string().optional(),
     pollingInterval: z.number().int().positive().default(30),
     payloadPrefix: z.string().default(""),
+    enablePersistentPolling: z.boolean().default(false),
   })
   .partial({ id: true });
 
 export type Settings = z.infer<typeof SettingsSchema>;
+
+export const PollingTaskSchema = z.object({
+  id: z.string(),
+  tabId: z.string(),
+  tabName: z.string(),
+  providerId: z.string(),
+  providerName: z.string(),
+  providerType: z.string(),
+  payload: z.string(),
+  interval: z.number().int().positive(),
+  lastPolled: z.number().int(),
+  isActive: z.boolean().default(true),
+  lastHealthCheck: z.number().int().optional(),
+  healthStatus: z.enum(["healthy", "unhealthy", "unknown"]).default("unknown"),
+  createdAt: z.number().int(),
+  updatedAt: z.number().int(),
+});
+
+export type PollingTask = z.infer<typeof PollingTaskSchema>;
