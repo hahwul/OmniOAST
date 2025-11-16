@@ -464,9 +464,15 @@ function showDetails(event: any) {
 
 // Restore polling sessions from saved state
 async function restorePollingFromState() {
+  // Check if restoration has already been done
+  if (oastStore.isRestorationCompleted()) {
+    return;
+  }
+
   const settings = await sdk.backend.getCurrentSettings();
   if (!settings?.persistState) {
     // If persistence is disabled, don't restore
+    oastStore.markRestorationCompleted();
     return;
   }
 
@@ -474,6 +480,7 @@ async function restorePollingFromState() {
   const allPollingTasks = oastStore.pollingList;
 
   if (allPollingTasks.length === 0) {
+    oastStore.markRestorationCompleted();
     return;
   }
 
@@ -541,6 +548,15 @@ async function restorePollingFromState() {
           },
         );
 
+        // Generate the URL and update the payload
+        const { url } = clientService.generateUrl();
+        if (url && taskTab.id) {
+          const settings = await sdk.backend.getCurrentSettings();
+          const prefix = settings?.payloadPrefix;
+          const finalPayload = prefix ? `${prefix}.${url}` : url;
+          await oastStore.setTabPayload(taskTab.id, finalPayload);
+        }
+
         stopPolling = () => clientService.stop();
       } else {
         const pollFunction = () => {
@@ -580,15 +596,14 @@ async function restorePollingFromState() {
     }
   }
 
-  if (restoredCount > 0) {
-    sdk.window.showToast(
-      `Restored ${restoredCount} polling session(s)${failedCount > 0 ? ` (${failedCount} failed)` : ""}`,
-      { variant: "success" },
-    );
-  } else if (failedCount > 0) {
-    sdk.window.showToast(
-      `Failed to restore ${failedCount} polling session(s)`,
-      { variant: "error" },
+  // Mark restoration as completed
+  oastStore.markRestorationCompleted();
+
+  // Only show toast if there were actually sessions to restore
+  // and only log to console for debugging, no user-facing toast
+  if (restoredCount > 0 || failedCount > 0) {
+    console.log(
+      `[OmniOAST] Restored ${restoredCount} polling session(s)${failedCount > 0 ? `, ${failedCount} failed` : ""}`,
     );
   }
 }

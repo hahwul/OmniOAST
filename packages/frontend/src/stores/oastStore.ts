@@ -75,6 +75,8 @@ export const useOastStore = defineStore("oast", () => {
   const unreadCount = ref(0);
   // OAST 탭 활성화 상태
   const isOastTabActive = ref(false);
+  // Track if restoration has been performed
+  const restorationCompleted = ref(false);
 
   // Storage keys for persisting data between sessions
   const storageKeyTabs = "omnioast.tabs";
@@ -415,6 +417,20 @@ export const useOastStore = defineStore("oast", () => {
     await sdk.storage.set(storage);
   };
 
+  /**
+   * Marks restoration as completed
+   */
+  const markRestorationCompleted = () => {
+    restorationCompleted.value = true;
+  };
+
+  /**
+   * Checks if restoration has been completed
+   */
+  const isRestorationCompleted = () => {
+    return restorationCompleted.value;
+  };
+
   return {
     tabs,
     activeTabId,
@@ -443,5 +459,7 @@ export const useOastStore = defineStore("oast", () => {
     setTabPayload,
     setTabProvider,
     clearPersistedState,
+    markRestorationCompleted,
+    isRestorationCompleted,
   };
 });
