@@ -21,6 +21,7 @@ export const SettingsSchema = z
     id: z.string().optional(),
     pollingInterval: z.number().int().positive().default(30),
     payloadPrefix: z.string().default(""),
+    persistSessionData: z.boolean().default(true),
   })
   .partial({ id: true });
 

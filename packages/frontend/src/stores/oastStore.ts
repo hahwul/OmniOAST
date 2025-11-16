@@ -36,6 +36,13 @@ interface Polling {
   stop: () => void;
   tabId: string;
   tabName: string;
+  // Session data for restoring Interactsh clients
+  sessionData?: {
+    serverURL: string;
+    token: string;
+    correlationID: string;
+    secretKey: string;
+  };
 }
 
 interface PollingListItem {
@@ -46,6 +53,13 @@ interface PollingListItem {
   interval: number;
   tabId: string;
   tabName: string;
+  // Session data for restoring Interactsh clients
+  sessionData?: {
+    serverURL: string;
+    token: string;
+    correlationID: string;
+    secretKey: string;
+  };
 }
 
 /**
@@ -333,6 +347,7 @@ export const useOastStore = defineStore("oast", () => {
       interval: polling.interval,
       tabId: polling.tabId,
       tabName: polling.tabName,
+      sessionData: polling.sessionData,
     };
     pollingList.value.push(newPollingItem);
     pollingFunctions.value[polling.id] = polling.stop;
@@ -372,6 +387,27 @@ export const useOastStore = defineStore("oast", () => {
     }
     pollingList.value = pollingList.value.filter((p) => p.id !== pollingId);
     await savePollingList();
+  };
+
+  /**
+   * Gets the stop function for a specific polling ID
+   * @param pollingId The ID of the polling
+   * @returns The stop function if it exists
+   */
+  const getPollingStopFunction = (pollingId: string) => {
+    return pollingFunctions.value[pollingId];
+  };
+
+  /**
+   * Registers a stop function for a polling task
+   * @param pollingId The ID of the polling
+   * @param stopFn The stop function to register
+   */
+  const registerPollingStopFunction = (
+    pollingId: string,
+    stopFn: () => void,
+  ) => {
+    pollingFunctions.value[pollingId] = stopFn;
   };
 
   // Initial load of stored data when the store is created
@@ -420,6 +456,8 @@ export const useOastStore = defineStore("oast", () => {
     addPolling,
     updatePollingLastPolled,
     removePolling,
+    getPollingStopFunction,
+    registerPollingStopFunction,
     clearUnreadCount,
     unreadCount,
     setOastTabActive,

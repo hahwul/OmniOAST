@@ -388,6 +388,29 @@ class InteractshClient {
     const uniqueId = `${this.correlationID.value}${randomId}`;
     return { url, uniqueId };
   }
+
+  /**
+   * Gets the current session information for persistence
+   * @returns Session information or null if not initialized
+   */
+  public getSessionInfo(): SessionInfo | null {
+    if (
+      !this.correlationID.value ||
+      !this.secretKey.value ||
+      !this.serverURL.value ||
+      !this.token.value
+    ) {
+      return null;
+    }
+
+    return {
+      serverURL: this.serverURL.value.toString(),
+      token: this.token.value,
+      correlationID: this.correlationID.value,
+      secretKey: this.secretKey.value,
+      privateKey: "", // Not storing private key for security
+    };
+  }
 }
 
 /**

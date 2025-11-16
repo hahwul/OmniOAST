@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Button from "primevue/button";
 import InputNumber from "primevue/inputnumber";
+import InputSwitch from "primevue/inputswitch";
 import InputText from "primevue/inputtext";
 import { onMounted, ref } from "vue";
 
@@ -13,16 +14,19 @@ interface SettingsData {
     id?: string;
     pollingInterval: number;
     payloadPrefix: string;
+    persistSessionData: boolean;
 }
 
 type ApiPayload = {
     pollingInterval: number;
     payloadPrefix: string;
+    persistSessionData: boolean;
 };
 
 const settings = ref<SettingsData>({
     pollingInterval: 30,
     payloadPrefix: "",
+    persistSessionData: true,
 });
 
 // Load settings from backend
@@ -48,6 +52,7 @@ const saveSettings = () => {
     const payload: ApiPayload = {
         pollingInterval: Number(settings.value.pollingInterval),
         payloadPrefix: String(settings.value.payloadPrefix || ""),
+        persistSessionData: Boolean(settings.value.persistSessionData),
     };
 
     if (settings.value.id) {
@@ -98,6 +103,7 @@ const resetToDefaults = () => {
         ...(currentId ? { id: currentId } : {}),
         pollingInterval: 30,
         payloadPrefix: "",
+        persistSessionData: true,
     };
 
     sdk.window.showToast("Settings reset to defaults", { variant: "info" });
@@ -165,6 +171,27 @@ onMounted(loadSettings);
                         />
                         <small class="text-gray-500">
                             Optional prefix to add to generated payloads
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3 class="text-lg font-semibold mb-3">Session Persistence</h3>
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-2">
+                            <InputSwitch
+                                id="persistSessionData"
+                                v-model="settings.persistSessionData"
+                            />
+                            <label for="persistSessionData" class="font-medium">
+                                Persist OAST Session Data
+                            </label>
+                        </div>
+                        <small class="text-gray-500">
+                            When enabled, OAST links and polling tasks will be
+                            restored after Caido restarts
                         </small>
                     </div>
                 </div>

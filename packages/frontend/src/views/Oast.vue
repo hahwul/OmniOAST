@@ -22,6 +22,8 @@ const sdk = useSDK();
 const toast = useToast();
 const oastStore = useOastStore();
 
+// Map to store Interactsh client instances by polling ID
+const interactshClients = ref<Record<string, any>>({});
 const clientService = useClientService();
 
 const requestEditor = ref<any>(null);
@@ -260,6 +262,20 @@ async function getPayload() {
     const providerId = currentProvider.id;
     activePollingSessions.value[providerId] = pollingId;
 
+    // Get session data for Interactsh if applicable
+    let sessionData;
+    if (currentProvider.type === "interactsh") {
+        const sessionInfo = clientService.getSessionInfo();
+        if (sessionInfo) {
+            sessionData = {
+                serverURL: sessionInfo.serverURL,
+                token: sessionInfo.token,
+                correlationID: sessionInfo.correlationID,
+                secretKey: sessionInfo.secretKey,
+            };
+        }
+    }
+
     oastStore.addPolling({
         id: pollingId,
         payload: payloadInput.value,
@@ -272,6 +288,7 @@ async function getPayload() {
         },
         tabId: activeTab.id,
         tabName: activeTab.name,
+        sessionData: sessionData,
     });
 }
 
@@ -479,6 +496,144 @@ function showDetails(event: any) {
     selectedInteraction.value = event.data;
 }
 
+// Restore polling sessions after restart
+async function restorePollingSessionsIfEnabled() {
+    try {
+        const settings = await sdk.backend.getCurrentSettings();
+        if (!settings?.persistSessionData) {
+            console.log(
+                "Session persistence is disabled, clearing polling list",
+            );
+            // Clear polling list if persistence is disabled
+            oastStore.pollingList.forEach((polling) => {
+                oastStore.removePolling(polling.id);
+            });
+            return;
+        }
+
+        console.log("Restoring polling sessions...");
+        const pollingTasks = oastStore.pollingList;
+
+        for (const task of pollingTasks) {
+            const provider = availableProviders.value.find(
+                (p) => p.name === task.provider,
+            );
+            if (!provider) {
+                console.warn(
+                    `Provider ${task.provider} not found for polling task ${task.id}`,
+                );
+                continue;
+            }
+
+            // Restore Interactsh sessions
+            if (provider.type === "interactsh" && task.sessionData) {
+                try {
+                    const newClient = useClientService();
+                    await newClient.start(
+                        {
+                            serverURL: task.sessionData.serverURL,
+                            token: task.sessionData.token,
+                            keepAliveInterval: task.interval,
+                            sessionInfo: {
+                                serverURL: task.sessionData.serverURL,
+                                token: task.sessionData.token,
+                                correlationID: task.sessionData.correlationID,
+                                secretKey: task.sessionData.secretKey,
+                                privateKey: "",
+                            },
+                        },
+                        (interaction: { [key: string]: any }) => {
+                            const method = interaction["q-type"]
+                                ? String(interaction["q-type"])
+                                : typeof interaction["raw-request"] ===
+                                    "string"
+                                  ? interaction["raw-request"].split(" ")[0] ||
+                                    ""
+                                  : "";
+
+                            oastStore.addInteraction(
+                                {
+                                    id: uuidv4(),
+                                    type: "interactsh",
+                                    correlationId: String(
+                                        interaction["full-id"],
+                                    ),
+                                    data: interaction,
+                                    protocol: String(interaction.protocol),
+                                    method: method,
+                                    source: String(
+                                        interaction["remote-address"],
+                                    ),
+                                    destination: String(interaction["full-id"]),
+                                    provider: provider.name,
+                                    timestamp: formatTimestamp(
+                                        interaction.timestamp,
+                                    ),
+                                    rawRequest: String(
+                                        interaction["raw-request"],
+                                    ),
+                                    rawResponse: String(
+                                        interaction["raw-response"],
+                                    ),
+                                },
+                                task.tabId,
+                            );
+                            oastStore.updatePollingLastPolled(
+                                task.id,
+                                Date.now(),
+                            );
+                        },
+                    );
+
+                    interactshClients.value[task.id] = newClient;
+                    oastStore.registerPollingStopFunction(task.id, () =>
+                        newClient.stop(),
+                    );
+                    console.log(
+                        `Restored Interactsh session for task ${task.id}`,
+                    );
+                } catch (error) {
+                    console.error(
+                        `Failed to restore Interactsh session for task ${task.id}:`,
+                        error,
+                    );
+                }
+            } else if (provider.type !== "interactsh") {
+                // Restore polling for other provider types
+                const pollFunction = () => {
+                    switch (provider.type) {
+                        case "BOAST":
+                            pollBoastEvents(provider, task.tabId);
+                            break;
+                        case "webhooksite":
+                            pollWebhooksiteEvents(provider, task.tabId);
+                            break;
+                        case "postbin":
+                            pollPostbinEvents(provider, task.tabId);
+                            break;
+                    }
+                    oastStore.updatePollingLastPolled(task.id, Date.now());
+                };
+
+                const intervalId = setInterval(pollFunction, task.interval);
+                oastStore.registerPollingStopFunction(task.id, () =>
+                    clearInterval(intervalId),
+                );
+                console.log(`Restored polling for ${provider.type} task ${task.id}`);
+            }
+        }
+
+        if (pollingTasks.length > 0) {
+            sdk.window.showToast(
+                `Restored ${pollingTasks.length} polling session(s)`,
+                { variant: "success" },
+            );
+        }
+    } catch (error) {
+        console.error("Failed to restore polling sessions:", error);
+    }
+}
+
 onMounted(() => {
     loadProviders();
 
@@ -513,6 +668,11 @@ onMounted(() => {
     } else {
         console.warn("responseContainer.value is not defined");
     }
+
+    // Restore polling sessions after providers are loaded
+    setTimeout(() => {
+        restorePollingSessionsIfEnabled();
+    }, 1000);
 });
 
 watch(selectedInteraction, (interaction) => {

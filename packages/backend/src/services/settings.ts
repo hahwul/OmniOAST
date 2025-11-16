@@ -21,7 +21,8 @@ export class SettingsService {
       CREATE TABLE IF NOT EXISTS settings (
         id TEXT PRIMARY KEY,
         pollingInterval INTEGER NOT NULL,
-        payloadPrefix TEXT
+        payloadPrefix TEXT,
+        persistSessionData INTEGER DEFAULT 1
       );
     `);
     this.db = db;
@@ -49,6 +50,10 @@ export class SettingsService {
           settings.payloadPrefix !== undefined
             ? String(settings.payloadPrefix)
             : "",
+        persistSessionData:
+          settings.persistSessionData !== undefined
+            ? Boolean(settings.persistSessionData)
+            : true,
       };
 
       this.console.log(
@@ -61,13 +66,14 @@ export class SettingsService {
       const db = await this.getDb();
 
       const statement = await db.prepare(
-        "INSERT INTO settings (id, pollingInterval, payloadPrefix) VALUES (?, ?, ?)",
+        "INSERT INTO settings (id, pollingInterval, payloadPrefix, persistSessionData) VALUES (?, ?, ?, ?)",
       );
 
       await statement.run(
         validatedSettings.id!,
         validatedSettings.pollingInterval,
         validatedSettings.payloadPrefix || "",
+        validatedSettings.persistSessionData ? 1 : 0,
       );
 
       return validatedSettings;
@@ -105,6 +111,10 @@ export class SettingsService {
             ? Number(result.pollingInterval)
             : 30,
         payloadPrefix: result.payloadPrefix ? String(result.payloadPrefix) : "",
+        persistSessionData:
+          result.persistSessionData !== undefined
+            ? Boolean(result.persistSessionData)
+            : true,
       };
 
       this.console.log(
@@ -145,6 +155,10 @@ export class SettingsService {
         id: String(result.id),
         pollingInterval: Number(result.pollingInterval),
         payloadPrefix: result.payloadPrefix ? String(result.payloadPrefix) : "",
+        persistSessionData:
+          result.persistSessionData !== undefined
+            ? Boolean(result.persistSessionData)
+            : true,
       };
 
       this.console.log(
@@ -164,6 +178,7 @@ export class SettingsService {
     const defaultSettings = {
       pollingInterval: 30,
       payloadPrefix: "",
+      persistSessionData: true,
     };
     return this.createSettings(defaultSettings);
   }
@@ -200,6 +215,12 @@ export class SettingsService {
           updates && updates.payloadPrefix !== undefined
             ? String(updates.payloadPrefix)
             : existingSettings.payloadPrefix || "",
+        persistSessionData:
+          updates && updates.persistSessionData !== undefined
+            ? Boolean(updates.persistSessionData)
+            : existingSettings.persistSessionData !== undefined
+              ? existingSettings.persistSessionData
+              : true,
       };
 
       this.console.log(
@@ -215,12 +236,13 @@ export class SettingsService {
       const db = await this.getDb();
 
       const statement = await db.prepare(
-        "UPDATE settings SET pollingInterval = ?, payloadPrefix = ? WHERE id = ?",
+        "UPDATE settings SET pollingInterval = ?, payloadPrefix = ?, persistSessionData = ? WHERE id = ?",
       );
 
       await statement.run(
         validatedSettings.pollingInterval,
         validatedSettings.payloadPrefix || "",
+        validatedSettings.persistSessionData ? 1 : 0,
         id,
       );
 
@@ -259,6 +281,10 @@ export class SettingsService {
           id: String(settings.id),
           pollingInterval: Number(settings.pollingInterval),
           payloadPrefix: settings.payloadPrefix || "",
+          persistSessionData:
+            settings.persistSessionData !== undefined
+              ? Boolean(settings.persistSessionData)
+              : true,
         }),
       );
     } catch (error) {
