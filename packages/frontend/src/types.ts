@@ -1,6 +1,7 @@
 import { type Caido } from "@caido/sdk-frontend";
 
 import {
+  type PollingTask,
   type Provider,
   type Settings,
 } from "../../backend/src/validation/schemas";
@@ -33,6 +34,32 @@ type API = {
   ) => Promise<Settings | null>;
   deleteSettings: (id: string) => Promise<boolean>;
   listSettings: () => Promise<Settings[]>;
+
+  // PollingTask API
+  createPollingTask: (
+    task: Omit<PollingTask, "createdAt" | "updatedAt">,
+  ) => Promise<PollingTask | null>;
+  getPollingTask: (id: string) => Promise<PollingTask | null>;
+  updatePollingTask: (
+    id: string,
+    updates: Partial<PollingTask>,
+  ) => Promise<PollingTask | null>;
+  deletePollingTask: (id: string) => Promise<boolean>;
+  listPollingTasks: (
+    filters?: Partial<{
+      tabId: string;
+      isActive: boolean;
+      providerId: string;
+    }>,
+  ) => Promise<PollingTask[]>;
+  updateTaskHealth: (
+    id: string,
+    healthStatus: "healthy" | "unhealthy" | "unknown",
+  ) => Promise<PollingTask | null>;
+  updateLastPolled: (id: string, timestamp: number) => Promise<PollingTask | null>;
+  deactivateTask: (id: string) => Promise<PollingTask | null>;
+  activateTask: (id: string) => Promise<PollingTask | null>;
+  getActivePollingTasks: () => Promise<PollingTask[]>;
 };
 
 type SidebarSDKPatched = {

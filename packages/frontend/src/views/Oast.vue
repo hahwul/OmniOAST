@@ -6,12 +6,13 @@ import DataTable from "primevue/datatable";
 import Dropdown from "primevue/dropdown";
 import { useToast } from "primevue/usetoast";
 import { v4 as uuidv4 } from "uuid";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
 import type { Provider } from "../../../backend/src/validation/schemas";
 
 import OastTabs from "./OastTabs.vue";
 
+import { usePollingTaskManager } from "@/composables/pollingTaskManager";
 import { useSDK } from "@/plugins/sdk";
 import { useClientService } from "@/services/interactsh";
 import { useOastStore } from "@/stores/oastStore";
@@ -21,6 +22,7 @@ const { copy } = useClipboard();
 const sdk = useSDK();
 const toast = useToast();
 const oastStore = useOastStore();
+const pollingTaskManager = usePollingTaskManager();
 
 const clientService = useClientService();
 
@@ -140,8 +142,9 @@ async function getPayload() {
     let stopPolling: () => void;
 
     const pollingId = uuidv4();
-    const updateLastPolled = () => {
+    const updateLastPolled = async () => {
         oastStore.updatePollingLastPolled(pollingId, Date.now());
+        await pollingTaskManager.updatePollingTimestamp(pollingId);
     };
 
     if (currentProvider.type === "interactsh") {
@@ -260,13 +263,32 @@ async function getPayload() {
     const providerId = currentProvider.id;
     activePollingSessions.value[providerId] = pollingId;
 
+    // Register polling task in backend (if persistent polling is enabled)
+    await pollingTaskManager.registerPollingTask({
+        id: pollingId,
+        tabId: activeTab.id,
+        tabName: activeTab.name,
+        providerId: currentProvider.id!,
+        providerName: currentProvider.name,
+        providerType: currentProvider.type,
+        payload: payloadInput.value,
+        interval: pollingInterval,
+    });
+
+    // Start polling session tracking
+    pollingTaskManager.startPollingSession(pollingId, () => {
+        stopPolling();
+        delete activePollingSessions.value[providerId];
+    });
+
     oastStore.addPolling({
         id: pollingId,
         payload: payloadInput.value,
         provider: currentProvider.name,
         lastPolled: Date.now(),
         interval: pollingInterval,
-        stop: () => {
+        stop: async () => {
+            await pollingTaskManager.stopPollingSession(pollingId);
             stopPolling();
             delete activePollingSessions.value[providerId];
         },
@@ -479,7 +501,7 @@ function showDetails(event: any) {
     selectedInteraction.value = event.data;
 }
 
-onMounted(() => {
+onMounted(async () => {
     loadProviders();
 
     requestEditor.value = sdk.ui.httpRequestEditor();
@@ -513,6 +535,30 @@ onMounted(() => {
     } else {
         console.warn("responseContainer.value is not defined");
     }
+
+    // Start health check for polling tasks
+    pollingTaskManager.startHealthCheck();
+
+    // Restore active polling tasks from database
+    try {
+        const tasksToRestore = await pollingTaskManager.restorePollingTasks();
+        if (tasksToRestore.length > 0) {
+            console.log(`Restoring ${tasksToRestore.length} polling tasks...`);
+            sdk.window.showToast(
+                `Found ${tasksToRestore.length} active polling task(s) from previous session`,
+                { variant: "info" }
+            );
+            // Note: Actual restoration would require provider and tab context
+            // For now, we just log that they exist and mark them for manual restart
+        }
+    } catch (error) {
+        console.error("Failed to restore polling tasks:", error);
+    }
+});
+
+onUnmounted(() => {
+    // Stop health check when component is unmounted
+    pollingTaskManager.stopHealthCheck();
 });
 
 watch(selectedInteraction, (interaction) => {
