@@ -6,8 +6,10 @@ import InputText from "primevue/inputtext";
 import { onMounted, ref } from "vue";
 
 import { useSDK } from "@/plugins/sdk";
+import { useOastStore } from "@/stores/oastStore";
 
 const sdk = useSDK();
+const oastStore = useOastStore();
 
 // Define settings interface
 interface SettingsData {
@@ -47,13 +49,22 @@ const loadSettings = () => {
 };
 
 // Save settings to backend
-const saveSettings = () => {
+const saveSettings = async () => {
   // 명시적으로 원시 타입으로 변환하여 API 호출에 사용
   const payload: ApiPayload = {
     pollingInterval: Number(settings.value.pollingInterval),
     payloadPrefix: String(settings.value.payloadPrefix || ""),
     persistState: Boolean(settings.value.persistState),
   };
+
+  // If persistState is being disabled, clear the persisted state
+  if (!payload.persistState) {
+    await oastStore.clearPersistedState();
+    sdk.window.showToast(
+      "Persistence disabled - polling tasks and payloads cleared",
+      { variant: "info" },
+    );
+  }
 
   if (settings.value.id) {
     // Update existing settings

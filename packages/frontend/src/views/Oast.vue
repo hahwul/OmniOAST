@@ -22,7 +22,8 @@ const sdk = useSDK();
 const toast = useToast();
 const oastStore = useOastStore();
 
-const clientService = useClientService();
+// Store separate client instances for each interactsh polling task
+const interactshClients = ref<Record<string, any>>({});
 
 const requestEditor = ref<any>(null);
 const responseEditor = ref<any>(null);
@@ -143,6 +144,9 @@ async function getPayload() {
 
   if (currentProvider.type === "interactsh") {
     try {
+      // Create a new client instance for this polling task
+      const clientService = useClientService();
+      
       await clientService.start(
         {
           serverURL: currentProvider.url,
@@ -179,7 +183,14 @@ async function getPayload() {
 
       const { url } = clientService.generateUrl();
       payloadUrl = url;
-      stopPolling = () => clientService.stop();
+      
+      // Store the client instance with the polling ID
+      interactshClients.value[pollingId] = clientService;
+      
+      stopPolling = () => {
+        clientService.stop();
+        delete interactshClients.value[pollingId];
+      };
     } catch (error) {
       console.error("Registration failed:", error);
       sdk.window.showToast("Failed to register interactsh provider", {
@@ -434,7 +445,10 @@ async function pollInteractions() {
 
     switch (provider.type) {
       case "interactsh":
-        clientService.poll();
+        // Poll the specific client instance for this task
+        if (interactshClients.value[task.id]) {
+          interactshClients.value[task.id].poll();
+        }
         break;
       case "BOAST":
         await pollBoastEvents(provider, activeTab.id);
@@ -514,6 +528,9 @@ async function restorePollingFromState() {
 
     try {
       if (provider.type === "interactsh") {
+        // Create a new client instance for this restored polling task
+        const clientService = useClientService();
+        
         await clientService.start(
           {
             serverURL: provider.url,
@@ -557,7 +574,13 @@ async function restorePollingFromState() {
           await oastStore.setTabPayload(taskTab.id, finalPayload);
         }
 
-        stopPolling = () => clientService.stop();
+        // Store the client instance with the task ID
+        interactshClients.value[task.id] = clientService;
+        
+        stopPolling = () => {
+          clientService.stop();
+          delete interactshClients.value[task.id];
+        };
       } else {
         const pollFunction = () => {
           switch (provider.type) {
@@ -717,7 +740,10 @@ async function pollAllTabs() {
       try {
         switch (provider.type) {
           case "interactsh":
-            clientService.poll();
+            // Poll the specific client instance for this task
+            if (interactshClients.value[task.id]) {
+              interactshClients.value[task.id].poll();
+            }
             break;
           case "BOAST":
             await pollBoastEvents(provider, tab.id);
