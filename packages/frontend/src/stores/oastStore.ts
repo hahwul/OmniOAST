@@ -31,21 +31,41 @@ interface Polling {
   id: string;
   payload: string;
   provider: string;
-  lastPolled: number; // Timestamp
+  providerId?: string;
+  lastChecked: number; // Timestamp
   interval: number; // Polling interval in milliseconds
   stop: () => void;
   tabId: string;
   tabName: string;
+  session?: {
+    type: "interactsh";
+    serverURL: string;
+    token: string;
+    correlationID: string;
+    secretKey: string;
+    privateKey?: string;
+    publicKey?: string;
+  };
 }
 
 interface PollingListItem {
   id: string;
   payload: string;
   provider: string;
-  lastPolled: number;
+  providerId?: string;
+  lastChecked: number;
   interval: number;
   tabId: string;
   tabName: string;
+  session?: {
+    type: "interactsh";
+    serverURL: string;
+    token: string;
+    correlationID: string;
+    secretKey: string;
+    privateKey?: string;
+    publicKey?: string;
+  };
 }
 
 /**
@@ -69,8 +89,10 @@ export const useOastStore = defineStore("oast", () => {
   const activeProviders = ref<Record<string, any>>({}); // Stores data for active providers by type
   const tabPayloads = ref<Record<string, string>>({});
   const tabProviders = ref<Record<string, string>>({});
+  const tabPayloadHistory = ref<Record<string, string[]>>({});
   const pollingList = ref<PollingListItem[]>([]);
   const pollingFunctions = ref<Record<string, () => void>>({});
+  const pollingStatus = ref<Record<string, "running" | "stopped">>({});
   // Unread count for sidebar badge
   const unreadCount = ref(0);
   // OAST 탭 활성화 상태
@@ -83,6 +105,7 @@ export const useOastStore = defineStore("oast", () => {
   const storageKeyPollingList = "omnioast.pollingList";
   const storageKeyTabPayloads = "omnioast.tabPayloads";
   const storageKeyTabProviders = "omnioast.tabProviders";
+  const storageKeyTabPayloadHistory = "omnioast.tabPayloadHistory";
 
   const activeTab = computed(() => {
     if (!activeTabId.value) return null;
@@ -258,19 +281,41 @@ export const useOastStore = defineStore("oast", () => {
     if (storage && storage[storageKeyPollingList]) {
       const rawList = storage[storageKeyPollingList];
       if (Array.isArray(rawList)) {
-        pollingList.value = rawList.filter(
-          (item: any): item is PollingListItem => {
-            return (
+        // Migrate and validate items. Support legacy lastPolled.
+        pollingList.value = rawList
+          .map((item: any) => {
+            if (item && typeof item === "object") {
+              if (
+                item.lastChecked === undefined &&
+                typeof item.lastPolled === "number"
+              ) {
+                return { ...item, lastChecked: item.lastPolled };
+              }
+            }
+            return item;
+          })
+          .filter((item: any): item is PollingListItem => {
+            const baseValid =
               typeof item.id === "string" &&
               typeof item.payload === "string" &&
               typeof item.provider === "string" &&
-              typeof item.lastPolled === "number" &&
+              typeof item.lastChecked === "number" &&
               typeof item.interval === "number" &&
               typeof item.tabId === "string" &&
-              typeof item.tabName === "string"
-            );
-          },
-        );
+              typeof item.tabName === "string";
+            const providerIdValid =
+              item.providerId === undefined ||
+              typeof item.providerId === "string";
+            const sessionValid =
+              item.session === undefined ||
+              (item.session &&
+                item.session.type === "interactsh" &&
+                typeof item.session.serverURL === "string" &&
+                typeof item.session.token === "string" &&
+                typeof item.session.correlationID === "string" &&
+                typeof item.session.secretKey === "string");
+            return baseValid && providerIdValid && sessionValid;
+          });
       }
     }
   };
@@ -302,6 +347,33 @@ export const useOastStore = defineStore("oast", () => {
     await saveTabPayloads();
   };
 
+  const loadTabPayloadHistory = () => {
+    const storage = sdk.storage.get() as Record<string, any> | null;
+    if (storage && storage[storageKeyTabPayloadHistory]) {
+      tabPayloadHistory.value = storage[storageKeyTabPayloadHistory];
+    }
+  };
+
+  const saveTabPayloadHistory = async () => {
+    const storage = (sdk.storage.get() as Record<string, any>) || {};
+    storage[storageKeyTabPayloadHistory] = tabPayloadHistory.value;
+    await sdk.storage.set(storage);
+  };
+
+  const addPayloadToHistory = async (tabId: string, payload: string) => {
+    const list = tabPayloadHistory.value[tabId] || [];
+    const existsIndex = list.indexOf(payload);
+    if (existsIndex !== -1) {
+      list.splice(existsIndex, 1);
+      list.unshift(payload);
+    } else {
+      list.unshift(payload);
+      if (list.length > 20) list.length = 20;
+    }
+    tabPayloadHistory.value[tabId] = list;
+    await saveTabPayloadHistory();
+  };
+
   const loadTabProviders = () => {
     const storage = sdk.storage.get() as Record<string, any> | null;
     if (storage && storage[storageKeyTabProviders]) {
@@ -329,13 +401,16 @@ export const useOastStore = defineStore("oast", () => {
       id: polling.id,
       payload: polling.payload,
       provider: polling.provider,
-      lastPolled: polling.lastPolled,
+      providerId: polling.providerId,
+      lastChecked: polling.lastChecked,
       interval: polling.interval,
       tabId: polling.tabId,
       tabName: polling.tabName,
+      session: polling.session,
     };
     pollingList.value.push(newPollingItem);
     pollingFunctions.value[polling.id] = polling.stop;
+    pollingStatus.value[polling.id] = "running";
     await savePollingList();
   };
 
@@ -353,9 +428,25 @@ export const useOastStore = defineStore("oast", () => {
       const currentPolling = pollingList.value[index] as PollingListItem;
       const updatedPolling: PollingListItem = {
         ...currentPolling,
-        lastPolled: timestamp,
+        lastChecked: timestamp,
       };
       pollingList.value.splice(index, 1, updatedPolling);
+      await savePollingList();
+    }
+  };
+
+  /**
+   * Update fields for a polling item
+   */
+  const updatePolling = async (
+    pollingId: string,
+    fields: Partial<PollingListItem>,
+  ) => {
+    const index = pollingList.value.findIndex((p) => p.id === pollingId);
+    if (index !== -1) {
+      const current = pollingList.value[index] as PollingListItem;
+      const updated: PollingListItem = { ...current, ...fields } as any;
+      pollingList.value.splice(index, 1, updated);
       await savePollingList();
     }
   };
@@ -365,13 +456,71 @@ export const useOastStore = defineStore("oast", () => {
    * @param pollingId The ID of the polling to remove
    */
   const removePolling = async (pollingId: string) => {
+    const toRemove = pollingList.value.find((p) => p.id === pollingId);
     const stopFn = pollingFunctions.value[pollingId];
     if (stopFn) {
       stopFn();
       delete pollingFunctions.value[pollingId];
     }
     pollingList.value = pollingList.value.filter((p) => p.id !== pollingId);
+    delete pollingStatus.value[pollingId];
     await savePollingList();
+    // Also remove payload from history of its tab if present
+    if (toRemove && toRemove.tabId && toRemove.payload) {
+      await removePayloadFromHistory(toRemove.tabId, toRemove.payload);
+    }
+  };
+
+  /**
+   * Pauses a polling task without removing it
+   */
+  const pausePolling = async (pollingId: string) => {
+    const stopFn = pollingFunctions.value[pollingId];
+    if (stopFn) {
+      try {
+        await Promise.resolve(stopFn());
+      } catch (_) {}
+    }
+    pollingStatus.value[pollingId] = "stopped";
+    await savePollingList();
+  };
+
+  /**
+   * Set polling running status (non-persistent UI state)
+   */
+  const setPollingRunning = (pollingId: string, running: boolean) => {
+    pollingStatus.value[pollingId] = running ? "running" : "stopped";
+  };
+
+  /**
+   * Register/replace a stop function for a polling id
+   */
+  const registerPollingStop = (pollingId: string, stopFn: () => void) => {
+    pollingFunctions.value[pollingId] = stopFn;
+  };
+
+  const removePayloadFromHistory = async (tabId: string, payload: string) => {
+    const list = tabPayloadHistory.value[tabId] || [];
+    const idx = list.indexOf(payload);
+    if (idx !== -1) {
+      list.splice(idx, 1);
+      tabPayloadHistory.value[tabId] = list;
+      await saveTabPayloadHistory();
+    }
+  };
+
+  /**
+   * Removes all polling tasks that match the given tabId and payload,
+   * and also removes the payload from the tab history.
+   */
+  const removePayloadAndTasks = async (tabId: string, payload: string) => {
+    const tasks = pollingList.value.filter(
+      (p) => p.tabId === tabId && p.payload === payload,
+    );
+    for (const t of tasks) {
+      await removePolling(t.id);
+    }
+    await removePayloadFromHistory(tabId, payload);
   };
 
   // Initial load of stored data when the store is created
@@ -380,6 +529,7 @@ export const useOastStore = defineStore("oast", () => {
   loadPollingList();
   loadTabPayloads();
   loadTabProviders();
+  loadTabPayloadHistory();
 
   /**
    * Clears the unread count and updates the sidebar badge
@@ -407,8 +557,10 @@ export const useOastStore = defineStore("oast", () => {
     interactions,
     activeProviders,
     pollingList,
+    pollingStatus,
     tabPayloads,
     tabProviders,
+    tabPayloadHistory,
     addTab,
     removeTab,
     setActiveTab,
@@ -419,12 +571,19 @@ export const useOastStore = defineStore("oast", () => {
     loadProviderData,
     addPolling,
     updatePollingLastPolled,
+    updatePolling,
     removePolling,
+    pausePolling,
+    setPollingRunning,
+    registerPollingStop,
     clearUnreadCount,
     unreadCount,
     setOastTabActive,
     updateTabName,
     setTabPayload,
+    removePayloadFromHistory,
+    removePayloadAndTasks,
+    addPayloadToHistory,
     setTabProvider,
   };
 });

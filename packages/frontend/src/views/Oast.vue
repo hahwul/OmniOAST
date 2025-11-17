@@ -22,7 +22,6 @@ const sdk = useSDK();
 const toast = useToast();
 const oastStore = useOastStore();
 
-const clientService = useClientService();
 
 const requestEditor = ref<any>(null);
 const responseEditor = ref<any>(null);
@@ -61,7 +60,6 @@ const payloadInput = computed({
         }
     },
 });
-const activePollingSessions = ref<Record<string, any>>({});
 
 const searchQuery = ref("");
 const filteredInteractions = computed(() =>
@@ -126,18 +124,13 @@ async function getPayload() {
         return;
     }
 
-    if (activePollingSessions.value[currentProvider.id]) {
-        sdk.window.showToast("Polling is already active for this provider.", {
-            variant: "info",
-        });
-        return;
-    }
 
     const settings = await sdk.backend.getCurrentSettings();
     const pollingInterval = (settings?.pollingInterval || 5) * 1000;
 
     let payloadUrl = "";
     let stopPolling: () => void;
+    let sessionInfo: any = undefined;
 
     const pollingId = uuidv4();
     const updateLastPolled = () => {
@@ -146,7 +139,8 @@ async function getPayload() {
 
     if (currentProvider.type === "interactsh") {
         try {
-            await clientService.start(
+            const client = useClientService();
+            await client.start(
                 {
                     serverURL: currentProvider.url,
                     token: currentProvider.token || "",
@@ -180,9 +174,19 @@ async function getPayload() {
                 },
             );
 
-            const { url } = clientService.generateUrl();
+            const { url } = client.generateUrl();
             payloadUrl = url;
-            stopPolling = () => clientService.stop();
+            // Record last-checked periodically regardless of new events
+            const lcInterval = setInterval(() => {
+                oastStore.updatePollingLastPolled(pollingId, Date.now());
+            }, pollingInterval);
+            stopPolling = () => {
+                clearInterval(lcInterval);
+                return client.stop();
+            };
+            if (client.getSessionInfo) {
+                sessionInfo = await client.getSessionInfo();
+            }
         } catch (error) {
             console.error("Registration failed:", error);
             sdk.window.showToast("Failed to register interactsh provider", {
@@ -256,22 +260,39 @@ async function getPayload() {
         finalPayload = `${prefix}.${payloadUrl}`;
     }
     payloadInput.value = finalPayload;
+    // Save to per-tab payload history
+    if (oastStore.activeTab) {
+        await oastStore.addPayloadToHistory(oastStore.activeTab.id, finalPayload);
+    }
 
     const providerId = currentProvider.id;
-    activePollingSessions.value[providerId] = pollingId;
+
+    // sessionInfo may be set for interactsh above; otherwise undefined
 
     oastStore.addPolling({
         id: pollingId,
         payload: payloadInput.value,
         provider: currentProvider.name,
-        lastPolled: Date.now(),
+        providerId: currentProvider.id,
+        lastChecked: Date.now(),
         interval: pollingInterval,
         stop: () => {
             stopPolling();
-            delete activePollingSessions.value[providerId];
         },
         tabId: activeTab.id,
         tabName: activeTab.name,
+        session:
+            currentProvider.type === "interactsh" && sessionInfo
+                ? {
+                      type: "interactsh",
+                      serverURL: sessionInfo.serverURL,
+                      token: sessionInfo.token,
+                      correlationID: sessionInfo.correlationID,
+                      secretKey: sessionInfo.secretKey,
+                      privateKey: sessionInfo.privateKey,
+                      publicKey: sessionInfo.publicKey,
+                  }
+                : undefined,
     });
 }
 
@@ -450,9 +471,83 @@ async function pollInteractions() {
         if (!provider) continue;
 
         switch (provider.type) {
-            case "interactsh":
-                clientService.poll();
+            case "interactsh": {
+                // Perform a one-shot poll using the stored session without permanent start/stop
+                if (!task.session || task.session.type !== "interactsh") {
+                    console.warn(
+                        "Interactsh manual poll skipped: no stored session",
+                    );
+                    break;
+                }
+                try {
+                    const tmpClient = useClientService();
+                    await tmpClient.start(
+                        {
+                            serverURL: task.session.serverURL,
+                            token: task.session.token,
+                            sessionInfo: {
+                                serverURL: task.session.serverURL,
+                                token: task.session.token,
+                                privateKey: task.session.privateKey || "",
+                                correlationID: task.session.correlationID,
+                                secretKey: task.session.secretKey,
+                                publicKey: task.session.publicKey,
+                            },
+                        },
+                        (interaction: { [key: string]: any }) => {
+                            const method = interaction["q-type"]
+                                ? String(interaction["q-type"])
+                                : typeof interaction["raw-request"] ===
+                                        "string"
+                                  ? interaction["raw-request"].split(" ")[0] ||
+                                    ""
+                                  : "";
+                            oastStore.addInteraction(
+                                {
+                                    id: uuidv4(),
+                                    type: "interactsh",
+                                    correlationId: String(
+                                        interaction["full-id"],
+                                    ),
+                                    data: interaction,
+                                    protocol: String(interaction.protocol),
+                                    method: method,
+                                    source: String(
+                                        interaction["remote-address"],
+                                    ),
+                                    destination: String(
+                                        interaction["full-id"],
+                                    ),
+                                    provider: provider.name,
+                                    timestamp: formatTimestamp(
+                                        interaction.timestamp,
+                                    ),
+                                    rawRequest: String(
+                                        interaction["raw-request"],
+                                    ),
+                                    rawResponse: String(
+                                        interaction["raw-response"],
+                                    ),
+                                },
+                                activeTab.id,
+                            );
+                        },
+                    );
+                    await tmpClient.poll();
+                    // Do not close/deregister to preserve existing session
+                    oastStore.updatePollingLastPolled(
+                        task.id,
+                        Date.now(),
+                    );
+                } catch (e) {
+                    console.error("Manual Interactsh poll error:", e);
+                    sdk.window.showToast(
+                        "Failed to poll Interactsh for this task",
+                        { variant: "error" },
+                    );
+                }
                 break;
+            }
             case "BOAST":
                 await pollBoastEvents(provider, activeTab.id);
                 break;
@@ -473,6 +568,14 @@ function copyToClipboard(value: string, field: string) {
     }
     copy(value);
     sdk.window.showToast("Copied to clipboard", { variant: "success" });
+}
+
+async function removePayload(payload: string) {
+    if (!oastStore.activeTab) return;
+    await oastStore.removePayloadAndTasks(oastStore.activeTab.id, payload);
+    sdk.window.showToast("Payload and related tasks removed", {
+        variant: "success",
+    });
 }
 
 function showDetails(event: any) {
@@ -586,9 +689,58 @@ async function pollAllTabs() {
 
             try {
                 switch (provider.type) {
-                    case "interactsh":
-                        clientService.poll();
+                    case "interactsh": {
+                        if (!task.session || task.session.type !== "interactsh") {
+                            console.warn("Interactsh manual poll skipped: no stored session");
+                            break;
+                        }
+                        try {
+                            const tmpClient = useClientService();
+                            await tmpClient.start(
+                                {
+                                    serverURL: task.session.serverURL,
+                                    token: task.session.token,
+                                    sessionInfo: {
+                                        serverURL: task.session.serverURL,
+                                        token: task.session.token,
+                                        privateKey: task.session.privateKey || "",
+                                        correlationID: task.session.correlationID,
+                                        secretKey: task.session.secretKey,
+                                        publicKey: task.session.publicKey,
+                                    },
+                                },
+                                (interaction: { [key: string]: any }) => {
+                                    const method = interaction["q-type"]
+                                        ? String(interaction["q-type"])
+                                        : typeof interaction["raw-request"] === "string"
+                                          ? interaction["raw-request"].split(" ")[0] || ""
+                                          : "";
+                                    oastStore.addInteraction(
+                                        {
+                                            id: uuidv4(),
+                                            type: "interactsh",
+                                            correlationId: String(interaction["full-id"]),
+                                            data: interaction,
+                                            protocol: String(interaction.protocol),
+                                            method: method,
+                                            source: String(interaction["remote-address"]),
+                                            destination: String(interaction["full-id"]),
+                                            provider: provider.name,
+                                            timestamp: formatTimestamp(interaction.timestamp),
+                                            rawRequest: String(interaction["raw-request"]),
+                                            rawResponse: String(interaction["raw-response"]),
+                                        },
+                                        tab.id,
+                                    );
+                                },
+                            );
+                            await tmpClient.poll();
+                            oastStore.updatePollingLastPolled(task.id, Date.now());
+                        } catch (e) {
+                            console.error("Manual Interactsh poll error:", e);
+                        }
                         break;
+                    }
                     case "BOAST":
                         await pollBoastEvents(provider, tab.id);
                         break;
@@ -665,6 +817,22 @@ onMounted(() => {
                             class="p-button-secondary"
                             @click="pollInteractions"
                         />
+                    </div>
+                </div>
+            </div>
+            <!-- Payload history per tab -->
+            <div class="px-4 pb-2 flex-shrink-0">
+                <div class="text-xs font-semibold mb-1 text-surface-500">Recent Payloads</div>
+                <div class="flex flex-wrap gap-1.5">
+                    <template v-for="(p, idx) in (oastStore.activeTab ? (oastStore.tabPayloadHistory[oastStore.activeTab.id] || []) : [])" :key="idx">
+                        <div class="flex items-center gap-1 border border-surface-300 dark:border-surface-700 rounded px-1.5 py-0.5 max-w-[420px] text-xs">
+                            <span class="truncate max-w-[320px]" :title="p">{{ p }}</span>
+                            <Button icon="fa fa-copy" class="p-button-rounded p-button-text h-6 w-6 min-w-0 p-0 text-xs" v-tooltip.bottom="'Copy'" @click="copyToClipboard(p, 'Payload')" />
+                            <Button icon="fa fa-trash" class="p-button-rounded p-button-text p-button-danger h-6 w-6 min-w-0 p-0 text-xs" v-tooltip.bottom="'Remove'" @click="removePayload(p)" />
+                        </div>
+                    </template>
+                    <div v-if="oastStore.activeTab && (!oastStore.tabPayloadHistory[oastStore.activeTab.id] || oastStore.tabPayloadHistory[oastStore.activeTab.id].length === 0)" class="text-surface-400 text-sm">
+                        No payloads yet.
                     </div>
                 </div>
             </div>

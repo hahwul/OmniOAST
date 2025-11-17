@@ -83,24 +83,49 @@ class InteractshClient {
     payload: object,
   ) {
     const url = new URL("/register", serverURL).toString();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token && token.trim() !== "") {
+      headers["Authorization"] = token;
+    }
     const { data, error } = await tryCatch(
-      this.httpClient.post(url, payload, {
-        headers: { "Content-Type": "application/json", Authorization: token },
-      }),
+      this.httpClient.post(url, payload, { headers }),
     );
 
     if (error) {
+      // Treat known resume scenario as success: correlation-id already exists
+      const anyErr = error as any;
+      const status = anyErr?.response?.status;
+      const msg = String(anyErr?.response?.data || anyErr?.message || "");
+      if (
+        status === 400 &&
+        msg.toLowerCase().includes("correlation-id") &&
+        msg.toLowerCase().includes("exists")
+      ) {
+        this.state.value = State.Idle;
+        return;
+      }
       console.error("Registration error:", error);
       throw new Error(
         "Registration failed, please check your server URL and token",
       );
     }
 
-    if (data?.status !== undefined && data.status === 200) {
-      this.state.value = State.Idle;
-    } else {
-      throw new Error("Registration failed");
+    if (data?.status !== undefined) {
+      if (data.status === 200 || data.status === 201 || data.status === 204) {
+        this.state.value = State.Idle;
+        return;
+      }
+      // Treat 409 (already registered) as successful for resume flows
+      if (data.status === 409) {
+        this.state.value = State.Idle;
+        return;
+      }
+      throw new Error(`Registration failed with status ${data.status}`);
     }
+    // If no status provided by adapter, assume success when no error
+    this.state.value = State.Idle;
   }
 
   /**
@@ -123,7 +148,13 @@ class InteractshClient {
       this.serverURL.value.toString(),
     ).toString();
 
-    const { data, error } = await tryCatch(this.httpClient.get(url));
+    const headers: Record<string, string> = {};
+    if (this.token.value && this.token.value.trim() !== "") {
+      headers["Authorization"] = this.token.value;
+    }
+    const { data, error } = await tryCatch(
+      this.httpClient.get(url, { headers }),
+    );
 
     if (error) {
       console.error("Error polling interactions:", error);
@@ -167,12 +198,7 @@ class InteractshClient {
     options: Options,
     interactionCallbackParam?: (interaction: Record<string, unknown>) => void,
   ) {
-    this.httpClient =
-      options.httpClient ||
-      axios.create({
-        timeout: 10000,
-        headers: options.token ? { Authorization: options.token } : {},
-      });
+    this.httpClient = options.httpClient || axios.create({ timeout: 10000 });
 
     this.serverURL.value = new URL(options.serverURL);
     this.token.value = options.token;
@@ -189,22 +215,36 @@ class InteractshClient {
     }
 
     if (options.sessionInfo !== undefined) {
+      // If keys are provided, import and reuse them (enables resume after restart)
+      if (options.sessionInfo.privateKey) {
+        try {
+          await this.cryptoService.setKeyPairFromPEM(
+            options.sessionInfo.privateKey,
+            options.sessionInfo.publicKey,
+          );
+        } catch (e) {
+          console.error("Failed to import provided keypair, generating new", e);
+        }
+      }
       this.correlationID.value = options.sessionInfo.correlationID;
       this.secretKey.value = options.sessionInfo.secretKey;
       this.token.value = options.sessionInfo.token;
       this.serverURL.value = new URL(options.sessionInfo.serverURL);
     }
 
-    const publicKey = await this.cryptoService.encodePublicKey();
-    await this.performRegistration(
-      this.serverURL.value.toString(),
-      this.token.value,
-      {
-        "public-key": publicKey,
-        "secret-key": this.secretKey.value,
-        "correlation-id": this.correlationID.value,
-      },
-    );
+    // Skip re-registration if resuming from a session; it may already exist on server
+    if (!options.sessionInfo) {
+      const publicKey = await this.cryptoService.encodePublicKey();
+      await this.performRegistration(
+        this.serverURL.value.toString(),
+        this.token.value,
+        {
+          "public-key": publicKey,
+          "secret-key": this.secretKey.value,
+          "correlation-id": this.correlationID.value,
+        },
+      );
+    }
 
     if (options.keepAliveInterval !== undefined) {
       this.pollingInterval.value = options.keepAliveInterval;
@@ -318,6 +358,10 @@ class InteractshClient {
       this.serverURL.value?.toString(),
     ).toString();
 
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (this.token.value && this.token.value.trim() !== "") {
+      headers["Authorization"] = this.token.value;
+    }
     const { data, error } = await tryCatch(
       this.httpClient.post(
         url,
@@ -325,7 +369,7 @@ class InteractshClient {
           correlationID: this.correlationID.value,
           secretKey: this.secretKey.value,
         },
-        { headers: { "Content-Type": "application/json" } },
+        { headers },
       ),
     );
 
@@ -361,6 +405,32 @@ class InteractshClient {
       this.stopPolling();
     }
     await this.close();
+  }
+
+  /**
+   * Returns current session info for persistence/restoring
+   */
+  public async getSessionInfo(): Promise<SessionInfo | undefined> {
+    if (
+      this.serverURL.value === undefined ||
+      this.token.value === undefined ||
+      this.correlationID.value === undefined ||
+      this.secretKey.value === undefined
+    ) {
+      return undefined;
+    }
+    return {
+      serverURL: this.serverURL.value.toString(),
+      token: this.token.value,
+      privateKey: (this.cryptoService.exportPrivateKeyPEM
+        ? await this.cryptoService.exportPrivateKeyPEM()
+        : ""),
+      correlationID: this.correlationID.value,
+      secretKey: this.secretKey.value,
+      publicKey: (this.cryptoService.exportPublicKeyPEM
+        ? await this.cryptoService.exportPublicKeyPEM()
+        : undefined),
+    };
   }
 
   /**

@@ -3,12 +3,27 @@ import { defineStore } from "pinia";
 
 import { arrayBufferToBase64, base64ToArrayBuffer } from "@/utils/utils";
 
+function pemToArrayBuffer(pem: string): ArrayBuffer {
+  const base64 = pem
+    .replace(/-----BEGIN [^-]+-----/g, "")
+    .replace(/-----END [^-]+-----/g, "")
+    .replace(/\s+/g, "");
+  return base64ToArrayBuffer(base64);
+}
+
+function arrayBufferToPem(buf: ArrayBuffer, label: string): string {
+  const base64 = arrayBufferToBase64(buf);
+  const wrapped = base64.match(/.{1,64}/g)?.join("\n") || base64;
+  return `-----BEGIN ${label}-----\n${wrapped}\n-----END ${label}-----`;
+}
+
 export const useCryptoService = defineStore("services.crypto", () => {
   let privKey: CryptoKey | undefined = undefined;
   let pubKey: CryptoKey | undefined = undefined;
-  const keyInitializationPromise: Promise<void> = initializeRSAKeys();
+  let initialized = false;
 
-  async function initializeRSAKeys(): Promise<void> {
+  async function ensureKeys(): Promise<void> {
+    if (initialized && privKey && pubKey) return;
     const keyPair = await window.crypto.subtle.generateKey(
       {
         name: "RSA-OAEP",
@@ -21,6 +36,35 @@ export const useCryptoService = defineStore("services.crypto", () => {
     );
     pubKey = keyPair.publicKey;
     privKey = keyPair.privateKey;
+    initialized = true;
+  }
+
+  async function setKeyPairFromPEM(privateKeyPem: string, publicKeyPem?: string) {
+    const algo = { name: "RSA-OAEP", hash: "SHA-256" } as const;
+    const pkcs8 = pemToArrayBuffer(privateKeyPem);
+    privKey = await window.crypto.subtle.importKey(
+      "pkcs8",
+      pkcs8,
+      algo,
+      true,
+      ["decrypt"],
+    );
+    if (publicKeyPem) {
+      const spki = pemToArrayBuffer(publicKeyPem);
+      pubKey = await window.crypto.subtle.importKey(
+        "spki",
+        spki,
+        algo,
+        true,
+        ["encrypt"],
+      );
+    } else {
+      // Derive public from private by re-exporting not supported; require both, or fallback to generate
+      // For safety, generate a matching public key is not possible without private->public derivation here.
+      // So if no publicKeyPem provided, keep existing pubKey or regenerate pair.
+      if (!pubKey) await ensureKeys();
+    }
+    initialized = true;
   }
 
   function getPrivateKey(): CryptoKey | undefined {
@@ -31,16 +75,21 @@ export const useCryptoService = defineStore("services.crypto", () => {
     return pubKey;
   }
 
+  async function exportPublicKeyPEM(): Promise<string> {
+    if (!pubKey) await ensureKeys();
+    const exported = await window.crypto.subtle.exportKey("spki", pubKey as CryptoKey);
+    return arrayBufferToPem(exported, "PUBLIC KEY");
+  }
+
+  async function exportPrivateKeyPEM(): Promise<string> {
+    if (!privKey) await ensureKeys();
+    const exported = await window.crypto.subtle.exportKey("pkcs8", privKey as CryptoKey);
+    return arrayBufferToPem(exported, "PRIVATE KEY");
+  }
+
+  // Backward-compat alias
   async function encodePublicKey(): Promise<string> {
-    await keyInitializationPromise;
-    const exported = await window.crypto.subtle.exportKey(
-      "spki",
-      pubKey as CryptoKey,
-    );
-    const base64Key = arrayBufferToBase64(exported);
-    return btoa(
-      `-----BEGIN PUBLIC KEY-----\n${base64Key.match(/.{1,64}/g)?.join("\n")}\n-----END PUBLIC KEY-----`,
-    );
+    return btoa(await exportPublicKeyPEM());
   }
 
   async function decryptRSA(encodedKey: string): Promise<ArrayBuffer> {
@@ -121,6 +170,9 @@ export const useCryptoService = defineStore("services.crypto", () => {
   return {
     getPrivateKey,
     getPublicKey,
+    exportPublicKeyPEM,
+    exportPrivateKeyPEM,
+    setKeyPairFromPEM,
     encodePublicKey,
     decryptRSA,
     decryptMessage,
