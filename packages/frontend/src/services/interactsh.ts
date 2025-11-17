@@ -358,7 +358,9 @@ class InteractshClient {
       this.serverURL.value?.toString(),
     ).toString();
 
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
     if (this.token.value && this.token.value.trim() !== "") {
       headers["Authorization"] = this.token.value;
     }
@@ -422,14 +424,14 @@ class InteractshClient {
     return {
       serverURL: this.serverURL.value.toString(),
       token: this.token.value,
-      privateKey: (this.cryptoService.exportPrivateKeyPEM
+      privateKey: this.cryptoService.exportPrivateKeyPEM
         ? await this.cryptoService.exportPrivateKeyPEM()
-        : ""),
+        : "",
       correlationID: this.correlationID.value,
       secretKey: this.secretKey.value,
-      publicKey: (this.cryptoService.exportPublicKeyPEM
+      publicKey: this.cryptoService.exportPublicKeyPEM
         ? await this.cryptoService.exportPublicKeyPEM()
-        : undefined),
+        : undefined,
     };
   }
 

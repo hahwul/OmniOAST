@@ -1,9 +1,11 @@
-import { useOastStore } from "@/stores/oastStore";
-import { useSDK } from "@/plugins/sdk";
-import type { Provider } from "../../../backend/src/validation/schemas";
-import { formatTimestamp } from "@/utils/time";
-import { useClientService as useInteractshClient } from "@/services/interactsh";
 import { v4 as uuidv4 } from "uuid";
+
+import type { Provider } from "../../../backend/src/validation/schemas";
+
+import { useSDK } from "@/plugins/sdk";
+import { useClientService as useInteractshClient } from "@/services/interactsh";
+import { useOastStore } from "@/stores/oastStore";
+import { formatTimestamp } from "@/utils/time";
 
 type IntervalHandle = ReturnType<typeof setInterval>;
 
@@ -206,10 +208,9 @@ export function usePollingManager() {
             providerId: provider.id,
             payload: url || item.payload,
           });
-          sdk.window.showToast(
-            "Interactsh resumed with a new payload URL",
-            { variant: "info" },
-          );
+          sdk.window.showToast("Interactsh resumed with a new payload URL", {
+            variant: "info",
+          });
         }
 
         runningTasks[pollingId] = {
@@ -229,10 +230,15 @@ export function usePollingManager() {
 
         oastStore.registerPollingStop(pollingId, stopFn);
         oastStore.setPollingRunning(pollingId, true);
-        sdk.window.showToast("Interactsh polling resumed", { variant: "success" });
+        sdk.window.showToast("Interactsh polling resumed", {
+          variant: "success",
+        });
         return true;
       } catch (e) {
-        console.error("Resume interactsh with session failed, retrying fresh", e);
+        console.error(
+          "Resume interactsh with session failed, retrying fresh",
+          e,
+        );
         // Fallback: try fresh start without session
         try {
           const client = useInteractshClient();

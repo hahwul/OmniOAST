@@ -39,25 +39,20 @@ export const useCryptoService = defineStore("services.crypto", () => {
     initialized = true;
   }
 
-  async function setKeyPairFromPEM(privateKeyPem: string, publicKeyPem?: string) {
+  async function setKeyPairFromPEM(
+    privateKeyPem: string,
+    publicKeyPem?: string,
+  ) {
     const algo = { name: "RSA-OAEP", hash: "SHA-256" } as const;
     const pkcs8 = pemToArrayBuffer(privateKeyPem);
-    privKey = await window.crypto.subtle.importKey(
-      "pkcs8",
-      pkcs8,
-      algo,
-      true,
-      ["decrypt"],
-    );
+    privKey = await window.crypto.subtle.importKey("pkcs8", pkcs8, algo, true, [
+      "decrypt",
+    ]);
     if (publicKeyPem) {
       const spki = pemToArrayBuffer(publicKeyPem);
-      pubKey = await window.crypto.subtle.importKey(
-        "spki",
-        spki,
-        algo,
-        true,
-        ["encrypt"],
-      );
+      pubKey = await window.crypto.subtle.importKey("spki", spki, algo, true, [
+        "encrypt",
+      ]);
     } else {
       // Derive public from private by re-exporting not supported; require both, or fallback to generate
       // For safety, generate a matching public key is not possible without private->public derivation here.
@@ -77,13 +72,19 @@ export const useCryptoService = defineStore("services.crypto", () => {
 
   async function exportPublicKeyPEM(): Promise<string> {
     if (!pubKey) await ensureKeys();
-    const exported = await window.crypto.subtle.exportKey("spki", pubKey as CryptoKey);
+    const exported = await window.crypto.subtle.exportKey(
+      "spki",
+      pubKey as CryptoKey,
+    );
     return arrayBufferToPem(exported, "PUBLIC KEY");
   }
 
   async function exportPrivateKeyPEM(): Promise<string> {
     if (!privKey) await ensureKeys();
-    const exported = await window.crypto.subtle.exportKey("pkcs8", privKey as CryptoKey);
+    const exported = await window.crypto.subtle.exportKey(
+      "pkcs8",
+      privKey as CryptoKey,
+    );
     return arrayBufferToPem(exported, "PRIVATE KEY");
   }
 
