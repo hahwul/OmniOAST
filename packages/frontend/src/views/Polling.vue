@@ -10,7 +10,23 @@
       <Column field="tabName" header="Tab" :sortable="true"></Column>
       <Column field="provider" header="Provider" :sortable="true"></Column>
       <Column field="providerId" header="Provider ID" :sortable="true"></Column>
-      <Column field="payload" header="Payload"></Column>
+      <Column field="payload" header="Payload">
+        <template #body="slotProps">
+          <div class="flex items-center gap-2">
+            <span
+              class="truncate max-w-[420px]"
+              :title="slotProps.data.payload"
+              >{{ slotProps.data.payload }}</span
+            >
+            <Button
+              icon="fa fa-copy"
+              class="p-button-rounded p-button-text"
+              v-tooltip.bottom="'Copy payload'"
+              @click="copyPayload(slotProps.data.payload)"
+            />
+          </div>
+        </template>
+      </Column>
       <Column field="lastChecked" header="Last Checked" :sortable="true">
         <template #body="slotProps">
           {{ new Date(slotProps.data.lastChecked).toLocaleString() }}
@@ -58,6 +74,7 @@
 </template>
 
 <script setup lang="ts">
+import { useClipboard } from "@vueuse/core";
 import Button from "primevue/button";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
@@ -73,6 +90,7 @@ const pollingList = computed(() => oastStore.pollingList);
 const statusMap = oastStore.pollingStatus;
 const pollingManager = usePollingManager();
 const sdk = useSDK();
+const { copy } = useClipboard();
 
 const pauseTask = async (pollingId: string) => {
   await oastStore.pausePolling(pollingId);
@@ -91,5 +109,14 @@ const resumePolling = async (pollingId: string) => {
 const deleteTask = async (pollingId: string) => {
   await oastStore.removePolling(pollingId);
   sdk.window.showToast("Polling task deleted", { variant: "success" });
+};
+
+const copyPayload = (value: string) => {
+  if (!value) {
+    sdk.window.showToast("Nothing to copy", { variant: "warning" });
+    return;
+  }
+  copy(value);
+  sdk.window.showToast("Payload copied", { variant: "success" });
 };
 </script>
