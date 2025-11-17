@@ -29,18 +29,27 @@
           </span>
         </template>
       </Column>
-      <Column :exportable="false" style="min-width: 8rem">
+      <Column :exportable="false" style="min-width: 12rem">
         <template #body="slotProps">
           <Button
-            icon="fa fa-stop-circle"
+            v-if="statusMap[slotProps.data.id] === 'running'"
+            icon="fa fa-pause-circle"
             class="p-button-rounded p-button-warning"
-            @click="stopPolling(slotProps.data.id)"
+            v-tooltip.bottom="'Pause'"
+            @click="pauseTask(slotProps.data.id)"
           />
           <Button
             v-if="statusMap[slotProps.data.id] !== 'running'"
             icon="fa fa-play-circle"
             class="ml-2 p-button-rounded p-button-success"
+            v-tooltip.bottom="'Resume'"
             @click="resumePolling(slotProps.data.id)"
+          />
+          <Button
+            icon="fa fa-trash"
+            class="ml-2 p-button-rounded p-button-danger"
+            v-tooltip.bottom="'Delete'"
+            @click="deleteTask(slotProps.data.id)"
           />
         </template>
       </Column>
@@ -65,8 +74,9 @@ const statusMap = oastStore.pollingStatus;
 const pollingManager = usePollingManager();
 const sdk = useSDK();
 
-const stopPolling = (pollingId: string) => {
-  oastStore.removePolling(pollingId);
+const pauseTask = async (pollingId: string) => {
+  await oastStore.pausePolling(pollingId);
+  sdk.window.showToast("Polling task paused", { variant: "info" });
 };
 
 const resumePolling = async (pollingId: string) => {
@@ -76,5 +86,10 @@ const resumePolling = async (pollingId: string) => {
   } else {
     sdk.window.showToast("Polling task resumed", { variant: "success" });
   }
+};
+
+const deleteTask = async (pollingId: string) => {
+  await oastStore.removePolling(pollingId);
+  sdk.window.showToast("Polling task deleted", { variant: "success" });
 };
 </script>

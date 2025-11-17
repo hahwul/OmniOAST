@@ -438,6 +438,20 @@ export const useOastStore = defineStore("oast", () => {
   };
 
   /**
+   * Pauses a polling task without removing it
+   */
+  const pausePolling = async (pollingId: string) => {
+    const stopFn = pollingFunctions.value[pollingId];
+    if (stopFn) {
+      try {
+        await Promise.resolve(stopFn());
+      } catch (_) {}
+    }
+    pollingStatus.value[pollingId] = "stopped";
+    await savePollingList();
+  };
+
+  /**
    * Set polling running status (non-persistent UI state)
    */
   const setPollingRunning = (pollingId: string, running: boolean) => {
@@ -499,6 +513,7 @@ export const useOastStore = defineStore("oast", () => {
     updatePollingLastPolled,
     updatePolling,
     removePolling,
+    pausePolling,
     setPollingRunning,
     registerPollingStop,
     clearUnreadCount,
