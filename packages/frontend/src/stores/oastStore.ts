@@ -89,6 +89,7 @@ export const useOastStore = defineStore("oast", () => {
   const activeProviders = ref<Record<string, any>>({}); // Stores data for active providers by type
   const tabPayloads = ref<Record<string, string>>({});
   const tabProviders = ref<Record<string, string>>({});
+  const tabPayloadHistory = ref<Record<string, string[]>>({});
   const pollingList = ref<PollingListItem[]>([]);
   const pollingFunctions = ref<Record<string, () => void>>({});
   const pollingStatus = ref<Record<string, "running" | "stopped">>({});
@@ -104,6 +105,7 @@ export const useOastStore = defineStore("oast", () => {
   const storageKeyPollingList = "omnioast.pollingList";
   const storageKeyTabPayloads = "omnioast.tabPayloads";
   const storageKeyTabProviders = "omnioast.tabProviders";
+  const storageKeyTabPayloadHistory = "omnioast.tabPayloadHistory";
 
   const activeTab = computed(() => {
     if (!activeTabId.value) return null;
@@ -345,6 +347,33 @@ export const useOastStore = defineStore("oast", () => {
     await saveTabPayloads();
   };
 
+  const loadTabPayloadHistory = () => {
+    const storage = sdk.storage.get() as Record<string, any> | null;
+    if (storage && storage[storageKeyTabPayloadHistory]) {
+      tabPayloadHistory.value = storage[storageKeyTabPayloadHistory];
+    }
+  };
+
+  const saveTabPayloadHistory = async () => {
+    const storage = (sdk.storage.get() as Record<string, any>) || {};
+    storage[storageKeyTabPayloadHistory] = tabPayloadHistory.value;
+    await sdk.storage.set(storage);
+  };
+
+  const addPayloadToHistory = async (tabId: string, payload: string) => {
+    const list = tabPayloadHistory.value[tabId] || [];
+    const existsIndex = list.indexOf(payload);
+    if (existsIndex !== -1) {
+      list.splice(existsIndex, 1);
+      list.unshift(payload);
+    } else {
+      list.unshift(payload);
+      if (list.length > 20) list.length = 20;
+    }
+    tabPayloadHistory.value[tabId] = list;
+    await saveTabPayloadHistory();
+  };
+
   const loadTabProviders = () => {
     const storage = sdk.storage.get() as Record<string, any> | null;
     if (storage && storage[storageKeyTabProviders]) {
@@ -427,6 +456,7 @@ export const useOastStore = defineStore("oast", () => {
    * @param pollingId The ID of the polling to remove
    */
   const removePolling = async (pollingId: string) => {
+    const toRemove = pollingList.value.find((p) => p.id === pollingId);
     const stopFn = pollingFunctions.value[pollingId];
     if (stopFn) {
       stopFn();
@@ -435,6 +465,10 @@ export const useOastStore = defineStore("oast", () => {
     pollingList.value = pollingList.value.filter((p) => p.id !== pollingId);
     delete pollingStatus.value[pollingId];
     await savePollingList();
+    // Also remove payload from history of its tab if present
+    if (toRemove && toRemove.tabId && toRemove.payload) {
+      await removePayloadFromHistory(toRemove.tabId, toRemove.payload);
+    }
   };
 
   /**
@@ -465,12 +499,37 @@ export const useOastStore = defineStore("oast", () => {
     pollingFunctions.value[pollingId] = stopFn;
   };
 
+  const removePayloadFromHistory = async (tabId: string, payload: string) => {
+    const list = tabPayloadHistory.value[tabId] || [];
+    const idx = list.indexOf(payload);
+    if (idx !== -1) {
+      list.splice(idx, 1);
+      tabPayloadHistory.value[tabId] = list;
+      await saveTabPayloadHistory();
+    }
+  };
+
+  /**
+   * Removes all polling tasks that match the given tabId and payload,
+   * and also removes the payload from the tab history.
+   */
+  const removePayloadAndTasks = async (tabId: string, payload: string) => {
+    const tasks = pollingList.value.filter(
+      (p) => p.tabId === tabId && p.payload === payload,
+    );
+    for (const t of tasks) {
+      await removePolling(t.id);
+    }
+    await removePayloadFromHistory(tabId, payload);
+  };
+
   // Initial load of stored data when the store is created
   loadTabs();
   loadProviderData();
   loadPollingList();
   loadTabPayloads();
   loadTabProviders();
+  loadTabPayloadHistory();
 
   /**
    * Clears the unread count and updates the sidebar badge
@@ -501,6 +560,7 @@ export const useOastStore = defineStore("oast", () => {
     pollingStatus,
     tabPayloads,
     tabProviders,
+    tabPayloadHistory,
     addTab,
     removeTab,
     setActiveTab,
@@ -521,6 +581,9 @@ export const useOastStore = defineStore("oast", () => {
     setOastTabActive,
     updateTabName,
     setTabPayload,
+    removePayloadFromHistory,
+    removePayloadAndTasks,
+    addPayloadToHistory,
     setTabProvider,
   };
 });
