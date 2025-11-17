@@ -260,10 +260,16 @@ async function getPayload() {
     const providerId = currentProvider.id;
     activePollingSessions.value[providerId] = pollingId;
 
+    const sessionInfo =
+        currentProvider.type === "interactsh"
+            ? (clientService.getSessionInfo && clientService.getSessionInfo())
+            : undefined;
+
     oastStore.addPolling({
         id: pollingId,
         payload: payloadInput.value,
         provider: currentProvider.name,
+        providerId: currentProvider.id,
         lastPolled: Date.now(),
         interval: pollingInterval,
         stop: () => {
@@ -272,6 +278,16 @@ async function getPayload() {
         },
         tabId: activeTab.id,
         tabName: activeTab.name,
+        session:
+            currentProvider.type === "interactsh" && sessionInfo
+                ? {
+                      type: "interactsh",
+                      serverURL: sessionInfo.serverURL,
+                      token: sessionInfo.token,
+                      correlationID: sessionInfo.correlationID,
+                      secretKey: sessionInfo.secretKey,
+                  }
+                : undefined,
     });
 }
 

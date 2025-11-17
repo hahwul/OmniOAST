@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import ConfirmDialog from "primevue/confirmdialog";
 import MenuBar from "primevue/menubar";
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 
 import About from "./About.vue";
 import Oast from "./Oast.vue";
@@ -10,11 +10,13 @@ import Providers from "./Providers.vue";
 import Settings from "./Settings.vue";
 
 import { useOastStore } from "@/stores/oastStore";
+import { usePollingManager } from "@/services/pollingManager";
 
 const page = ref<"OAST" | "Providers" | "Settings" | "About" | "Polling">(
   "OAST",
 );
 const oastStore = useOastStore();
+const pollingManager = usePollingManager();
 
 // OAST 탭 진입 시 unreadCount 초기화
 watch(page, (newPage) => {
@@ -22,6 +24,11 @@ watch(page, (newPage) => {
   if (newPage === "OAST") {
     oastStore.clearUnreadCount();
   }
+});
+
+onMounted(() => {
+  // Attempt to resume background polling for persisted tasks
+  pollingManager.resumeAll();
 });
 
 const leftItems = [

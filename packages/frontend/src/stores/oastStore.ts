@@ -31,21 +31,37 @@ interface Polling {
   id: string;
   payload: string;
   provider: string;
+  providerId?: string;
   lastPolled: number; // Timestamp
   interval: number; // Polling interval in milliseconds
   stop: () => void;
   tabId: string;
   tabName: string;
+  session?: {
+    type: "interactsh";
+    serverURL: string;
+    token: string;
+    correlationID: string;
+    secretKey: string;
+  };
 }
 
 interface PollingListItem {
   id: string;
   payload: string;
   provider: string;
+  providerId?: string;
   lastPolled: number;
   interval: number;
   tabId: string;
   tabName: string;
+  session?: {
+    type: "interactsh";
+    serverURL: string;
+    token: string;
+    correlationID: string;
+    secretKey: string;
+  };
 }
 
 /**
@@ -71,6 +87,7 @@ export const useOastStore = defineStore("oast", () => {
   const tabProviders = ref<Record<string, string>>({});
   const pollingList = ref<PollingListItem[]>([]);
   const pollingFunctions = ref<Record<string, () => void>>({});
+  const pollingStatus = ref<Record<string, "running" | "stopped">>({});
   // Unread count for sidebar badge
   const unreadCount = ref(0);
   // OAST 탭 활성화 상태
@@ -260,15 +277,26 @@ export const useOastStore = defineStore("oast", () => {
       if (Array.isArray(rawList)) {
         pollingList.value = rawList.filter(
           (item: any): item is PollingListItem => {
-            return (
+            const baseValid =
               typeof item.id === "string" &&
               typeof item.payload === "string" &&
               typeof item.provider === "string" &&
               typeof item.lastPolled === "number" &&
               typeof item.interval === "number" &&
               typeof item.tabId === "string" &&
-              typeof item.tabName === "string"
-            );
+              typeof item.tabName === "string";
+            const providerIdValid =
+              item.providerId === undefined ||
+              typeof item.providerId === "string";
+            const sessionValid =
+              item.session === undefined ||
+              (item.session &&
+                item.session.type === "interactsh" &&
+                typeof item.session.serverURL === "string" &&
+                typeof item.session.token === "string" &&
+                typeof item.session.correlationID === "string" &&
+                typeof item.session.secretKey === "string");
+            return baseValid && providerIdValid && sessionValid;
           },
         );
       }
@@ -329,13 +357,16 @@ export const useOastStore = defineStore("oast", () => {
       id: polling.id,
       payload: polling.payload,
       provider: polling.provider,
+      providerId: polling.providerId,
       lastPolled: polling.lastPolled,
       interval: polling.interval,
       tabId: polling.tabId,
       tabName: polling.tabName,
+      session: polling.session,
     };
     pollingList.value.push(newPollingItem);
     pollingFunctions.value[polling.id] = polling.stop;
+    pollingStatus.value[polling.id] = "running";
     await savePollingList();
   };
 
@@ -361,6 +392,22 @@ export const useOastStore = defineStore("oast", () => {
   };
 
   /**
+   * Update fields for a polling item
+   */
+  const updatePolling = async (
+    pollingId: string,
+    fields: Partial<PollingListItem>,
+  ) => {
+    const index = pollingList.value.findIndex((p) => p.id === pollingId);
+    if (index !== -1) {
+      const current = pollingList.value[index] as PollingListItem;
+      const updated: PollingListItem = { ...current, ...fields } as any;
+      pollingList.value.splice(index, 1, updated);
+      await savePollingList();
+    }
+  };
+
+  /**
    * Removes a polling from the store and persists it
    * @param pollingId The ID of the polling to remove
    */
@@ -371,7 +418,22 @@ export const useOastStore = defineStore("oast", () => {
       delete pollingFunctions.value[pollingId];
     }
     pollingList.value = pollingList.value.filter((p) => p.id !== pollingId);
+    delete pollingStatus.value[pollingId];
     await savePollingList();
+  };
+
+  /**
+   * Set polling running status (non-persistent UI state)
+   */
+  const setPollingRunning = (pollingId: string, running: boolean) => {
+    pollingStatus.value[pollingId] = running ? "running" : "stopped";
+  };
+
+  /**
+   * Register/replace a stop function for a polling id
+   */
+  const registerPollingStop = (pollingId: string, stopFn: () => void) => {
+    pollingFunctions.value[pollingId] = stopFn;
   };
 
   // Initial load of stored data when the store is created
@@ -407,6 +469,7 @@ export const useOastStore = defineStore("oast", () => {
     interactions,
     activeProviders,
     pollingList,
+    pollingStatus,
     tabPayloads,
     tabProviders,
     addTab,
@@ -419,7 +482,10 @@ export const useOastStore = defineStore("oast", () => {
     loadProviderData,
     addPolling,
     updatePollingLastPolled,
+    updatePolling,
     removePolling,
+    setPollingRunning,
+    registerPollingStop,
     clearUnreadCount,
     unreadCount,
     setOastTabActive,

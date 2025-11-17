@@ -83,10 +83,14 @@ class InteractshClient {
     payload: object,
   ) {
     const url = new URL("/register", serverURL).toString();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token && token.trim() !== "") {
+      headers["Authorization"] = token;
+    }
     const { data, error } = await tryCatch(
-      this.httpClient.post(url, payload, {
-        headers: { "Content-Type": "application/json", Authorization: token },
-      }),
+      this.httpClient.post(url, payload, { headers }),
     );
 
     if (error) {
@@ -96,11 +100,20 @@ class InteractshClient {
       );
     }
 
-    if (data?.status !== undefined && data.status === 200) {
-      this.state.value = State.Idle;
-    } else {
-      throw new Error("Registration failed");
+    if (data?.status !== undefined) {
+      if (data.status === 200 || data.status === 201 || data.status === 204) {
+        this.state.value = State.Idle;
+        return;
+      }
+      // Treat 409 (already registered) as successful for resume flows
+      if (data.status === 409) {
+        this.state.value = State.Idle;
+        return;
+      }
+      throw new Error(`Registration failed with status ${data.status}`);
     }
+    // If no status provided by adapter, assume success when no error
+    this.state.value = State.Idle;
   }
 
   /**
@@ -361,6 +374,28 @@ class InteractshClient {
       this.stopPolling();
     }
     await this.close();
+  }
+
+  /**
+   * Returns current session info for persistence/restoring
+   */
+  public getSessionInfo(): SessionInfo | undefined {
+    if (
+      this.serverURL.value === undefined ||
+      this.token.value === undefined ||
+      this.correlationID.value === undefined ||
+      this.secretKey.value === undefined
+    ) {
+      return undefined;
+    }
+    return {
+      serverURL: this.serverURL.value.toString(),
+      token: this.token.value,
+      privateKey: "", // Not exported; re-register will refresh server key
+      correlationID: this.correlationID.value,
+      secretKey: this.secretKey.value,
+      publicKey: undefined,
+    };
   }
 
   /**
