@@ -822,13 +822,13 @@ onMounted(() => {
             </div>
             <!-- Payload history per tab -->
             <div class="px-4 pb-2 flex-shrink-0">
-                <div class="text-sm font-semibold mb-1 text-surface-500">Recent Payloads</div>
-                <div class="flex flex-wrap gap-2">
+                <div class="text-xs font-semibold mb-1 text-surface-500">Recent Payloads</div>
+                <div class="flex flex-wrap gap-1.5">
                     <template v-for="(p, idx) in (oastStore.activeTab ? (oastStore.tabPayloadHistory[oastStore.activeTab.id] || []) : [])" :key="idx">
-                        <div class="flex items-center gap-2 border border-surface-300 dark:border-surface-700 rounded px-2 py-1 max-w-[520px]">
-                            <span class="truncate" :title="p">{{ p }}</span>
-                            <Button icon="fa fa-copy" class="p-button-rounded p-button-text" v-tooltip.bottom="'Copy'" @click="copyToClipboard(p, 'Payload')" />
-                            <Button icon="fa fa-trash" class="p-button-rounded p-button-text p-button-danger" v-tooltip.bottom="'Remove'" @click="removePayload(p)" />
+                        <div class="flex items-center gap-1 border border-surface-300 dark:border-surface-700 rounded px-1.5 py-0.5 max-w-[420px] text-xs">
+                            <span class="truncate max-w-[320px]" :title="p">{{ p }}</span>
+                            <Button icon="fa fa-copy" class="p-button-rounded p-button-text h-6 w-6 min-w-0 p-0 text-xs" v-tooltip.bottom="'Copy'" @click="copyToClipboard(p, 'Payload')" />
+                            <Button icon="fa fa-trash" class="p-button-rounded p-button-text p-button-danger h-6 w-6 min-w-0 p-0 text-xs" v-tooltip.bottom="'Remove'" @click="removePayload(p)" />
                         </div>
                     </template>
                     <div v-if="oastStore.activeTab && (!oastStore.tabPayloadHistory[oastStore.activeTab.id] || oastStore.tabPayloadHistory[oastStore.activeTab.id].length === 0)" class="text-surface-400 text-sm">
