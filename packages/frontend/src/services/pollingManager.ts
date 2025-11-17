@@ -56,6 +56,87 @@ export function usePollingManager() {
     const item = oastStore.pollingList.find((p) => p.id === pollingId);
     if (!item) return false;
 
+    // Fast path for Interactsh: resume directly from stored session without provider lookup
+    if (item.session && item.session.type === "interactsh") {
+      try {
+        const client = useInteractshClient();
+        await client.start(
+          {
+            serverURL: item.session.serverURL,
+            token: item.session.token,
+            keepAliveInterval: item.interval,
+            sessionInfo: {
+              serverURL: item.session.serverURL,
+              token: item.session.token,
+              privateKey: item.session.privateKey || "",
+              correlationID: item.session.correlationID,
+              secretKey: item.session.secretKey,
+              publicKey: item.session.publicKey,
+            },
+          } as any,
+          (interaction: Record<string, unknown>) => {
+            const method = (interaction as any)["q-type"]
+              ? String((interaction as any)["q-type"])
+              : typeof (interaction as any)["raw-request"] === "string"
+                ? (interaction as any)["raw-request"].split(" ")[0] || ""
+                : "";
+            oastStore.addInteraction(
+              {
+                id: uuidv4(),
+                type: "interactsh",
+                correlationId: String((interaction as any)["full-id"]),
+                data: interaction,
+                protocol: String((interaction as any).protocol),
+                method,
+                source: String((interaction as any)["remote-address"]),
+                destination: String((interaction as any)["full-id"]),
+                provider: item.provider,
+                timestamp: formatTimestamp((interaction as any).timestamp),
+                rawRequest: String((interaction as any)["raw-request"]),
+                rawResponse: String((interaction as any)["raw-response"]),
+              },
+              item.tabId,
+            );
+            oastStore.updatePollingLastPolled(pollingId, Date.now());
+          },
+        );
+
+        // Record last-checked periodically regardless of new events
+        const intervalId = setInterval(() => {
+          oastStore.updatePollingLastPolled(pollingId, Date.now());
+        }, item.interval);
+
+        runningTasks[pollingId] = {
+          id: pollingId,
+          intervalId,
+          type: "interactsh",
+          providerId: item.providerId,
+        };
+
+        const stopFn = async () => {
+          try {
+            await client.stop();
+          } catch (_) {}
+          const task = runningTasks[pollingId];
+          if (task?.intervalId) clearInterval(task.intervalId);
+          delete runningTasks[pollingId];
+          oastStore.setPollingRunning(pollingId, false);
+        };
+        oastStore.registerPollingStop(pollingId, stopFn);
+        oastStore.setPollingRunning(pollingId, true);
+        sdk.window.showToast("Interactsh resumed with stored session", {
+          variant: "success",
+        });
+        return true;
+      } catch (e) {
+        console.error(
+          "Resume Interactsh with stored session failed; will try provider",
+          e,
+        );
+        // fall through to provider-based resume
+      }
+    }
+
     // Resolve provider by ID first, fallback to name
     const providers = await sdk.backend.listProviders();
     const provider = providers.find(
@@ -72,28 +153,13 @@ export function usePollingManager() {
     if (provider.type === "interactsh") {
       try {
         const client = useInteractshClient();
-        const hasSession = item.session && item.session.type === "interactsh";
-        const startOptions = hasSession
-          ? {
-              serverURL: item.session!.serverURL,
-              token: item.session!.token,
-              keepAliveInterval: item.interval,
-              sessionInfo: {
-                serverURL: item.session!.serverURL,
-                token: item.session!.token,
-                privateKey: "",
-                correlationID: item.session!.correlationID,
-                secretKey: item.session!.secretKey,
-              },
-            }
-          : {
-              serverURL: provider.url,
-              token: provider.token || "",
-              keepAliveInterval: item.interval,
-            };
-
+        // Start fresh session using provider settings
         await client.start(
-          startOptions as any,
+          {
+            serverURL: provider.url,
+            token: provider.token || "",
+            keepAliveInterval: item.interval,
+          } as any,
           (interaction: Record<string, unknown>) => {
             const method = (interaction as any)["q-type"]
               ? String((interaction as any)["q-type"])
@@ -121,9 +187,9 @@ export function usePollingManager() {
           },
         );
 
-        // If there was no session, update the polling item with new session and payload URL
-        if (!hasSession && client.getSessionInfo) {
-          const si = client.getSessionInfo();
+        // Update the polling item with new session and payload URL
+        if (client.getSessionInfo) {
+          const si = await client.getSessionInfo();
           const { url } = client.generateUrl();
           await oastStore.updatePolling(pollingId, {
             session: si
@@ -133,6 +199,8 @@ export function usePollingManager() {
                   token: si.token,
                   correlationID: si.correlationID,
                   secretKey: si.secretKey,
+                  privateKey: si.privateKey,
+                  publicKey: si.publicKey,
                 }
               : undefined,
             providerId: provider.id,
@@ -203,7 +271,7 @@ export function usePollingManager() {
 
           // Update polling item with new session + payload
           if (client.getSessionInfo) {
-            const si = client.getSessionInfo();
+            const si = await client.getSessionInfo();
             const { url } = client.generateUrl();
             await oastStore.updatePolling(pollingId, {
               session: si
@@ -213,6 +281,8 @@ export function usePollingManager() {
                     token: si.token,
                     correlationID: si.correlationID,
                     secretKey: si.secretKey,
+                    privateKey: si.privateKey,
+                    publicKey: si.publicKey,
                   }
                 : undefined,
               providerId: provider.id,
@@ -220,9 +290,13 @@ export function usePollingManager() {
             });
           }
 
+          const intervalId = setInterval(() => {
+            oastStore.updatePollingLastPolled(pollingId, Date.now());
+          }, item.interval);
+
           runningTasks[pollingId] = {
             id: pollingId,
-            intervalId: null,
+            intervalId,
             type: provider.type,
             providerId: provider.id,
           };
@@ -231,6 +305,8 @@ export function usePollingManager() {
             try {
               await client.stop();
             } catch (_) {}
+            const task = runningTasks[pollingId];
+            if (task?.intervalId) clearInterval(task.intervalId);
             delete runningTasks[pollingId];
             oastStore.setPollingRunning(pollingId, false);
           };

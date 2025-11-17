@@ -182,7 +182,14 @@ async function getPayload() {
 
             const { url } = clientService.generateUrl();
             payloadUrl = url;
-            stopPolling = () => clientService.stop();
+            // Record last-checked periodically regardless of new events
+            const lcInterval = setInterval(() => {
+                oastStore.updatePollingLastPolled(pollingId, Date.now());
+            }, pollingInterval);
+            stopPolling = () => {
+                clearInterval(lcInterval);
+                return clientService.stop();
+            };
         } catch (error) {
             console.error("Registration failed:", error);
             sdk.window.showToast("Failed to register interactsh provider", {
@@ -262,7 +269,7 @@ async function getPayload() {
 
     const sessionInfo =
         currentProvider.type === "interactsh"
-            ? (clientService.getSessionInfo && clientService.getSessionInfo())
+            ? (clientService.getSessionInfo && await clientService.getSessionInfo())
             : undefined;
 
     oastStore.addPolling({
@@ -270,7 +277,7 @@ async function getPayload() {
         payload: payloadInput.value,
         provider: currentProvider.name,
         providerId: currentProvider.id,
-        lastPolled: Date.now(),
+        lastChecked: Date.now(),
         interval: pollingInterval,
         stop: () => {
             stopPolling();
@@ -286,6 +293,8 @@ async function getPayload() {
                       token: sessionInfo.token,
                       correlationID: sessionInfo.correlationID,
                       secretKey: sessionInfo.secretKey,
+                      privateKey: sessionInfo.privateKey,
+                      publicKey: sessionInfo.publicKey,
                   }
                 : undefined,
     });
@@ -466,9 +475,83 @@ async function pollInteractions() {
         if (!provider) continue;
 
         switch (provider.type) {
-            case "interactsh":
-                clientService.poll();
+            case "interactsh": {
+                // Perform a one-shot poll using the stored session without permanent start/stop
+                if (!task.session || task.session.type !== "interactsh") {
+                    console.warn(
+                        "Interactsh manual poll skipped: no stored session",
+                    );
+                    break;
+                }
+                try {
+                    const tmpClient = useClientService();
+                    await tmpClient.start(
+                        {
+                            serverURL: task.session.serverURL,
+                            token: task.session.token,
+                            sessionInfo: {
+                                serverURL: task.session.serverURL,
+                                token: task.session.token,
+                                privateKey: task.session.privateKey || "",
+                                correlationID: task.session.correlationID,
+                                secretKey: task.session.secretKey,
+                                publicKey: task.session.publicKey,
+                            },
+                        },
+                        (interaction: { [key: string]: any }) => {
+                            const method = interaction["q-type"]
+                                ? String(interaction["q-type"])
+                                : typeof interaction["raw-request"] ===
+                                        "string"
+                                  ? interaction["raw-request"].split(" ")[0] ||
+                                    ""
+                                  : "";
+                            oastStore.addInteraction(
+                                {
+                                    id: uuidv4(),
+                                    type: "interactsh",
+                                    correlationId: String(
+                                        interaction["full-id"],
+                                    ),
+                                    data: interaction,
+                                    protocol: String(interaction.protocol),
+                                    method: method,
+                                    source: String(
+                                        interaction["remote-address"],
+                                    ),
+                                    destination: String(
+                                        interaction["full-id"],
+                                    ),
+                                    provider: provider.name,
+                                    timestamp: formatTimestamp(
+                                        interaction.timestamp,
+                                    ),
+                                    rawRequest: String(
+                                        interaction["raw-request"],
+                                    ),
+                                    rawResponse: String(
+                                        interaction["raw-response"],
+                                    ),
+                                },
+                                activeTab.id,
+                            );
+                        },
+                    );
+                    await tmpClient.poll();
+                    // Do not close/deregister to preserve existing session
+                    oastStore.updatePollingLastPolled(
+                        task.id,
+                        Date.now(),
+                    );
+                } catch (e) {
+                    console.error("Manual Interactsh poll error:", e);
+                    sdk.window.showToast(
+                        "Failed to poll Interactsh for this task",
+                        { variant: "error" },
+                    );
+                }
                 break;
+            }
             case "BOAST":
                 await pollBoastEvents(provider, activeTab.id);
                 break;

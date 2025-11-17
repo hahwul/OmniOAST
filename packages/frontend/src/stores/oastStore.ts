@@ -32,7 +32,7 @@ interface Polling {
   payload: string;
   provider: string;
   providerId?: string;
-  lastPolled: number; // Timestamp
+  lastChecked: number; // Timestamp
   interval: number; // Polling interval in milliseconds
   stop: () => void;
   tabId: string;
@@ -43,6 +43,8 @@ interface Polling {
     token: string;
     correlationID: string;
     secretKey: string;
+    privateKey?: string;
+    publicKey?: string;
   };
 }
 
@@ -51,7 +53,7 @@ interface PollingListItem {
   payload: string;
   provider: string;
   providerId?: string;
-  lastPolled: number;
+  lastChecked: number;
   interval: number;
   tabId: string;
   tabName: string;
@@ -61,6 +63,8 @@ interface PollingListItem {
     token: string;
     correlationID: string;
     secretKey: string;
+    privateKey?: string;
+    publicKey?: string;
   };
 }
 
@@ -275,13 +279,25 @@ export const useOastStore = defineStore("oast", () => {
     if (storage && storage[storageKeyPollingList]) {
       const rawList = storage[storageKeyPollingList];
       if (Array.isArray(rawList)) {
-        pollingList.value = rawList.filter(
-          (item: any): item is PollingListItem => {
+        // Migrate and validate items. Support legacy lastPolled.
+        pollingList.value = rawList
+          .map((item: any) => {
+            if (item && typeof item === "object") {
+              if (
+                item.lastChecked === undefined &&
+                typeof item.lastPolled === "number"
+              ) {
+                return { ...item, lastChecked: item.lastPolled };
+              }
+            }
+            return item;
+          })
+          .filter((item: any): item is PollingListItem => {
             const baseValid =
               typeof item.id === "string" &&
               typeof item.payload === "string" &&
               typeof item.provider === "string" &&
-              typeof item.lastPolled === "number" &&
+              typeof item.lastChecked === "number" &&
               typeof item.interval === "number" &&
               typeof item.tabId === "string" &&
               typeof item.tabName === "string";
@@ -297,8 +313,7 @@ export const useOastStore = defineStore("oast", () => {
                 typeof item.session.correlationID === "string" &&
                 typeof item.session.secretKey === "string");
             return baseValid && providerIdValid && sessionValid;
-          },
-        );
+          });
       }
     }
   };
@@ -358,7 +373,7 @@ export const useOastStore = defineStore("oast", () => {
       payload: polling.payload,
       provider: polling.provider,
       providerId: polling.providerId,
-      lastPolled: polling.lastPolled,
+      lastChecked: polling.lastChecked,
       interval: polling.interval,
       tabId: polling.tabId,
       tabName: polling.tabName,
@@ -384,7 +399,7 @@ export const useOastStore = defineStore("oast", () => {
       const currentPolling = pollingList.value[index] as PollingListItem;
       const updatedPolling: PollingListItem = {
         ...currentPolling,
-        lastPolled: timestamp,
+        lastChecked: timestamp,
       };
       pollingList.value.splice(index, 1, updatedPolling);
       await savePollingList();

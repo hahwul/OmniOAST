@@ -11,9 +11,9 @@
       <Column field="provider" header="Provider" :sortable="true"></Column>
       <Column field="providerId" header="Provider ID" :sortable="true"></Column>
       <Column field="payload" header="Payload"></Column>
-      <Column field="lastPolled" header="Last Polled" :sortable="true">
+      <Column field="lastChecked" header="Last Checked" :sortable="true">
         <template #body="slotProps">
-          {{ new Date(slotProps.data.lastPolled).toLocaleString() }}
+          {{ new Date(slotProps.data.lastChecked).toLocaleString() }}
         </template>
       </Column>
       <Column field="interval" header="Interval (ms)" :sortable="true"></Column>
