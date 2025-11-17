@@ -9,8 +9,8 @@ import Polling from "./Polling.vue";
 import Providers from "./Providers.vue";
 import Settings from "./Settings.vue";
 
-import { useOastStore } from "@/stores/oastStore";
 import { usePollingManager } from "@/services/pollingManager";
+import { useOastStore } from "@/stores/oastStore";
 
 const page = ref<"OAST" | "Providers" | "Settings" | "About" | "Polling">(
   "OAST",

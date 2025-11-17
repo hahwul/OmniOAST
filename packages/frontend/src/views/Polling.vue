@@ -19,9 +19,9 @@
               >{{ slotProps.data.payload }}</span
             >
             <Button
+              v-tooltip.bottom="'Copy payload'"
               icon="fa fa-copy"
               class="p-button-rounded p-button-text"
-              v-tooltip.bottom="'Copy payload'"
               @click="copyPayload(slotProps.data.payload)"
             />
           </div>
@@ -41,7 +41,9 @@
               'text-red-400': statusMap[slotProps.data.id] !== 'running',
             }"
           >
-            {{ statusMap[slotProps.data.id] === 'running' ? 'Running' : 'Stopped' }}
+            {{
+              statusMap[slotProps.data.id] === "running" ? "Running" : "Stopped"
+            }}
           </span>
         </template>
       </Column>
@@ -49,22 +51,22 @@
         <template #body="slotProps">
           <Button
             v-if="statusMap[slotProps.data.id] === 'running'"
+            v-tooltip.bottom="'Pause'"
             icon="fa fa-pause-circle"
             class="p-button-rounded p-button-warning"
-            v-tooltip.bottom="'Pause'"
             @click="pauseTask(slotProps.data.id)"
           />
           <Button
             v-if="statusMap[slotProps.data.id] !== 'running'"
+            v-tooltip.bottom="'Resume'"
             icon="fa fa-play-circle"
             class="ml-2 p-button-rounded p-button-success"
-            v-tooltip.bottom="'Resume'"
             @click="resumePolling(slotProps.data.id)"
           />
           <Button
+            v-tooltip.bottom="'Delete'"
             icon="fa fa-trash"
             class="ml-2 p-button-rounded p-button-danger"
-            v-tooltip.bottom="'Delete'"
             @click="deleteTask(slotProps.data.id)"
           />
         </template>
@@ -80,9 +82,9 @@ import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import { computed } from "vue";
 
-import { useOastStore } from "@/stores/oastStore";
 import { useSDK } from "@/plugins/sdk";
 import { usePollingManager } from "@/services/pollingManager";
+import { useOastStore } from "@/stores/oastStore";
 
 const oastStore = useOastStore();
 const pollingList = computed(() => oastStore.pollingList);
