@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 0.5.0
+
 ## 0.4.0
 ### Added
 - Support for Command Palette commands: "Go to OmniOAST" and "Polling All Tabs"
