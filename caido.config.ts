@@ -13,7 +13,7 @@ export default defineConfig({
   name: "OmniOAST",
   description:
     "Unify your OAST provider management and consolidate all interactions into a single, streamlined workflow.",
-  version: "0.4.0",
+  version: "0.5.0",
   author: {
     name: "hahwul",
     email: "hahwul@gmail.com",
