@@ -4,10 +4,12 @@
   "type": "module",
   "types": "src/index.ts",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "devDependencies": {
-    "@caido/sdk-backend": "^0.46.0"
+    "@caido/sdk-backend": "^0.46.0",
+    "vitest": "^2.1.8"
   },
   "dependencies": {
     "uuid": "^11.1.0",

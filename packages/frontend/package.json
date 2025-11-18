@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@caido/primevue": "0.1.2",
@@ -21,7 +22,10 @@
     "@caido/sdk-frontend": "^0.46.0",
     "@codemirror/view": "6.28.1",
     "@types/crypto-js": "^4.2.2",
+    "@vue/test-utils": "^2.4.6",
     "backend": "workspace:*",
+    "happy-dom": "^15.11.7",
+    "vitest": "^2.1.8",
     "vue-tsc": "2.0.29"
   }
 }
