@@ -126,9 +126,6 @@ export function usePollingManager() {
         };
         oastStore.registerPollingStop(pollingId, stopFn);
         oastStore.setPollingRunning(pollingId, true);
-        sdk.window.showToast("Interactsh resumed with stored session", {
-          variant: "success",
-        });
         return true;
       } catch (e) {
         console.error(
@@ -208,9 +205,6 @@ export function usePollingManager() {
             providerId: provider.id,
             payload: url || item.payload,
           });
-          sdk.window.showToast("Interactsh resumed with a new payload URL", {
-            variant: "info",
-          });
         }
 
         runningTasks[pollingId] = {
@@ -230,9 +224,6 @@ export function usePollingManager() {
 
         oastStore.registerPollingStop(pollingId, stopFn);
         oastStore.setPollingRunning(pollingId, true);
-        sdk.window.showToast("Interactsh polling resumed", {
-          variant: "success",
-        });
         return true;
       } catch (e) {
         console.error(
@@ -318,9 +309,6 @@ export function usePollingManager() {
           };
           oastStore.registerPollingStop(pollingId, stopFn);
           oastStore.setPollingRunning(pollingId, true);
-          sdk.window.showToast("Interactsh resumed with a fresh session", {
-            variant: "success",
-          });
           return true;
         } catch (e2) {
           console.error("Fresh resume failed", e2);
