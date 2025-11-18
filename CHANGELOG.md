@@ -6,6 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ## 0.5.0
 
+### Added
+- Support for multiple payloads in OAST tabs
+
+### Changed
+- Persist OAST link and polling state across restarts
+
+### Fixed
+- Miscellaneous bug fixes
+
 ## 0.4.0
 ### Added
 - Support for Command Palette commands: "Go to OmniOAST" and "Polling All Tabs"
