@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import axios from "axios";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock axios
 vi.mock("axios");

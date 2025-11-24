@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { useBoastService } from "../services/boast";
 
 describe("BOAST Frontend Service", () => {
@@ -24,7 +25,7 @@ describe("BOAST Frontend Service", () => {
   it("should not make external HTTP requests", () => {
     // Track fetch calls
     const fetchSpy = vi.spyOn(global, "fetch");
-    
+
     const client = useBoastService();
     const result = client.generateUrl();
 
@@ -33,10 +34,10 @@ describe("BOAST Frontend Service", () => {
       url: expect.any(String),
       uniqueId: expect.any(String),
     });
-    
+
     // Verify no external requests were made
     expect(fetchSpy).not.toHaveBeenCalled();
-    
+
     fetchSpy.mockRestore();
   });
 

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { WebhooksiteService } from "../services/webhooksite";
 
 // Mock Caido SDK
@@ -38,8 +39,13 @@ describe("WebhooksiteService", () => {
 
   describe("constructor", () => {
     it("should extract token ID from existing URL", () => {
-      const existingUrl = "https://webhook.site/12345678-1234-1234-1234-123456789abc";
-      const service = new WebhooksiteService(undefined, mockSdk as any, existingUrl);
+      const existingUrl =
+        "https://webhook.site/12345678-1234-1234-1234-123456789abc";
+      const service = new WebhooksiteService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
 
       expect(service.getId()).toBe("12345678-1234-1234-1234-123456789abc");
       expect(service.getDomain()).toBe(
@@ -49,7 +55,11 @@ describe("WebhooksiteService", () => {
 
     it("should handle invalid URL format", () => {
       const existingUrl = "https://invalid.com/something";
-      const service = new WebhooksiteService(undefined, mockSdk as any, existingUrl);
+      const service = new WebhooksiteService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
 
       expect(service.getId()).toBeNull();
       expect(service.getDomain()).toBeNull();
@@ -89,8 +99,13 @@ describe("WebhooksiteService", () => {
       });
       mockSdk.requests.send.mockResolvedValue(mockRequestResponse);
 
-      const existingUrl = "https://webhook.site/12345678-1234-1234-1234-123456789abc";
-      const service = new WebhooksiteService(undefined, mockSdk as any, existingUrl);
+      const existingUrl =
+        "https://webhook.site/12345678-1234-1234-1234-123456789abc";
+      const service = new WebhooksiteService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
       const events = await service.getEvents();
 
       expect(events).toHaveLength(2);
@@ -123,8 +138,13 @@ describe("WebhooksiteService", () => {
       });
       mockSdk.requests.send.mockResolvedValue(mockRequestResponse);
 
-      const existingUrl = "https://webhook.site/12345678-1234-1234-1234-123456789abc";
-      const service = new WebhooksiteService(undefined, mockSdk as any, existingUrl);
+      const existingUrl =
+        "https://webhook.site/12345678-1234-1234-1234-123456789abc";
+      const service = new WebhooksiteService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
       const events = await service.getEvents();
 
       expect(events).toHaveLength(0);
@@ -134,9 +154,14 @@ describe("WebhooksiteService", () => {
       mockResponse.getCode.mockReturnValue(404);
       mockSdk.requests.send.mockResolvedValue(mockRequestResponse);
 
-      const existingUrl = "https://webhook.site/12345678-1234-1234-1234-123456789abc";
-      const service = new WebhooksiteService(undefined, mockSdk as any, existingUrl);
-      
+      const existingUrl =
+        "https://webhook.site/12345678-1234-1234-1234-123456789abc";
+      const service = new WebhooksiteService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
+
       try {
         await service.getEvents();
       } catch (e) {
@@ -150,8 +175,13 @@ describe("WebhooksiteService", () => {
       mockResponse.getBody.mockReturnValue(null);
       mockSdk.requests.send.mockResolvedValue(mockRequestResponse);
 
-      const existingUrl = "https://webhook.site/12345678-1234-1234-1234-123456789abc";
-      const service = new WebhooksiteService(undefined, mockSdk as any, existingUrl);
+      const existingUrl =
+        "https://webhook.site/12345678-1234-1234-1234-123456789abc";
+      const service = new WebhooksiteService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
       const events = await service.getEvents();
 
       expect(events).toHaveLength(0);
@@ -168,8 +198,13 @@ describe("WebhooksiteService", () => {
       });
       mockSdk.requests.send.mockResolvedValue(mockRequestResponse);
 
-      const existingUrl = "https://webhook.site/12345678-1234-1234-1234-123456789abc";
-      const service = new WebhooksiteService(undefined, mockSdk as any, existingUrl);
+      const existingUrl =
+        "https://webhook.site/12345678-1234-1234-1234-123456789abc";
+      const service = new WebhooksiteService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
       const events = await service.getEvents();
 
       expect(events).toHaveLength(0);
@@ -182,8 +217,13 @@ describe("WebhooksiteService", () => {
       });
       mockSdk.requests.send.mockResolvedValue(mockRequestResponse);
 
-      const existingUrl = "https://webhook.site/12345678-1234-1234-1234-123456789abc";
-      const service = new WebhooksiteService("my-api-key", mockSdk as any, existingUrl);
+      const existingUrl =
+        "https://webhook.site/12345678-1234-1234-1234-123456789abc";
+      const service = new WebhooksiteService(
+        "my-api-key",
+        mockSdk as any,
+        existingUrl,
+      );
       await service.getEvents();
 
       // Verify that send was called
@@ -193,8 +233,13 @@ describe("WebhooksiteService", () => {
 
   describe("registerAndGetPayload", () => {
     it("should return existing payload if already set", async () => {
-      const existingUrl = "https://webhook.site/12345678-1234-1234-1234-123456789abc";
-      const service = new WebhooksiteService(undefined, mockSdk as any, existingUrl);
+      const existingUrl =
+        "https://webhook.site/12345678-1234-1234-1234-123456789abc";
+      const service = new WebhooksiteService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
       const result = await service.registerAndGetPayload();
 
       expect(result).toEqual({

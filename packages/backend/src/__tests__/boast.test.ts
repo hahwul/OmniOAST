@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { BoastService } from "../services/boast";
 
 // Mock Caido SDK types
@@ -192,10 +193,10 @@ describe("BoastService", () => {
         "test-secret",
         mockSdk as any,
       );
-      
+
       // First call - registers
       const result1 = await service.registerAndGetPayload();
-      
+
       // Second call - should return cached
       const result2 = await service.registerAndGetPayload();
 

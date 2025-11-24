@@ -9,8 +9,10 @@ export const formatTimestamp = (timestamp: string | number | Date): string => {
  * @param timestamp - The timestamp to convert (number, string, or Date)
  * @returns Numeric timestamp in milliseconds
  */
-export const toNumericTimestamp = (timestamp: string | number | Date): number => {
-  return typeof timestamp === 'number' 
-    ? timestamp 
+export const toNumericTimestamp = (
+  timestamp: string | number | Date,
+): number => {
+  return typeof timestamp === "number"
+    ? timestamp
     : new Date(timestamp).getTime();
 };
