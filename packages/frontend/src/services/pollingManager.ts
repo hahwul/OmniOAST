@@ -29,6 +29,10 @@ export function usePollingManager() {
         for (const event of events) {
           const exists = oastStore.interactions.some((i) => i.id === event.id);
           if (!exists) {
+            const timestampValue = typeof event.timestamp === 'number' 
+              ? event.timestamp 
+              : new Date(event.timestamp).getTime();
+            
             oastStore.addInteraction(
               {
                 id: event.id,
@@ -41,6 +45,7 @@ export function usePollingManager() {
                 destination: event.destination,
                 provider: provider.name,
                 timestamp: formatTimestamp(event.timestamp),
+                timestampNum: timestampValue,
                 rawRequest: event.rawRequest,
                 rawResponse: event.rawResponse,
               },
@@ -82,6 +87,11 @@ export function usePollingManager() {
               : typeof (interaction as any)["raw-request"] === "string"
                 ? (interaction as any)["raw-request"].split(" ")[0] || ""
                 : "";
+            
+            const timestampValue = typeof (interaction as any).timestamp === 'number' 
+              ? (interaction as any).timestamp 
+              : new Date((interaction as any).timestamp).getTime();
+            
             oastStore.addInteraction(
               {
                 id: uuidv4(),
@@ -94,6 +104,7 @@ export function usePollingManager() {
                 destination: String((interaction as any)["full-id"]),
                 provider: item.provider,
                 timestamp: formatTimestamp((interaction as any).timestamp),
+                timestampNum: timestampValue,
                 rawRequest: String((interaction as any)["raw-request"]),
                 rawResponse: String((interaction as any)["raw-response"]),
               },
@@ -165,6 +176,11 @@ export function usePollingManager() {
               : typeof (interaction as any)["raw-request"] === "string"
                 ? (interaction as any)["raw-request"].split(" ")[0] || ""
                 : "";
+            
+            const timestampValue = typeof (interaction as any).timestamp === 'number' 
+              ? (interaction as any).timestamp 
+              : new Date((interaction as any).timestamp).getTime();
+            
             oastStore.addInteraction(
               {
                 id: uuidv4(),
@@ -177,6 +193,7 @@ export function usePollingManager() {
                 destination: String((interaction as any)["full-id"]),
                 provider: provider.name,
                 timestamp: formatTimestamp((interaction as any).timestamp),
+                timestampNum: timestampValue,
                 rawRequest: String((interaction as any)["raw-request"]),
                 rawResponse: String((interaction as any)["raw-response"]),
               },
@@ -245,6 +262,11 @@ export function usePollingManager() {
                 : typeof (interaction as any)["raw-request"] === "string"
                   ? (interaction as any)["raw-request"].split(" ")[0] || ""
                   : "";
+              
+              const timestampValue = typeof (interaction as any).timestamp === 'number' 
+                ? (interaction as any).timestamp 
+                : new Date((interaction as any).timestamp).getTime();
+              
               oastStore.addInteraction(
                 {
                   id: uuidv4(),
@@ -257,6 +279,7 @@ export function usePollingManager() {
                   destination: String((interaction as any)["full-id"]),
                   provider: provider.name,
                   timestamp: formatTimestamp((interaction as any).timestamp),
+                  timestampNum: timestampValue,
                   rawRequest: String((interaction as any)["raw-request"]),
                   rawResponse: String((interaction as any)["raw-response"]),
                 },

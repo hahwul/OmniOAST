@@ -12,6 +12,7 @@ interface OastInteraction {
   id: string;
   type: string; // e.g., "BOAST", "interactsh"
   timestamp: string;
+  timestampNum: number; // Numeric timestamp for proper sorting
   provider: string; // Name of the provider
   correlationId: string;
   // Optional fields for specific interaction types
