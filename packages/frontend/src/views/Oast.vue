@@ -15,7 +15,7 @@ import OastTabs from "./OastTabs.vue";
 import { useSDK } from "@/plugins/sdk";
 import { useClientService } from "@/services/interactsh";
 import { useOastStore } from "@/stores/oastStore";
-import { formatTimestamp } from "@/utils/time";
+import { formatTimestamp, toNumericTimestamp } from "@/utils/time";
 
 const { copy } = useClipboard();
 const sdk = useSDK();
@@ -151,10 +151,6 @@ async function getPayload() {
                           ? interaction["raw-request"].split(" ")[0] || ""
                           : "";
 
-                    const timestampValue = typeof interaction.timestamp === 'number' 
-                        ? interaction.timestamp 
-                        : new Date(interaction.timestamp).getTime();
-
                     oastStore.addInteraction(
                         {
                             id: uuidv4(),
@@ -167,7 +163,7 @@ async function getPayload() {
                             destination: String(interaction["full-id"]),
                             provider: currentProvider.name,
                             timestamp: formatTimestamp(interaction.timestamp),
-                            timestampNum: timestampValue,
+                            timestampNum: toNumericTimestamp(interaction.timestamp),
                             rawRequest: String(interaction["raw-request"]),
                             rawResponse: String(interaction["raw-response"]),
                         },
@@ -324,10 +320,6 @@ async function pollBoastEvents(provider: Provider, tabId: string) {
                     (i) => i.id === event.id,
                 );
                 if (!exists) {
-                    const timestampValue = typeof event.timestamp === 'number' 
-                        ? event.timestamp 
-                        : new Date(event.timestamp).getTime();
-                    
                     oastStore.addInteraction(
                         {
                             id: event.id,
@@ -340,7 +332,7 @@ async function pollBoastEvents(provider: Provider, tabId: string) {
                             destination: event.destination,
                             provider: provider.name,
                             timestamp: formatTimestamp(event.timestamp),
-                            timestampNum: timestampValue,
+                            timestampNum: toNumericTimestamp(event.timestamp),
                             rawRequest: event.rawRequest,
                             rawResponse: event.rawResponse,
                         },
@@ -371,10 +363,6 @@ async function pollWebhooksiteEvents(provider: Provider, tabId: string) {
                     (i) => i.id === event.id,
                 );
                 if (!exists) {
-                    const timestampValue = typeof event.timestamp === 'number' 
-                        ? event.timestamp 
-                        : new Date(event.timestamp).getTime();
-                    
                     oastStore.addInteraction(
                         {
                             id: event.id,
@@ -387,7 +375,7 @@ async function pollWebhooksiteEvents(provider: Provider, tabId: string) {
                             destination: event.destination,
                             provider: provider.name,
                             timestamp: formatTimestamp(event.timestamp),
-                            timestampNum: timestampValue,
+                            timestampNum: toNumericTimestamp(event.timestamp),
                             rawRequest: event.rawRequest,
                             rawResponse: event.rawResponse,
                         },
@@ -418,10 +406,6 @@ async function pollPostbinEvents(provider: Provider, tabId: string) {
                     (i) => i.id === event.id,
                 );
                 if (!exists) {
-                    const timestampValue = typeof event.timestamp === 'number' 
-                        ? event.timestamp 
-                        : new Date(event.timestamp).getTime();
-                    
                     oastStore.addInteraction(
                         {
                             id: event.id,
@@ -434,7 +418,7 @@ async function pollPostbinEvents(provider: Provider, tabId: string) {
                             destination: event.destination,
                             provider: provider.name,
                             timestamp: formatTimestamp(event.timestamp),
-                            timestampNum: timestampValue,
+                            timestampNum: toNumericTimestamp(event.timestamp),
                             rawRequest: event.rawRequest,
                             rawResponse: event.rawResponse,
                         },
@@ -513,10 +497,6 @@ async function pollInteractions() {
                                     ""
                                   : "";
                             
-                            const timestampValue = typeof interaction.timestamp === 'number' 
-                                ? interaction.timestamp 
-                                : new Date(interaction.timestamp).getTime();
-                            
                             oastStore.addInteraction(
                                 {
                                     id: uuidv4(),
@@ -535,7 +515,7 @@ async function pollInteractions() {
                                     timestamp: formatTimestamp(
                                         interaction.timestamp,
                                     ),
-                                    timestampNum: timestampValue,
+                                    timestampNum: toNumericTimestamp(interaction.timestamp),
                                     rawRequest: String(
                                         interaction["raw-request"],
                                     ),
@@ -739,10 +719,6 @@ async function pollAllTabs() {
                                             )[0] || ""
                                           : "";
                                     
-                                    const timestampValue = typeof interaction.timestamp === 'number' 
-                                        ? interaction.timestamp 
-                                        : new Date(interaction.timestamp).getTime();
-                                    
                                     oastStore.addInteraction(
                                         {
                                             id: uuidv4(),
@@ -765,7 +741,7 @@ async function pollAllTabs() {
                                             timestamp: formatTimestamp(
                                                 interaction.timestamp,
                                             ),
-                                            timestampNum: timestampValue,
+                                            timestampNum: toNumericTimestamp(interaction.timestamp),
                                             rawRequest: String(
                                                 interaction["raw-request"],
                                             ),

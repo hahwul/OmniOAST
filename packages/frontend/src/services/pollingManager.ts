@@ -5,7 +5,7 @@ import type { Provider } from "../../../backend/src/validation/schemas";
 import { useSDK } from "@/plugins/sdk";
 import { useClientService as useInteractshClient } from "@/services/interactsh";
 import { useOastStore } from "@/stores/oastStore";
-import { formatTimestamp } from "@/utils/time";
+import { formatTimestamp, toNumericTimestamp } from "@/utils/time";
 
 type IntervalHandle = ReturnType<typeof setInterval>;
 
@@ -29,10 +29,6 @@ export function usePollingManager() {
         for (const event of events) {
           const exists = oastStore.interactions.some((i) => i.id === event.id);
           if (!exists) {
-            const timestampValue = typeof event.timestamp === 'number' 
-              ? event.timestamp 
-              : new Date(event.timestamp).getTime();
-            
             oastStore.addInteraction(
               {
                 id: event.id,
@@ -45,7 +41,7 @@ export function usePollingManager() {
                 destination: event.destination,
                 provider: provider.name,
                 timestamp: formatTimestamp(event.timestamp),
-                timestampNum: timestampValue,
+                timestampNum: toNumericTimestamp(event.timestamp),
                 rawRequest: event.rawRequest,
                 rawResponse: event.rawResponse,
               },
@@ -88,10 +84,6 @@ export function usePollingManager() {
                 ? (interaction as any)["raw-request"].split(" ")[0] || ""
                 : "";
             
-            const timestampValue = typeof (interaction as any).timestamp === 'number' 
-              ? (interaction as any).timestamp 
-              : new Date((interaction as any).timestamp).getTime();
-            
             oastStore.addInteraction(
               {
                 id: uuidv4(),
@@ -104,7 +96,7 @@ export function usePollingManager() {
                 destination: String((interaction as any)["full-id"]),
                 provider: item.provider,
                 timestamp: formatTimestamp((interaction as any).timestamp),
-                timestampNum: timestampValue,
+                timestampNum: toNumericTimestamp((interaction as any).timestamp),
                 rawRequest: String((interaction as any)["raw-request"]),
                 rawResponse: String((interaction as any)["raw-response"]),
               },
@@ -177,10 +169,6 @@ export function usePollingManager() {
                 ? (interaction as any)["raw-request"].split(" ")[0] || ""
                 : "";
             
-            const timestampValue = typeof (interaction as any).timestamp === 'number' 
-              ? (interaction as any).timestamp 
-              : new Date((interaction as any).timestamp).getTime();
-            
             oastStore.addInteraction(
               {
                 id: uuidv4(),
@@ -193,7 +181,7 @@ export function usePollingManager() {
                 destination: String((interaction as any)["full-id"]),
                 provider: provider.name,
                 timestamp: formatTimestamp((interaction as any).timestamp),
-                timestampNum: timestampValue,
+                timestampNum: toNumericTimestamp((interaction as any).timestamp),
                 rawRequest: String((interaction as any)["raw-request"]),
                 rawResponse: String((interaction as any)["raw-response"]),
               },
@@ -263,10 +251,6 @@ export function usePollingManager() {
                   ? (interaction as any)["raw-request"].split(" ")[0] || ""
                   : "";
               
-              const timestampValue = typeof (interaction as any).timestamp === 'number' 
-                ? (interaction as any).timestamp 
-                : new Date((interaction as any).timestamp).getTime();
-              
               oastStore.addInteraction(
                 {
                   id: uuidv4(),
@@ -279,7 +263,7 @@ export function usePollingManager() {
                   destination: String((interaction as any)["full-id"]),
                   provider: provider.name,
                   timestamp: formatTimestamp((interaction as any).timestamp),
-                  timestampNum: timestampValue,
+                  timestampNum: toNumericTimestamp((interaction as any).timestamp),
                   rawRequest: String((interaction as any)["raw-request"]),
                   rawResponse: String((interaction as any)["raw-response"]),
                 },
