@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 0.5.1
+
+### Changed
+
+- Add numeric IDs to traffic callbacks (e.g. [1], [2]) for quicker log scanning and reference
+
 ## 0.5.0
 
 ### Added

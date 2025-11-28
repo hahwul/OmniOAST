@@ -153,7 +153,7 @@ OmniOAST is a Caido security testing plugin for Out-of-Band Application Security
 - Configure in `caido.config.ts` under `vite.css.postcss.plugins`
 
 ### Plugin Configuration
-- Plugin metadata in `caido.config.ts` (id: "omnioast", name: "OmniOAST", version: "0.5.0")
+- Plugin metadata in `caido.config.ts` (id: "omnioast", name: "OmniOAST", version: "0.5.1")
 - Frontend/backend package coordination via workspace references
 - Frontend package references backend as dependency: `"backend": "workspace:*"`
 - Vite configuration includes external dependencies (@caido/frontend-sdk, codemirror packages)
