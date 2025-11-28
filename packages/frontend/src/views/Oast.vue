@@ -843,15 +843,15 @@ onMounted(() => {
           :value="filteredInteractions"
           table-style="min-width: 50rem;"
           table-class="omnioast-table bg-surface-0 dark:bg-surface-800"
-          sort-field="timestampNum"
+          sort-field="index"
           :sort-order="-1"
           selection-mode="single"
           data-key="id"
           @row-select="showDetails"
         >
-          <Column header="#" :sortable="false" style="width: 60px">
+          <Column field="index" header="#" :sortable="true" style="width: 60px">
             <template #body="slotProps">
-              {{ filteredInteractions.length - slotProps.index }}
+              {{ slotProps.data.index }}
             </template>
           </Column>
           <Column field="protocol" header="Protocol" :sortable="true" class>

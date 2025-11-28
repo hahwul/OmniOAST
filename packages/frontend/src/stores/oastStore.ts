@@ -10,6 +10,7 @@ import { useSDK } from "@/plugins/sdk";
  */
 interface OastInteraction {
   id: string;
+  index: number; // Auto-incremented numeric index for ordering
   type: string; // e.g., "BOAST", "interactsh"
   timestamp: string;
   timestampNum: number; // Numeric timestamp for proper sorting
@@ -98,6 +99,8 @@ export const useOastStore = defineStore("oast", () => {
   const unreadCount = ref(0);
   // OAST 탭 활성화 상태
   const isOastTabActive = ref(false);
+  // Counter for auto-incrementing interaction index
+  const interactionCounter = ref(0);
 
   // Storage keys for persisting data between sessions
   const storageKeyTabs = "omnioast.tabs";
@@ -107,6 +110,7 @@ export const useOastStore = defineStore("oast", () => {
   const storageKeyTabPayloads = "omnioast.tabPayloads";
   const storageKeyTabProviders = "omnioast.tabProviders";
   const storageKeyTabPayloadHistory = "omnioast.tabPayloadHistory";
+  const storageKeyInteractionCounter = "omnioast.interactionCounter";
 
   const activeTab = computed(() => {
     if (!activeTabId.value) return null;
@@ -131,6 +135,11 @@ export const useOastStore = defineStore("oast", () => {
       }
     }
 
+    // Load interaction counter
+    if (storage && typeof storage[storageKeyInteractionCounter] === "number") {
+      interactionCounter.value = storage[storageKeyInteractionCounter];
+    }
+
     if (tabs.value.length === 0) {
       addTab();
     }
@@ -143,6 +152,7 @@ export const useOastStore = defineStore("oast", () => {
     const storage = (sdk.storage.get() as Record<string, any>) || {};
     storage[storageKeyTabs] = tabs.value;
     storage[storageKeyActiveTabId] = activeTabId.value;
+    storage[storageKeyInteractionCounter] = interactionCounter.value;
     await sdk.storage.set(storage);
   };
 
@@ -206,11 +216,19 @@ export const useOastStore = defineStore("oast", () => {
   };
 
   /**
+   * Gets the next interaction index
+   */
+  const getNextInteractionIndex = (): number => {
+    interactionCounter.value += 1;
+    return interactionCounter.value;
+  };
+
+  /**
    * Adds a new interaction to the active tab and persists it
-   * @param interaction The new OAST interaction to add
+   * @param interaction The new OAST interaction to add (index will be auto-assigned)
    */
   const addInteraction = async (
-    interaction: OastInteraction,
+    interaction: Omit<OastInteraction, "index">,
     tabId?: string,
   ) => {
     const targetTab = tabId
@@ -218,7 +236,11 @@ export const useOastStore = defineStore("oast", () => {
       : activeTab.value;
 
     if (targetTab) {
-      targetTab.interactions.unshift(interaction);
+      const interactionWithIndex: OastInteraction = {
+        ...interaction,
+        index: getNextInteractionIndex(),
+      };
+      targetTab.interactions.unshift(interactionWithIndex);
       await saveTabs();
 
       if (!isOastTabActive.value) {
