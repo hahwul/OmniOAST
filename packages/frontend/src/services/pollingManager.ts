@@ -5,7 +5,7 @@ import type { Provider } from "../../../backend/src/validation/schemas";
 import { useSDK } from "@/plugins/sdk";
 import { useClientService as useInteractshClient } from "@/services/interactsh";
 import { useOastStore } from "@/stores/oastStore";
-import { formatTimestamp } from "@/utils/time";
+import { formatTimestamp, toNumericTimestamp } from "@/utils/time";
 
 type IntervalHandle = ReturnType<typeof setInterval>;
 
@@ -41,6 +41,7 @@ export function usePollingManager() {
                 destination: event.destination,
                 provider: provider.name,
                 timestamp: formatTimestamp(event.timestamp),
+                timestampNum: toNumericTimestamp(event.timestamp),
                 rawRequest: event.rawRequest,
                 rawResponse: event.rawResponse,
               },
@@ -82,6 +83,7 @@ export function usePollingManager() {
               : typeof (interaction as any)["raw-request"] === "string"
                 ? (interaction as any)["raw-request"].split(" ")[0] || ""
                 : "";
+
             oastStore.addInteraction(
               {
                 id: uuidv4(),
@@ -94,6 +96,9 @@ export function usePollingManager() {
                 destination: String((interaction as any)["full-id"]),
                 provider: item.provider,
                 timestamp: formatTimestamp((interaction as any).timestamp),
+                timestampNum: toNumericTimestamp(
+                  (interaction as any).timestamp,
+                ),
                 rawRequest: String((interaction as any)["raw-request"]),
                 rawResponse: String((interaction as any)["raw-response"]),
               },
@@ -165,6 +170,7 @@ export function usePollingManager() {
               : typeof (interaction as any)["raw-request"] === "string"
                 ? (interaction as any)["raw-request"].split(" ")[0] || ""
                 : "";
+
             oastStore.addInteraction(
               {
                 id: uuidv4(),
@@ -177,6 +183,9 @@ export function usePollingManager() {
                 destination: String((interaction as any)["full-id"]),
                 provider: provider.name,
                 timestamp: formatTimestamp((interaction as any).timestamp),
+                timestampNum: toNumericTimestamp(
+                  (interaction as any).timestamp,
+                ),
                 rawRequest: String((interaction as any)["raw-request"]),
                 rawResponse: String((interaction as any)["raw-response"]),
               },
@@ -245,6 +254,7 @@ export function usePollingManager() {
                 : typeof (interaction as any)["raw-request"] === "string"
                   ? (interaction as any)["raw-request"].split(" ")[0] || ""
                   : "";
+
               oastStore.addInteraction(
                 {
                   id: uuidv4(),
@@ -257,6 +267,9 @@ export function usePollingManager() {
                   destination: String((interaction as any)["full-id"]),
                   provider: provider.name,
                   timestamp: formatTimestamp((interaction as any).timestamp),
+                  timestampNum: toNumericTimestamp(
+                    (interaction as any).timestamp,
+                  ),
                   rawRequest: String((interaction as any)["raw-request"]),
                   rawResponse: String((interaction as any)["raw-response"]),
                 },

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import { PostbinService } from "../services/postbin";
 
 // Mock Caido SDK
@@ -40,7 +41,11 @@ describe("PostbinService", () => {
   describe("constructor", () => {
     it("should extract bin ID from existing URL", () => {
       const existingUrl = "https://www.postb.in/test-bin-123";
-      const service = new PostbinService(undefined, mockSdk as any, existingUrl);
+      const service = new PostbinService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
 
       expect(service.getId()).toBe("test-bin-123");
       expect(service.getDomain()).toBe("https://www.postb.in/test-bin-123");
@@ -48,7 +53,11 @@ describe("PostbinService", () => {
 
     it("should handle invalid URL format", () => {
       const existingUrl = "https://invalid.com/something";
-      const service = new PostbinService(undefined, mockSdk as any, existingUrl);
+      const service = new PostbinService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
 
       expect(service.getId()).toBeNull();
       expect(service.getDomain()).toBeNull();
@@ -77,7 +86,7 @@ describe("PostbinService", () => {
 
       // Reset mocks for this test
       vi.clearAllMocks();
-      
+
       // Create separate mock instances for each call
       let callNumber = 0;
       mockSdk.requests.send.mockImplementation(async () => {
@@ -104,7 +113,11 @@ describe("PostbinService", () => {
       });
 
       const existingUrl = "https://www.postb.in/test-bin";
-      const service = new PostbinService(undefined, mockSdk as any, existingUrl);
+      const service = new PostbinService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
       const events = await service.getEvents();
 
       expect(events).toHaveLength(1);
@@ -131,7 +144,11 @@ describe("PostbinService", () => {
       mockSdk.requests.send.mockResolvedValue(mockRequestResponse);
 
       const existingUrl = "https://www.postb.in/test-bin";
-      const service = new PostbinService(undefined, mockSdk as any, existingUrl);
+      const service = new PostbinService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
       const events = await service.getEvents();
 
       expect(events).toHaveLength(0);
@@ -143,7 +160,11 @@ describe("PostbinService", () => {
       mockSdk.requests.send.mockResolvedValue(mockRequestResponse);
 
       const existingUrl = "https://www.postb.in/test-bin";
-      const service = new PostbinService(undefined, mockSdk as any, existingUrl);
+      const service = new PostbinService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
       const events = await service.getEvents();
 
       expect(events).toHaveLength(0);
@@ -152,7 +173,7 @@ describe("PostbinService", () => {
 
     it("should handle empty body", async () => {
       vi.clearAllMocks();
-      
+
       // First call returns 200 but with null body (should break loop)
       mockSdk.requests.send.mockResolvedValue({
         response: {
@@ -162,7 +183,11 @@ describe("PostbinService", () => {
       });
 
       const existingUrl = "https://www.postb.in/test-bin";
-      const service = new PostbinService(undefined, mockSdk as any, existingUrl);
+      const service = new PostbinService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
       const events = await service.getEvents();
 
       expect(events).toHaveLength(0);
@@ -177,7 +202,7 @@ describe("PostbinService", () => {
       };
 
       vi.clearAllMocks();
-      
+
       // Return same request twice, then 404
       let callNumber = 0;
       mockSdk.requests.send.mockImplementation(async () => {
@@ -202,7 +227,11 @@ describe("PostbinService", () => {
       });
 
       const existingUrl = "https://www.postb.in/test-bin";
-      const service = new PostbinService(undefined, mockSdk as any, existingUrl);
+      const service = new PostbinService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
       const events = await service.getEvents();
 
       // Should only have 1 event even though we got it twice
@@ -225,7 +254,7 @@ describe("PostbinService", () => {
       };
 
       vi.clearAllMocks();
-      
+
       // Two successful requests, then 404
       let callNumber = 0;
       mockSdk.requests.send.mockImplementation(async () => {
@@ -259,7 +288,11 @@ describe("PostbinService", () => {
       });
 
       const existingUrl = "https://www.postb.in/test-bin";
-      const service = new PostbinService(undefined, mockSdk as any, existingUrl);
+      const service = new PostbinService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
       const events = await service.getEvents();
 
       expect(events).toHaveLength(2);
@@ -271,7 +304,11 @@ describe("PostbinService", () => {
       mockSdk.requests.send.mockRejectedValue(new Error("Network error"));
 
       const existingUrl = "https://www.postb.in/test-bin";
-      const service = new PostbinService(undefined, mockSdk as any, existingUrl);
+      const service = new PostbinService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
       const events = await service.getEvents();
 
       expect(events).toHaveLength(0);
@@ -280,9 +317,9 @@ describe("PostbinService", () => {
 
     it("should stop at safety limit of 100 requests", async () => {
       vi.clearAllMocks();
-      
+
       let callCount = 0;
-      
+
       // Always return 200 with new IDs (infinite requests)
       mockSdk.requests.send.mockImplementation(async () => {
         return {
@@ -299,7 +336,11 @@ describe("PostbinService", () => {
       });
 
       const existingUrl = "https://www.postb.in/test-bin";
-      const service = new PostbinService(undefined, mockSdk as any, existingUrl);
+      const service = new PostbinService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
       const events = await service.getEvents();
 
       // Should stop at 100 even though more are available
@@ -310,7 +351,11 @@ describe("PostbinService", () => {
   describe("registerAndGetPayload", () => {
     it("should return existing payload if already set", async () => {
       const existingUrl = "https://www.postb.in/existing-bin";
-      const service = new PostbinService(undefined, mockSdk as any, existingUrl);
+      const service = new PostbinService(
+        undefined,
+        mockSdk as any,
+        existingUrl,
+      );
       const result = await service.registerAndGetPayload();
 
       expect(result).toEqual({
