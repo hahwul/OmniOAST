@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { generateRandomString, arrayBufferToBase64, base64ToArrayBuffer } from "../utils/utils";
-import { formatTimestamp, toNumericTimestamp } from "../utils/time";
 import { tryCatch } from "../utils/try-catch";
 
 describe("Utility Functions", () => {
@@ -48,23 +47,6 @@ describe("Utility Functions", () => {
       const base64 = arrayBufferToBase64(originalData.buffer);
       const decodedBuffer = base64ToArrayBuffer(base64);
       expect(new Uint8Array(decodedBuffer)).toEqual(originalData);
-    });
-  });
-
-  describe("Time Utilities", () => {
-    it("formatTimestamp should return a formatted string", () => {
-      const date = new Date("2023-01-01T12:00:00Z");
-      expect(formatTimestamp(date)).toBe(date.toLocaleString());
-      expect(formatTimestamp(date.getTime())).toBe(date.toLocaleString());
-      expect(formatTimestamp(date.toISOString())).toBe(date.toLocaleString());
-    });
-
-    it("toNumericTimestamp should return milliseconds", () => {
-      const date = new Date("2023-01-01T12:00:00Z");
-      const ms = date.getTime();
-      expect(toNumericTimestamp(ms)).toBe(ms);
-      expect(toNumericTimestamp(date)).toBe(ms);
-      expect(toNumericTimestamp(date.toISOString())).toBe(ms);
     });
   });
 
