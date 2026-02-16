@@ -110,21 +110,13 @@ export class ProviderService {
     updates: Partial<Provider>,
   ): Promise<Provider | null> {
     try {
-      this.console.log(
-        "updateProvider id:" + id + " updates:" + JSON.stringify(updates),
-      );
       const existingProvider = await this.getProvider(id);
-      this.console.log("existingProvider:" + JSON.stringify(existingProvider));
       if (!existingProvider) {
-        this.console.log("Provider not found for update!");
         return null;
       }
 
       const updatedProvider = { ...existingProvider, ...updates, id };
       const validatedProvider = ProviderSchema.parse(updatedProvider);
-      this.console.log(
-        "validatedProvider:" + JSON.stringify(validatedProvider),
-      );
       const db = await this.getDb();
 
       const statement = await db.prepare(
@@ -139,7 +131,6 @@ export class ProviderService {
         validatedProvider.enabled ? 1 : 0,
         id,
       );
-      this.console.log("updateProvider result:" + JSON.stringify(result));
 
       return validatedProvider;
     } catch (error) {
@@ -153,7 +144,6 @@ export class ProviderService {
       const db = await this.getDb();
       const statement = await db.prepare("DELETE FROM providers WHERE id = ?");
       const result = await statement.run(id);
-      this.console.log("deleteProvider result:" + JSON.stringify(result));
       return result.changes > 0;
     } catch (error) {
       this.console.error("Error in deleteProvider:" + error);
@@ -167,7 +157,6 @@ export class ProviderService {
       const statement = await db.prepare("SELECT * FROM providers");
 
       const results = await statement.all<any[]>();
-      this.console.log("listProviders results:" + JSON.stringify(results));
 
       return results.map((provider: any) =>
         ProviderSchema.parse({
@@ -195,7 +184,6 @@ export class ProviderService {
   }
 
   public getOASTService(provider: Provider): OASTService | null {
-    this.console.log(provider);
     switch (provider.type) {
       case "BOAST":
         return new BoastService(provider.url, provider.token || "", this.sdk);
