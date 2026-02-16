@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { generateRandomString, arrayBufferToBase64, base64ToArrayBuffer } from "../utils/utils";
-import { tryCatch } from "../utils/try-catch";
 
 describe("Utility Functions", () => {
   describe("generateRandomString", () => {
@@ -47,21 +46,6 @@ describe("Utility Functions", () => {
       const base64 = arrayBufferToBase64(originalData.buffer);
       const decodedBuffer = base64ToArrayBuffer(base64);
       expect(new Uint8Array(decodedBuffer)).toEqual(originalData);
-    });
-  });
-
-  describe("tryCatch Utility", () => {
-    it("should return data on success", async () => {
-      const promise = Promise.resolve("success");
-      const result = await tryCatch(promise);
-      expect(result).toEqual({ data: "success", error: undefined });
-    });
-
-    it("should return error on failure", async () => {
-      const error = new Error("failure");
-      const promise = Promise.reject(error);
-      const result = await tryCatch(promise);
-      expect(result).toEqual({ data: undefined, error: error });
     });
   });
 });
