@@ -1,9 +1,9 @@
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 // Fix for: TypeError: localStorage.getItem is not a function
 // This happens in some environments (like the user's Node 25 environment) where happy-dom or other tools might not polyfill localStorage correctly or conflict.
 
-const localStorageMock = (function() {
+const localStorageMock = (function () {
   let store: Record<string, string> = {};
   return {
     getItem: vi.fn((key: string) => store[key] || null),
@@ -19,13 +19,16 @@ const localStorageMock = (function() {
     key: vi.fn((index: number) => Object.keys(store)[index] || null),
     get length() {
       return Object.keys(store).length;
-    }
+    },
   };
 })();
 
 // Only mock if it's broken or missing
-if (typeof globalThis.localStorage === 'undefined' || typeof globalThis.localStorage.getItem !== 'function') {
-    Object.defineProperty(globalThis, 'localStorage', {
-        value: localStorageMock
-    });
+if (
+  typeof globalThis.localStorage === "undefined" ||
+  typeof globalThis.localStorage.getItem !== "function"
+) {
+  Object.defineProperty(globalThis, "localStorage", {
+    value: localStorageMock,
+  });
 }

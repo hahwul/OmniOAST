@@ -39,8 +39,6 @@ export class SettingsService {
     settings: Omit<Settings, "id"> | Record<string, any>,
   ): Promise<Settings | null> {
     try {
-      this.console.log("createSettings input:", JSON.stringify(settings));
-
       // Ensure we have primitive values with safe defaults
       const newSettings = {
         id: uuidv4(),
@@ -51,12 +49,7 @@ export class SettingsService {
             : "",
       };
 
-      this.console.log(
-        "newSettings after conversion:",
-        JSON.stringify(newSettings),
-      );
       const validatedSettings = SettingsSchema.parse(newSettings);
-      this.console.log("validatedSettings:", JSON.stringify(validatedSettings));
 
       const db = await this.getDb();
 
@@ -88,10 +81,6 @@ export class SettingsService {
       const statement = await db.prepare("SELECT * FROM settings WHERE id = ?");
 
       const result = (await statement.get(id)) as any;
-      this.console.log(
-        "getSettings result:",
-        result ? JSON.stringify(result) : "null",
-      );
 
       if (!result) {
         return null;
@@ -107,12 +96,7 @@ export class SettingsService {
         payloadPrefix: result.payloadPrefix ? String(result.payloadPrefix) : "",
       };
 
-      this.console.log(
-        "getSettings settingsData:",
-        JSON.stringify(settingsData),
-      );
       const parsed = SettingsSchema.parse(settingsData);
-      this.console.log("getSettings parsed:", JSON.stringify(parsed));
       return parsed;
     } catch (error) {
       this.console.error("Error in getSettings:" + error);
@@ -122,17 +106,12 @@ export class SettingsService {
 
   async getCurrentSettings(): Promise<Settings | null> {
     try {
-      this.console.log("getCurrentSettings called");
       const db = await this.getDb();
       const statement = await db.prepare(
         "SELECT * FROM settings ORDER BY rowid DESC LIMIT 1",
       );
 
       const result = (await statement.get()) as any;
-      this.console.log(
-        "getCurrentSettings result:",
-        result ? JSON.stringify(result) : "null",
-      );
 
       if (!result) {
         // If no settings exist yet, create default settings
@@ -147,12 +126,7 @@ export class SettingsService {
         payloadPrefix: result.payloadPrefix ? String(result.payloadPrefix) : "",
       };
 
-      this.console.log(
-        "getCurrentSettings settingsData:",
-        JSON.stringify(settingsData),
-      );
       const parsed = SettingsSchema.parse(settingsData);
-      this.console.log("getCurrentSettings parsed:", JSON.stringify(parsed));
       return parsed;
     } catch (error) {
       this.console.error("Error in getCurrentSettings:" + error);
@@ -173,9 +147,6 @@ export class SettingsService {
     updates: Partial<Settings> | Record<string, any>,
   ): Promise<Settings | null> {
     try {
-      this.console.log("updateSettings id:", id);
-      this.console.log("updateSettings updates:", JSON.stringify(updates));
-
       if (!id) {
         this.console.error("Invalid ID provided to updateSettings");
         return null;
@@ -183,11 +154,8 @@ export class SettingsService {
 
       const existingSettings = await this.getSettings(id);
       if (!existingSettings) {
-        this.console.log("Settings not found for update!");
         return null;
       }
-
-      this.console.log("existingSettings:", JSON.stringify(existingSettings));
 
       // Create a clean object with primitive values and safe access
       const updatedSettings = {
@@ -202,15 +170,7 @@ export class SettingsService {
             : existingSettings.payloadPrefix || "",
       };
 
-      this.console.log(
-        "updatedSettings before validation:",
-        JSON.stringify(updatedSettings),
-      );
       const validatedSettings = SettingsSchema.parse(updatedSettings);
-      this.console.log(
-        "validatedSettings after validation:",
-        JSON.stringify(validatedSettings),
-      );
 
       const db = await this.getDb();
 

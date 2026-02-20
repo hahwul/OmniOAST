@@ -1,5 +1,10 @@
-import { describe, it, expect } from "vitest";
-import { generateRandomString, arrayBufferToBase64, base64ToArrayBuffer } from "../utils/utils";
+import { describe, expect, it } from "vitest";
+
+import {
+  arrayBufferToBase64,
+  base64ToArrayBuffer,
+  generateRandomString,
+} from "../utils/utils";
 
 describe("Utility Functions", () => {
   describe("generateRandomString", () => {

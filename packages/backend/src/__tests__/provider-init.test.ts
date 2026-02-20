@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { CaidoBackendSDK } from '../../types';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { CaidoBackendSDK } from "../../types";
 
 // Mock caido:utils module as it is used by dependencies of ProviderService
 vi.mock("caido:utils", () => ({
@@ -11,7 +12,7 @@ vi.mock("caido:utils", () => ({
   })),
 }));
 
-describe('Provider Service Initialization', () => {
+describe("Provider Service Initialization", () => {
   const mockSdk = {} as CaidoBackendSDK;
 
   beforeEach(() => {
@@ -23,13 +24,16 @@ describe('Provider Service Initialization', () => {
     vi.clearAllMocks();
   });
 
-  it('should throw error if getProviderService is called before initialization', async () => {
-    const { getProviderService } = await import('../services/provider');
-    expect(() => getProviderService()).toThrow('Provider service not initialized. Call initProviderService first.');
+  it("should throw error if getProviderService is called before initialization", async () => {
+    const { getProviderService } = await import("../services/provider");
+    expect(() => getProviderService()).toThrow(
+      "Provider service not initialized. Call initProviderService first.",
+    );
   });
 
-  it('should initialize the service correctly', async () => {
-    const { initProviderService, getProviderService, ProviderService } = await import('../services/provider');
+  it("should initialize the service correctly", async () => {
+    const { initProviderService, getProviderService, ProviderService } =
+      await import("../services/provider");
 
     initProviderService(mockSdk);
 
@@ -37,13 +41,15 @@ describe('Provider Service Initialization', () => {
     expect(service).toBeInstanceOf(ProviderService);
   });
 
-  it('should warn if initialized twice', async () => {
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const { initProviderService } = await import('../services/provider');
+  it("should warn if initialized twice", async () => {
+    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { initProviderService } = await import("../services/provider");
 
     initProviderService(mockSdk);
     initProviderService(mockSdk);
 
-    expect(consoleSpy).toHaveBeenCalledWith('Provider service already initialized.');
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Provider service already initialized.",
+    );
   });
 });
