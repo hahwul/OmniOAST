@@ -288,6 +288,54 @@ describe("usePollingManager", () => {
       expect(mockSetPollingRunning).toHaveBeenCalledWith(pollingId, true);
     });
 
+    it("should fallback to fresh start if first interactsh start fails", async () => {
+      const pollingId = "polling-fallback";
+      const providerId = "provider-interactsh";
+      const tabId = "tab-interactsh";
+      const provider = {
+        id: providerId,
+        name: "Interactsh",
+        type: "interactsh",
+        url: "https://interact.sh",
+        token: "",
+      };
+
+      mockOastStore.pollingList = [
+        {
+          id: pollingId,
+          providerId: providerId,
+          provider: "Interactsh",
+          interval: 5000,
+          tabId: tabId,
+          payload: "http://payload.url",
+        },
+      ];
+
+      mockListProviders.mockResolvedValue([provider]);
+
+      // Mock start to fail once then succeed
+      mockStart
+        .mockRejectedValueOnce(new Error("First start failed"))
+        .mockResolvedValueOnce(undefined);
+
+      mockGenerateUrl.mockReturnValue({ url: "http://fallback-payload.url" });
+      mockGetSessionInfo.mockResolvedValue({
+        serverURL: "https://interact.sh",
+        token: "token",
+        correlationID: "corr-fallback",
+        secretKey: "secret",
+        privateKey: "private",
+        publicKey: "public",
+      });
+
+      const { resume } = usePollingManager();
+      const result = await resume(pollingId);
+
+      expect(result).toBe(true);
+      expect(mockStart).toHaveBeenCalledTimes(2);
+      expect(mockSetPollingRunning).toHaveBeenCalledWith(pollingId, true);
+    });
+
     it("should start interactsh client with existing session", async () => {
       const pollingId = "polling-interactsh-session";
       const tabId = "tab-interactsh";
