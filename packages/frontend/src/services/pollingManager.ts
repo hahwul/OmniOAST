@@ -7,11 +7,11 @@ import { useClientService as useInteractshClient } from "@/services/interactsh";
 import { useOastStore } from "@/stores/oastStore";
 import { formatTimestamp, toNumericTimestamp } from "@/utils/time";
 
-type IntervalHandle = ReturnType<typeof setInterval>;
+type IntervalHandle = ReturnType<typeof setTimeout>;
 
 interface RunningTask {
   id: string;
-  intervalId: IntervalHandle | null;
+  intervalId?: IntervalHandle;
   type: Provider["type"];
   providerId: string | undefined;
 }
@@ -109,9 +109,15 @@ export function usePollingManager() {
         );
 
         // Record last-checked periodically regardless of new events
-        const intervalId = setInterval(() => {
+        const tick = () => {
           oastStore.updatePollingLastPolled(pollingId, Date.now());
-        }, item.interval);
+          const task = runningTasks[pollingId];
+          if (task) {
+            task.intervalId = setTimeout(tick, item.interval);
+          }
+        };
+
+        const intervalId = setTimeout(tick, item.interval);
 
         runningTasks[pollingId] = {
           id: pollingId,
@@ -125,7 +131,7 @@ export function usePollingManager() {
             await client.stop();
           } catch (_) {}
           const task = runningTasks[pollingId];
-          if (task?.intervalId) clearInterval(task.intervalId);
+          if (task?.intervalId) clearTimeout(task.intervalId);
           delete runningTasks[pollingId];
           oastStore.setPollingRunning(pollingId, false);
         };
@@ -218,7 +224,6 @@ export function usePollingManager() {
 
         runningTasks[pollingId] = {
           id: pollingId,
-          intervalId: null,
           type: provider.type,
           providerId: provider.id,
         };
@@ -300,9 +305,14 @@ export function usePollingManager() {
             });
           }
 
-          const intervalId = setInterval(() => {
+          const tick = () => {
             oastStore.updatePollingLastPolled(pollingId, Date.now());
-          }, item.interval);
+            const task = runningTasks[pollingId];
+            if (task) {
+              task.intervalId = setTimeout(tick, item.interval);
+            }
+          };
+          const intervalId = setTimeout(tick, item.interval);
 
           runningTasks[pollingId] = {
             id: pollingId,
@@ -316,7 +326,7 @@ export function usePollingManager() {
               await client.stop();
             } catch (_) {}
             const task = runningTasks[pollingId];
-            if (task?.intervalId) clearInterval(task.intervalId);
+            if (task?.intervalId) clearTimeout(task.intervalId);
             delete runningTasks[pollingId];
             oastStore.setPollingRunning(pollingId, false);
           };
@@ -338,22 +348,25 @@ export function usePollingManager() {
     const doTick = async () => {
       await pollOnce(provider, item.tabId);
       await oastStore.updatePollingLastPolled(pollingId, Date.now());
-    };
 
-    // First immediate tick then interval
-    await doTick();
-    const intervalId = setInterval(doTick, item.interval);
+      const task = runningTasks[pollingId];
+      if (task) {
+        task.intervalId = setTimeout(doTick, item.interval);
+      }
+    };
 
     runningTasks[pollingId] = {
       id: pollingId,
-      intervalId,
       type: provider.type,
       providerId: provider.id,
     };
 
+    // First immediate tick then recursive timeout
+    await doTick();
+
     const stopFn = () => {
       const task = runningTasks[pollingId];
-      if (task?.intervalId) clearInterval(task.intervalId);
+      if (task?.intervalId) clearTimeout(task.intervalId);
       delete runningTasks[pollingId];
       oastStore.setPollingRunning(pollingId, false);
     };
@@ -365,7 +378,7 @@ export function usePollingManager() {
 
   const stop = (pollingId: string) => {
     const task = runningTasks[pollingId];
-    if (task?.intervalId) clearInterval(task.intervalId);
+    if (task?.intervalId) clearTimeout(task.intervalId);
     delete runningTasks[pollingId];
     oastStore.setPollingRunning(pollingId, false);
   };

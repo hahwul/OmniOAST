@@ -211,6 +211,65 @@ describe("usePollingManager", () => {
       expect(mockGetOASTEvents).toHaveBeenCalled();
       expect(mockAddInteraction).not.toHaveBeenCalled();
     });
+
+    it("ensures no overlapping polls with recursive setTimeout", async () => {
+      const pollingId = "polling-overlap";
+      const providerId = "provider-overlap";
+      const interval = 1000;
+
+      mockOastStore.pollingList = [
+        {
+          id: pollingId,
+          providerId: providerId,
+          provider: "BOAST",
+          interval: interval,
+          tabId: "tab-1",
+        },
+      ];
+
+      mockListProviders.mockResolvedValue([
+        {
+          id: providerId,
+          name: "BOAST",
+          type: "BOAST",
+          url: "http://boast.url",
+        },
+      ]);
+
+      let resolvePoll: any;
+      mockGetOASTEvents.mockImplementation(() => {
+        return new Promise((resolve) => {
+          resolvePoll = resolve;
+        });
+      });
+
+      const { resume } = usePollingManager();
+      const resumePromise = resume(pollingId);
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(mockGetOASTEvents).toHaveBeenCalledTimes(1);
+
+      if (resolvePoll) resolvePoll([]);
+      await resumePromise;
+
+      expect(mockGetOASTEvents).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(interval);
+      expect(mockGetOASTEvents).toHaveBeenCalledTimes(2);
+
+      const secondResolve = resolvePoll;
+
+      // Advance multiple intervals, but second poll is still running
+      await vi.advanceTimersByTimeAsync(interval * 2);
+      expect(mockGetOASTEvents).toHaveBeenCalledTimes(2);
+
+      if (secondResolve) secondResolve([]);
+
+      // Give it time to schedule and run the next tick
+      await vi.advanceTimersByTimeAsync(interval);
+
+      expect(mockGetOASTEvents).toHaveBeenCalledTimes(3);
+    });
   });
 
   describe("resume (Interactsh Provider)", () => {
@@ -260,15 +319,17 @@ describe("usePollingManager", () => {
       );
 
       // Simulate callback
-      const callback = mockStart.mock.calls[0][1];
-      callback({
-        "full-id": "full-id",
-        protocol: "http",
-        "remote-address": "1.2.3.4",
-        timestamp: "2023-01-01T00:00:00Z",
-        "raw-request": "GET / HTTP/1.1",
-        "raw-response": "HTTP/1.1 200 OK",
-      });
+      const callback = mockStart.mock.calls[0]?.[1];
+      if (callback) {
+        callback({
+          "full-id": "full-id",
+          protocol: "http",
+          "remote-address": "1.2.3.4",
+          timestamp: "2023-01-01T00:00:00Z",
+          "raw-request": "GET / HTTP/1.1",
+          "raw-response": "HTTP/1.1 200 OK",
+        });
+      }
 
       expect(mockAddInteraction).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -401,9 +462,9 @@ describe("usePollingManager", () => {
       await resume(pollingId);
 
       // Get the stop function registered
-      const stopFn = mockRegisterPollingStop.mock.calls[0][1];
+      const stopFn = mockRegisterPollingStop.mock.calls[0]?.[1];
 
-      await stopFn();
+      if (stopFn) await stopFn();
 
       expect(mockStop).toHaveBeenCalled();
       expect(mockSetPollingRunning).toHaveBeenLastCalledWith(pollingId, false);
