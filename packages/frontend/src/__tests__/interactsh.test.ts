@@ -1,6 +1,8 @@
 import axios from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { useClientService } from "../services/interactsh";
+
 // Mock axios
 vi.mock("axios");
 const mockedAxios = vi.mocked(axios, true);
@@ -16,6 +18,10 @@ vi.mock("@/services/crypto", () => ({
     decryptMessage: vi
       .fn()
       .mockResolvedValue(JSON.stringify({ type: "dns", data: "test" })),
+    encodePublicKey: vi.fn().mockResolvedValue("mock-encoded-public-key"),
+    setKeyPairFromPEM: vi.fn().mockResolvedValue(undefined),
+    exportPrivateKeyPEM: vi.fn().mockResolvedValue("mock-private-key-pem"),
+    exportPublicKeyPEM: vi.fn().mockResolvedValue("mock-public-key-pem"),
   })),
 }));
 
@@ -178,5 +184,37 @@ describe("Interactsh Mock External Requests", () => {
       {},
       { headers },
     );
+  });
+});
+
+describe("InteractshClient", () => {
+  it("generateUrl should return a valid URL and uniqueId after start", async () => {
+    const mockPost = vi.fn().mockResolvedValue({
+      data: { status: 200 },
+      status: 200,
+    });
+    mockedAxios.create = vi.fn().mockReturnValue({
+      post: mockPost,
+      get: vi.fn(),
+    });
+
+    const client = useClientService();
+    await client.start({
+      serverURL: "https://interact.sh",
+      token: "test-token",
+    });
+
+    const { url, uniqueId } = client.generateUrl();
+    expect(url).toContain("interact.sh");
+    expect(url).toContain(uniqueId);
+    expect(uniqueId).toBeDefined();
+    expect(uniqueId.length).toBeGreaterThan(0);
+  });
+
+  it("generateUrl should return empty values when not started", () => {
+    const client = useClientService();
+    const { url, uniqueId } = client.generateUrl();
+    expect(url).toBe("");
+    expect(uniqueId).toBe("");
   });
 });
