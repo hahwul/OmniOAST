@@ -437,10 +437,9 @@ class InteractshClient {
 
   /**
    * Generates a unique URL for the current session
-   * @param incrementNumber Optional increment number for uniqueness
    * @returns A unique Interactsh URL and its unique ID
    */
-  public generateUrl(incrementNumber = 0): { url: string; uniqueId: string } {
+  public generateUrl(): { url: string; uniqueId: string } {
     if (
       this.state.value === State.Closed ||
       this.correlationID.value === undefined ||
@@ -449,12 +448,6 @@ class InteractshClient {
       return { url: "", uniqueId: "" };
     }
 
-    const timestamp = Math.floor(Date.now() / 1000);
-    const increment = incrementNumber;
-    const arr = new ArrayBuffer(8);
-    const view = new DataView(arr);
-    view.setUint32(0, timestamp, false);
-    view.setUint32(4, increment, false);
     const randomId = generateRandomString(this.correlationIdNonceLength);
     const url = `${this.correlationID.value}${randomId}.${this.serverURL.value.host}`;
     const uniqueId = `${this.correlationID.value}${randomId}`;
