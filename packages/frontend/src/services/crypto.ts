@@ -50,7 +50,7 @@ const MUL2 = new Uint8Array(256);
 const MUL3 = new Uint8Array(256);
 for (let i = 0; i < 256; i++) {
   MUL2[i] = ((i << 1) ^ (i & 0x80 ? 0x1b : 0)) & 0xff;
-  MUL3[i] = MUL2[i] ^ i;
+  MUL3[i] = MUL2[i]! ^ i;
 }
 
 /** Expand AES key into round key words (4 bytes each). */
@@ -65,34 +65,34 @@ function aesKeyExpansion(key: Uint8Array): Uint8Array[] {
   }
 
   for (let i = Nk; i < totalWords; i++) {
-    const prev = w[i - 1];
+    const prev = w[i - 1]!;
     const temp = new Uint8Array(4);
 
     if (i % Nk === 0) {
       // RotWord + SubWord + Rcon
-      temp[0] = SBOX[prev[1]] ^ RCON[i / Nk - 1];
-      temp[1] = SBOX[prev[2]];
-      temp[2] = SBOX[prev[3]];
-      temp[3] = SBOX[prev[0]];
+      temp[0] = SBOX[prev[1]!]! ^ RCON[i / Nk - 1]!;
+      temp[1] = SBOX[prev[2]!]!;
+      temp[2] = SBOX[prev[3]!]!;
+      temp[3] = SBOX[prev[0]!]!;
     } else if (Nk > 6 && i % Nk === 4) {
       // SubWord only (AES-256)
-      temp[0] = SBOX[prev[0]];
-      temp[1] = SBOX[prev[1]];
-      temp[2] = SBOX[prev[2]];
-      temp[3] = SBOX[prev[3]];
+      temp[0] = SBOX[prev[0]!]!;
+      temp[1] = SBOX[prev[1]!]!;
+      temp[2] = SBOX[prev[2]!]!;
+      temp[3] = SBOX[prev[3]!]!;
     } else {
-      temp[0] = prev[0];
-      temp[1] = prev[1];
-      temp[2] = prev[2];
-      temp[3] = prev[3];
+      temp[0] = prev[0]!;
+      temp[1] = prev[1]!;
+      temp[2] = prev[2]!;
+      temp[3] = prev[3]!;
     }
 
-    const back = w[i - Nk];
+    const back = w[i - Nk]!;
     w[i] = new Uint8Array([
-      back[0] ^ temp[0],
-      back[1] ^ temp[1],
-      back[2] ^ temp[2],
-      back[3] ^ temp[3],
+      back[0]! ^ temp[0]!,
+      back[1]! ^ temp[1]!,
+      back[2]! ^ temp[2]!,
+      back[3]! ^ temp[3]!,
     ]);
   }
   return w;
@@ -108,60 +108,60 @@ function aesEncryptBlock(roundKeys: Uint8Array[], block: Uint8Array): Uint8Array
 
   // Load state and AddRoundKey(0)
   for (let c = 0; c < 4; c++) {
-    const k = roundKeys[c];
-    s[c * 4] = block[c * 4] ^ k[0];
-    s[c * 4 + 1] = block[c * 4 + 1] ^ k[1];
-    s[c * 4 + 2] = block[c * 4 + 2] ^ k[2];
-    s[c * 4 + 3] = block[c * 4 + 3] ^ k[3];
+    const k = roundKeys[c]!;
+    s[c * 4] = block[c * 4]! ^ k[0]!;
+    s[c * 4 + 1] = block[c * 4 + 1]! ^ k[1]!;
+    s[c * 4 + 2] = block[c * 4 + 2]! ^ k[2]!;
+    s[c * 4 + 3] = block[c * 4 + 3]! ^ k[3]!;
   }
 
   for (let round = 1; round <= Nr; round++) {
     // SubBytes
-    for (let i = 0; i < 16; i++) s[i] = SBOX[s[i]];
+    for (let i = 0; i < 16; i++) s[i] = SBOX[s[i]!]!;
 
     // ShiftRows (on column-major: row r shifts left by r across columns)
     // Row 1: indices 1, 5, 9, 13
-    let t = s[1];
-    s[1] = s[5];
-    s[5] = s[9];
-    s[9] = s[13];
+    let t = s[1]!;
+    s[1] = s[5]!;
+    s[5] = s[9]!;
+    s[9] = s[13]!;
     s[13] = t;
     // Row 2: indices 2, 6, 10, 14
-    t = s[2];
-    s[2] = s[10];
+    t = s[2]!;
+    s[2] = s[10]!;
     s[10] = t;
-    t = s[6];
-    s[6] = s[14];
+    t = s[6]!;
+    s[6] = s[14]!;
     s[14] = t;
     // Row 3: indices 3, 7, 11, 15
-    t = s[15];
-    s[15] = s[11];
-    s[11] = s[7];
-    s[7] = s[3];
+    t = s[15]!;
+    s[15] = s[11]!;
+    s[11] = s[7]!;
+    s[7] = s[3]!;
     s[3] = t;
 
     // MixColumns (skip for last round)
     if (round < Nr) {
       for (let c = 0; c < 4; c++) {
         const i = c * 4;
-        const a0 = s[i],
-          a1 = s[i + 1],
-          a2 = s[i + 2],
-          a3 = s[i + 3];
-        s[i] = MUL2[a0] ^ MUL3[a1] ^ a2 ^ a3;
-        s[i + 1] = a0 ^ MUL2[a1] ^ MUL3[a2] ^ a3;
-        s[i + 2] = a0 ^ a1 ^ MUL2[a2] ^ MUL3[a3];
-        s[i + 3] = MUL3[a0] ^ a1 ^ a2 ^ MUL2[a3];
+        const a0 = s[i]!,
+          a1 = s[i + 1]!,
+          a2 = s[i + 2]!,
+          a3 = s[i + 3]!;
+        s[i] = MUL2[a0]! ^ MUL3[a1]! ^ a2 ^ a3;
+        s[i + 1] = a0 ^ MUL2[a1]! ^ MUL3[a2]! ^ a3;
+        s[i + 2] = a0 ^ a1 ^ MUL2[a2]! ^ MUL3[a3]!;
+        s[i + 3] = MUL3[a0]! ^ a1 ^ a2 ^ MUL2[a3]!;
       }
     }
 
     // AddRoundKey
     for (let c = 0; c < 4; c++) {
-      const k = roundKeys[round * 4 + c];
-      s[c * 4] ^= k[0];
-      s[c * 4 + 1] ^= k[1];
-      s[c * 4 + 2] ^= k[2];
-      s[c * 4 + 3] ^= k[3];
+      const k = roundKeys[round * 4 + c]!;
+      s[c * 4] = s[c * 4]! ^ k[0]!;
+      s[c * 4 + 1] = s[c * 4 + 1]! ^ k[1]!;
+      s[c * 4 + 2] = s[c * 4 + 2]! ^ k[2]!;
+      s[c * 4 + 3] = s[c * 4 + 3]! ^ k[3]!;
     }
   }
 
@@ -174,7 +174,7 @@ function aesEncryptBlock(roundKeys: Uint8Array[], block: Uint8Array): Uint8Array
 /** Increment a 16-byte big-endian counter in place. */
 function incrementCounter(counter: Uint8Array): void {
   for (let i = 15; i >= 0; i--) {
-    counter[i] = (counter[i] + 1) & 0xff;
+    counter[i] = (counter[i]! + 1) & 0xff;
     if (counter[i] !== 0) break; // no carry → done
   }
 }
@@ -199,7 +199,7 @@ function decryptAesCtr(
     const keystream = aesEncryptBlock(roundKeys, counter);
 
     for (let j = 0; j < blockLen; j++) {
-      plaintext[offset + j] = ciphertext[offset + j] ^ keystream[j];
+      plaintext[offset + j] = ciphertext[offset + j]! ^ keystream[j]!;
     }
 
     incrementCounter(counter);

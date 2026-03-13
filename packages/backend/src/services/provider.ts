@@ -123,7 +123,7 @@ export class ProviderService {
         "UPDATE providers SET name = ?, type = ?, url = ?, token = ?, enabled = ? WHERE id = ?",
       );
 
-      const result = await statement.run(
+      await statement.run(
         validatedProvider.name,
         validatedProvider.type,
         validatedProvider.url,

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { init } from "../index";
 import * as providerServiceModule from "../services/provider";
 import * as settingsServiceModule from "../services/settings";
-import type { CaidoBackendSDK } from "../types";
+import type { CaidoBackendSDK } from "../../types";
 
 // Mock caido:utils module as it is used by dependencies
 vi.mock("caido:utils", () => ({
