@@ -215,7 +215,6 @@ const addPublicInteractshProvider = async () => {
     "https://oast.pro",
     "https://oast.live",
     "https://oast.site",
-    "https://oast.online",
     "https://oast.fun",
     "https://oast.me",
   ];
