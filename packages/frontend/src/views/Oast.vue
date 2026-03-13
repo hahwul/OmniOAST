@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import { openSearchPanel, search, searchKeymap } from "@codemirror/search";
+import { StateEffect } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
 import { useClipboard } from "@vueuse/core";
 import Button from "primevue/button";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
+import Dialog from "primevue/dialog";
 import Dropdown from "primevue/dropdown";
 import { useToast } from "primevue/usetoast";
 import { v4 as uuidv4 } from "uuid";
@@ -57,6 +61,18 @@ onBeforeUnmount(() => {
   document.removeEventListener("mousemove", onDividerMouseMove);
   document.removeEventListener("mouseup", onDividerMouseUp);
 });
+
+// Full-screen modal for viewing large request/response content
+const expandedContent = ref("");
+const expandedTitle = ref("");
+const showExpandModal = ref(false);
+
+function openExpandModal(title: string, content: string) {
+  expandedTitle.value = title;
+  expandedContent.value = content || "";
+  showExpandModal.value = true;
+}
+
 
 const selectedProviderA = computed({
   get: () =>
@@ -631,40 +647,38 @@ function showDetails(event: any) {
   selectedInteraction.value = event.data;
 }
 
+// Inject CodeMirror search extension into a Caido SDK editor
+function enableEditorSearch(editor: any) {
+  const view = editor?.getEditorView?.();
+  if (!view) return;
+  view.dispatch({
+    effects: StateEffect.appendConfig.of([search(), keymap.of(searchKeymap)]),
+  });
+}
+
+function triggerEditorSearch(editor: any) {
+  const view = editor?.getEditorView?.();
+  if (!view) return;
+  openSearchPanel(view);
+}
+
 onMounted(() => {
   loadProviders();
 
   requestEditor.value = sdk.ui.httpRequestEditor();
   responseEditor.value = sdk.ui.httpResponseEditor();
 
-  console.log("requestEditor.value:", requestEditor.value);
-  console.log("responseEditor.value:", responseEditor.value);
-
   if (requestContainer.value) {
-    const reqEl = requestEditor.value.getElement(); // bind 제거: 불필요
-    console.log(
-      "requestEditor.getElement():",
-      reqEl,
-      reqEl?.outerHTML,
-      reqEl instanceof HTMLElement,
-    );
-    requestContainer.value.appendChild(reqEl);
-  } else {
-    console.warn("requestContainer.value is not defined");
+    requestContainer.value.appendChild(requestEditor.value.getElement());
   }
 
   if (responseContainer.value) {
-    const resEl = responseEditor.value.getElement();
-    console.log(
-      "responseEditor.getElement():",
-      resEl,
-      resEl?.outerHTML,
-      resEl instanceof HTMLElement,
-    );
-    responseContainer.value.appendChild(resEl);
-  } else {
-    console.warn("responseContainer.value is not defined");
+    responseContainer.value.appendChild(responseEditor.value.getElement());
   }
+
+  // Enable Ctrl+F / Cmd+F search in editors
+  enableEditorSearch(requestEditor.value);
+  enableEditorSearch(responseEditor.value);
 });
 
 watch(selectedInteraction, (interaction) => {
@@ -1067,15 +1081,47 @@ onMounted(() => {
 
     <div class="w-full flex flex-col" :style="{ height: (100 - topPanelPercent) + '%' }">
       <div v-show="selectedInteraction" class="flex gap-1 w-full h-full">
-        <div
-          ref="requestContainer"
-          class="field mb-4 w-1/2 h-full bg-surface-0 dark:bg-surface-800 rounded"
-        ></div>
+        <div class="w-1/2 h-full flex flex-col bg-surface-0 dark:bg-surface-800 rounded">
+          <div class="flex items-center justify-between px-2 py-1 flex-shrink-0">
+            <span class="text-xs font-semibold text-surface-500">Request</span>
+            <div class="flex items-center gap-1">
+              <Button
+                v-tooltip.bottom="'Search (Ctrl+F)'"
+                icon="fa fa-search"
+                class="p-button-rounded p-button-text h-6 w-6 min-w-0 p-0 text-xs"
+                @click="triggerEditorSearch(requestEditor)"
+              />
+              <Button
+                v-tooltip.bottom="'Expand'"
+                icon="fa fa-expand"
+                class="p-button-rounded p-button-text h-6 w-6 min-w-0 p-0 text-xs"
+                @click="openExpandModal('Request', selectedInteraction?.rawRequest)"
+              />
+            </div>
+          </div>
+          <div ref="requestContainer" class="field flex-1 min-h-0 overflow-auto"></div>
+        </div>
 
-        <div
-          ref="responseContainer"
-          class="field w-1/2 h-full bg-surface-0 dark:bg-surface-800 rounded"
-        ></div>
+        <div class="w-1/2 h-full flex flex-col bg-surface-0 dark:bg-surface-800 rounded">
+          <div class="flex items-center justify-between px-2 py-1 flex-shrink-0">
+            <span class="text-xs font-semibold text-surface-500">Response</span>
+            <div class="flex items-center gap-1">
+              <Button
+                v-tooltip.bottom="'Search (Ctrl+F)'"
+                icon="fa fa-search"
+                class="p-button-rounded p-button-text h-6 w-6 min-w-0 p-0 text-xs"
+                @click="triggerEditorSearch(responseEditor)"
+              />
+              <Button
+                v-tooltip.bottom="'Expand'"
+                icon="fa fa-expand"
+                class="p-button-rounded p-button-text h-6 w-6 min-w-0 p-0 text-xs"
+                @click="openExpandModal('Response', selectedInteraction?.rawResponse)"
+              />
+            </div>
+          </div>
+          <div ref="responseContainer" class="field flex-1 min-h-0 overflow-auto"></div>
+        </div>
       </div>
 
       <div
@@ -1085,6 +1131,28 @@ onMounted(() => {
         No selected interaction.
       </div>
     </div>
+
+    <!-- Expand dialog for full content inspection -->
+    <Dialog
+      v-model:visible="showExpandModal"
+      :header="expandedTitle"
+      :modal="true"
+      :style="{ width: '90vw', height: '85vh' }"
+      :content-style="{ padding: 0, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }"
+    >
+      <template #header>
+        <div class="flex items-center justify-between w-full pr-8">
+          <span class="font-bold">{{ expandedTitle }}</span>
+          <Button
+            icon="fa fa-copy"
+            label="Copy"
+            class="p-button-sm p-button-secondary"
+            @click="copyToClipboard(expandedContent, expandedTitle)"
+          />
+        </div>
+      </template>
+      <pre class="oast-expand-content">{{ expandedContent }}</pre>
+    </Dialog>
   </div>
 </template>
 
@@ -1152,5 +1220,18 @@ onMounted(() => {
 
 .oast-resize-divider:hover::after {
   opacity: 0.8;
+}
+
+.oast-expand-content {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 1rem;
+  font-family: monospace;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: text;
 }
 </style>
