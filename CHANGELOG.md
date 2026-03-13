@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 0.6.0
+
+### Added
+- Resizable interaction area — drag divider between interaction list and request/response editors (#66)
+- Full-screen expand dialog for viewing large request/response bodies (#63)
+- Search in request/response editors with Ctrl+F / Cmd+F and search button (#48)
+- Custom HTTP provider for generic OAST endpoints
+- Time range filter on interactions list
+- Toast notifications when new interactions arrive while on other Caido pages
+- Sidebar badge count for unread interactions with auto-clear on OAST tab entry
+- Desktop notification toggle in Settings (default: ON)
+
+### Changed
+- Debounced storage writes to reduce SDK storage overhead during polling
+- Deduplicated interactsh callback logic in pollingManager
+- Removed debug logging from interactsh decryption
+- Removed non-functional `oast.online` from public interactsh providers
+
+### Fixed
+- TypeScript strict mode errors across backend and frontend
+- Sidebar badge not clearing when navigating back to OAST tab
+- Filter bar height alignment between search, provider dropdown, and date picker
+
 ## 0.5.1
 
 ### Changed
