@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import ConfirmDialog from "primevue/confirmdialog";
 import MenuBar from "primevue/menubar";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import About from "./About.vue";
 import Oast from "./Oast.vue";
@@ -18,17 +18,84 @@ const page = ref<"OAST" | "Providers" | "Settings" | "About" | "Polling">(
 const oastStore = useOastStore();
 const pollingManager = usePollingManager();
 
-// OAST 탭 진입 시 unreadCount 초기화
-watch(page, (newPage) => {
-  oastStore.setOastTabActive(newPage === "OAST");
-  if (newPage === "OAST") {
-    oastStore.clearUnreadCount();
+// 플러그인 내부 탭 전환 시 visibility 재확인
+watch(page, () => {
+  checkPluginVisibility();
+});
+
+onBeforeUnmount(() => {
+  if (visibilityObserver) {
+    visibilityObserver.disconnect();
+    visibilityObserver = null;
+  }
+  if (intersectionObserver) {
+    intersectionObserver.disconnect();
+    intersectionObserver = null;
   }
 });
+
+// Detect whether the plugin page is visible in Caido
+// When user navigates away from OmniOAST to another Caido page,
+// the plugin root element becomes hidden (display:none or detached).
+const pluginRoot = ref<HTMLElement | null>(null);
+let visibilityObserver: MutationObserver | null = null;
+let intersectionObserver: IntersectionObserver | null = null;
+
+function checkPluginVisibility() {
+  if (!pluginRoot.value) return;
+  // Walk up to find the Caido page container and check visibility
+  let el: HTMLElement | null = pluginRoot.value;
+  let visible = true;
+  while (el) {
+    const style = getComputedStyle(el);
+    if (style.display === "none" || style.visibility === "hidden") {
+      visible = false;
+      break;
+    }
+    el = el.parentElement;
+  }
+  const isOnOastPage = visible && page.value === "OAST";
+  oastStore.setOastTabActive(isOnOastPage);
+  if (isOnOastPage) {
+    oastStore.clearUnreadCount();
+  }
+}
 
 onMounted(() => {
   // Attempt to resume background polling for persisted tasks
   pollingManager.resumeAll();
+
+  // Find the plugin root element
+  pluginRoot.value = document.getElementById("plugin--omnioast");
+
+  // Observe DOM changes on ancestors to detect Caido page switches
+  if (pluginRoot.value) {
+    visibilityObserver = new MutationObserver(() => checkPluginVisibility());
+    // Observe from the body for attribute/style changes on any ancestor
+    visibilityObserver.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["style", "class", "hidden"],
+      subtree: true,
+    });
+
+    // IntersectionObserver reliably detects when the plugin becomes visible/hidden
+    intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            checkPluginVisibility();
+          } else {
+            oastStore.setOastTabActive(false);
+          }
+        }
+      },
+      { threshold: 0.1 },
+    );
+    intersectionObserver.observe(pluginRoot.value);
+
+    // Initial check
+    checkPluginVisibility();
+  }
 });
 
 const leftItems = [

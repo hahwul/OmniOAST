@@ -101,6 +101,8 @@ export const useOastStore = defineStore("oast", () => {
   const isOastTabActive = ref(false);
   // Counter for auto-incrementing interaction index
   const interactionCounter = ref(0);
+  // Desktop notification setting (default: enabled)
+  const desktopNotification = ref(true);
 
   // ─── Debounced Storage Writes ──────────────────────────────────────
   // Avoids hammering sdk.storage.set() on every poll tick / interaction.
@@ -123,6 +125,7 @@ export const useOastStore = defineStore("oast", () => {
   const storageKeyTabProviders = "omnioast.tabProviders";
   const storageKeyTabPayloadHistory = "omnioast.tabPayloadHistory";
   const storageKeyInteractionCounter = "omnioast.interactionCounter";
+  const storageKeyDesktopNotification = "omnioast.desktopNotification";
 
   const activeTab = computed(() => {
     if (!activeTabId.value) return null;
@@ -150,6 +153,11 @@ export const useOastStore = defineStore("oast", () => {
     // Load interaction counter
     if (storage && typeof storage[storageKeyInteractionCounter] === "number") {
       interactionCounter.value = storage[storageKeyInteractionCounter];
+    }
+
+    // Load desktop notification setting (default: true)
+    if (storage && typeof storage[storageKeyDesktopNotification] === "boolean") {
+      desktopNotification.value = storage[storageKeyDesktopNotification];
     }
 
     if (tabs.value.length === 0) {
@@ -261,6 +269,7 @@ export const useOastStore = defineStore("oast", () => {
         if (sidebarItem && typeof sidebarItem.setCount === "function") {
           sidebarItem.setCount(unreadCount.value);
         }
+        sendDesktopNotification(interaction);
       }
     }
   };
@@ -580,6 +589,31 @@ export const useOastStore = defineStore("oast", () => {
     isOastTabActive.value = active;
   };
 
+  /**
+   * Sets desktop notification enabled/disabled and persists the setting
+   */
+  const setDesktopNotification = async (enabled: boolean) => {
+    desktopNotification.value = enabled;
+    const storage = (sdk.storage.get() as Record<string, any>) || {};
+    storage[storageKeyDesktopNotification] = enabled;
+    await sdk.storage.set(storage);
+  };
+
+  /**
+   * Shows a toast notification for a new interaction
+   */
+  const sendDesktopNotification = (interaction: Omit<OastInteraction, "index">) => {
+    if (!desktopNotification.value) return;
+
+    const protocol = interaction.protocol?.toUpperCase() || interaction.type;
+    const detail = [
+      interaction.source && `From: ${interaction.source}`,
+      interaction.provider && `Provider: ${interaction.provider}`,
+    ].filter(Boolean).join(" | ");
+
+    sdk.window.showToast(`[${protocol}] ${detail}`, { variant: "info" });
+  };
+
   return {
     tabs,
     activeTabId,
@@ -615,5 +649,7 @@ export const useOastStore = defineStore("oast", () => {
     removePayloadAndTasks,
     addPayloadToHistory,
     setTabProvider,
+    desktopNotification,
+    setDesktopNotification,
   };
 });

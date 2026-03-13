@@ -6,7 +6,7 @@ import DataTable from "primevue/datatable";
 import Dropdown from "primevue/dropdown";
 import { useToast } from "primevue/usetoast";
 import { v4 as uuidv4 } from "uuid";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import type { Provider } from "../../../backend/src/validation/schemas";
 
@@ -26,6 +26,37 @@ const requestEditor = ref<any>(null);
 const responseEditor = ref<any>(null);
 const requestContainer = ref<HTMLElement | null>(null);
 const responseContainer = ref<HTMLElement | null>(null);
+
+// Resizable split between interaction list and detail editors
+const splitContainer = ref<HTMLElement | null>(null);
+const topPanelPercent = ref(60); // default 60%
+let isResizing = false;
+
+function onDividerMouseDown(e: MouseEvent) {
+  e.preventDefault();
+  isResizing = true;
+  document.addEventListener("mousemove", onDividerMouseMove);
+  document.addEventListener("mouseup", onDividerMouseUp);
+}
+
+function onDividerMouseMove(e: MouseEvent) {
+  if (!isResizing || !splitContainer.value) return;
+  const rect = splitContainer.value.getBoundingClientRect();
+  const y = e.clientY - rect.top;
+  const percent = (y / rect.height) * 100;
+  topPanelPercent.value = Math.min(Math.max(percent, 20), 80);
+}
+
+function onDividerMouseUp() {
+  isResizing = false;
+  document.removeEventListener("mousemove", onDividerMouseMove);
+  document.removeEventListener("mouseup", onDividerMouseUp);
+}
+
+onBeforeUnmount(() => {
+  document.removeEventListener("mousemove", onDividerMouseMove);
+  document.removeEventListener("mouseup", onDividerMouseUp);
+});
 
 const selectedProviderA = computed({
   get: () =>
@@ -61,6 +92,9 @@ const payloadInput = computed({
 });
 
 const searchQuery = ref("");
+const timeFrom = ref("");
+const timeTo = ref("");
+
 const filteredInteractions = computed(() =>
   oastStore.interactions.filter((i) => {
     const matchesSearch =
@@ -89,9 +123,24 @@ const filteredInteractions = computed(() =>
           availableProviders.value.find((p) => p.id === selectedProviderB.value)
             ?.name) ??
           "");
-    return matchesSearch && matchesProvider;
+
+    // Time range filter
+    let matchesTime = true;
+    if (timeFrom.value) {
+      matchesTime = matchesTime && i.timestampNum >= new Date(timeFrom.value).getTime();
+    }
+    if (timeTo.value) {
+      matchesTime = matchesTime && i.timestampNum <= new Date(timeTo.value).getTime();
+    }
+
+    return matchesSearch && matchesProvider && matchesTime;
   }),
 );
+
+const clearTimeFilter = () => {
+  timeFrom.value = "";
+  timeTo.value = "";
+};
 
 const loadProviders = async () => {
   try {
@@ -215,6 +264,9 @@ async function getPayload() {
               break;
             case "postbin":
               pollPostbinEvents(currentProvider, activeTab.id);
+              break;
+            case "customhttp":
+              pollCustomHttpEvents(currentProvider, activeTab.id);
               break;
           }
           updateLastPolled();
@@ -411,6 +463,47 @@ async function pollPostbinEvents(provider: Provider, tabId: string) {
   }
 }
 
+// Helper function for Custom HTTP polling
+async function pollCustomHttpEvents(provider: Provider, tabId: string) {
+  if (!provider) {
+    console.error("CustomHTTP polling called without a provider.");
+    return;
+  }
+  try {
+    const events = await sdk.backend.getOASTEvents(provider);
+    if (events && events.length > 0) {
+      events.forEach((event: any) => {
+        const exists = oastStore.interactions.some((i) => i.id === event.id);
+        if (!exists) {
+          oastStore.addInteraction(
+            {
+              id: event.id,
+              type: "customhttp",
+              correlationId: event.correlationId,
+              data: event,
+              protocol: event.protocol,
+              method: event.method,
+              source: event.source,
+              destination: event.destination,
+              provider: provider.name,
+              timestamp: formatTimestamp(event.timestamp),
+              timestampNum: toNumericTimestamp(event.timestamp),
+              rawRequest: event.rawRequest,
+              rawResponse: event.rawResponse,
+            },
+            tabId,
+          );
+        }
+      });
+    }
+  } catch (pollError) {
+    console.error("Error polling CustomHTTP events:", pollError);
+    sdk.window.showToast("Failed to poll CustomHTTP events", {
+      variant: "error",
+    });
+  }
+}
+
 async function pollInteractions() {
   const activeTab = oastStore.activeTab;
   if (!activeTab) {
@@ -509,6 +602,9 @@ async function pollInteractions() {
         break;
       case "postbin":
         await pollPostbinEvents(provider, activeTab.id);
+        break;
+      case "customhttp":
+        await pollCustomHttpEvents(provider, activeTab.id);
         break;
     }
   }
@@ -703,6 +799,9 @@ async function pollAllTabs() {
           case "postbin":
             await pollPostbinEvents(provider, tab.id);
             break;
+          case "customhttp":
+            await pollCustomHttpEvents(provider, tab.id);
+            break;
         }
         totalPolled++;
       } catch (error) {
@@ -723,10 +822,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-1">
+  <div ref="splitContainer" class="h-full flex flex-col gap-1">
     <OastTabs />
     <div
-      class="w-full h-3/5 bg-surface-0 dark:bg-surface-800 rounded flex flex-col"
+      class="w-full bg-surface-0 dark:bg-surface-800 rounded flex flex-col"
+      :style="{ height: topPanelPercent + '%' }"
     >
       <div class="flex flex-col gap-2 p-4 flex-shrink-0">
         <div class="flex items-center justify-between">
@@ -814,13 +914,13 @@ onMounted(() => {
       </div>
       <!-- 검색바 -->
 
-      <div class="px-4 mb-2 flex-shrink-0 flex items-center gap-2">
+      <div class="oast-filter-bar px-4 mb-2 flex-shrink-0 flex items-center gap-2">
         <input
           v-model="searchQuery"
           type="text"
-          class="oast-search-bar w-full h-10 px-3 py-2 rounded border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950"
+          class="oast-search-bar flex-1 px-3 rounded border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950 text-sm"
           placeholder="Search interactions..."
-          style="min-width: 0; display: flex; align-items: center"
+          style="min-width: 0"
         />
         <Dropdown
           v-model="selectedProviderB"
@@ -828,13 +928,32 @@ onMounted(() => {
           option-label="name"
           option-value="id"
           placeholder="Filter by Provider"
-          class="w-64 mb-2 h-10"
+          class="oast-filter-dropdown w-48"
           clearable
-          :style="{
-            display: 'flex',
-            alignItems: 'center',
-          }"
         />
+        <div class="flex items-center gap-1">
+          <input
+            v-model="timeFrom"
+            type="datetime-local"
+            class="oast-filter-input px-2 rounded border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950 text-xs"
+            title="From"
+          />
+          <span class="text-surface-400 text-xs">~</span>
+          <input
+            v-model="timeTo"
+            type="datetime-local"
+            class="oast-filter-input px-2 rounded border border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-950 text-xs"
+            title="To"
+          />
+          <Button
+            v-if="timeFrom || timeTo"
+            icon="fa fa-times"
+            class="p-button-text p-button-sm w-8 min-w-0 p-0"
+            title="Clear time filter"
+            style="height: 32px;"
+            @click="clearTimeFilter"
+          />
+        </div>
       </div>
       <!-- Interaction 리스트 -->
 
@@ -940,7 +1059,13 @@ onMounted(() => {
       </div>
     </div>
 
-    <div class="w-full h-2/5 flex flex-col">
+    <!-- Drag divider for resizing -->
+    <div
+      class="oast-resize-divider"
+      @mousedown="onDividerMouseDown"
+    ></div>
+
+    <div class="w-full flex flex-col" :style="{ height: (100 - topPanelPercent) + '%' }">
       <div v-show="selectedInteraction" class="flex gap-1 w-full h-full">
         <div
           ref="requestContainer"
@@ -962,3 +1087,70 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.oast-filter-bar {
+  height: 32px;
+}
+
+.oast-filter-bar .oast-search-bar,
+.oast-filter-bar .oast-filter-input {
+  height: 32px;
+  line-height: 32px;
+  padding-top: 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
+}
+
+.oast-filter-bar :deep(.oast-filter-dropdown) {
+  height: 32px;
+}
+
+.oast-filter-bar :deep(.oast-filter-dropdown .p-dropdown-label) {
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 32px;
+  font-size: 0.875rem;
+}
+
+.oast-filter-bar :deep(.oast-filter-dropdown .p-dropdown-trigger) {
+  width: 2rem;
+}
+
+/* datetime-local picker: match Dropdown text/icon color */
+.oast-filter-input {
+  color: var(--p-text-color, var(--text-color, #334155));
+  color-scheme: light;
+}
+
+[data-mode="dark"] .oast-filter-input {
+  color: var(--p-text-color, var(--text-color, #e2e8f0));
+  color-scheme: dark;
+}
+
+.oast-resize-divider {
+  height: 5px;
+  cursor: row-resize;
+  background: transparent;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.oast-resize-divider::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--p-surface-400, #94a3b8);
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+
+.oast-resize-divider:hover::after {
+  opacity: 0.8;
+}
+</style>

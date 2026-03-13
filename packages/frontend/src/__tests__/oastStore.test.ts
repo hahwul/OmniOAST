@@ -11,6 +11,9 @@ vi.mock("@/plugins/sdk", () => ({
         Object.assign(mockStorage, data);
       }),
     },
+    window: {
+      showToast: vi.fn(),
+    },
   }),
 }));
 

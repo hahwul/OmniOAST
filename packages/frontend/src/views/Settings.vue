@@ -2,11 +2,14 @@
 import Button from "primevue/button";
 import InputNumber from "primevue/inputnumber";
 import InputText from "primevue/inputtext";
+import ToggleSwitch from "primevue/toggleswitch";
 import { onMounted, ref } from "vue";
 
 import { useSDK } from "@/plugins/sdk";
+import { useOastStore } from "@/stores/oastStore";
 
 const sdk = useSDK();
+const oastStore = useOastStore();
 
 // Define settings interface
 interface SettingsData {
@@ -108,6 +111,10 @@ const resetToDefaults = () => {
   }
 };
 
+const onNotificationToggle = (value: boolean) => {
+  oastStore.setDesktopNotification(value);
+};
+
 onMounted(loadSettings);
 </script>
 
@@ -146,6 +153,24 @@ onMounted(loadSettings);
             />
             <small class="text-gray-500">
               How often to check for new events (default: 30s)
+            </small>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3 class="text-lg font-semibold mb-3">Notification Settings</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center gap-3">
+              <ToggleSwitch
+                :modelValue="oastStore.desktopNotification"
+                @update:modelValue="onNotificationToggle"
+              />
+              <label class="font-medium">Toast Notifications</label>
+            </div>
+            <small class="text-gray-500">
+              Show toast alerts when new interactions arrive while OmniOAST tab is inactive
             </small>
           </div>
         </div>

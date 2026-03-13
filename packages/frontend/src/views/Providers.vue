@@ -24,6 +24,7 @@ const providerTypes = ref([
   { name: "BOAST", code: "BOAST" as const },
   { name: "Webhook.site", code: "webhooksite" as const },
   { name: "PostBin", code: "postbin" as const },
+  { name: "Custom HTTP", code: "customhttp" as const },
 ]);
 
 const providers = ref<FetchedProvider[]>([]);

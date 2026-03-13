@@ -4,6 +4,7 @@ import type { CaidoBackendSDK } from "../../types";
 import { type Provider, ProviderSchema } from "../validation/schemas";
 
 import { BoastService } from "./boast";
+import { CustomHttpService } from "./customhttp";
 import { PostbinService } from "./postbin";
 import { WebhooksiteService } from "./webhooksite";
 
@@ -191,6 +192,8 @@ export class ProviderService {
         return new WebhooksiteService(provider.token, this.sdk, provider.url);
       case "postbin":
         return new PostbinService(provider.token, this.sdk, provider.url);
+      case "customhttp":
+        return new CustomHttpService(provider.token, this.sdk, provider.url);
       default:
         this.console.error(`Unknown provider type: ${provider.type}`);
         return null;
