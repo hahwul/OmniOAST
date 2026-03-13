@@ -37,7 +37,7 @@ OmniOAST is a Caido security testing plugin for Out-of-Band Application Security
 - `packages/frontend/` - Vue.js frontend plugin code with TypeScript (19 files total)
 - `packages/backend/` - Node.js backend plugin services (7 TypeScript files)
 - `packages/frontend/src/` - Main frontend source code
-  - `services/` - OAST provider implementations (4 files: interactsh.ts ~470 lines, pollingManager.ts ~385 lines, crypto.ts ~182 lines, boast.ts ~15 lines)
+  - `services/` - OAST provider implementations (4 files: interactsh.ts ~470 lines, pollingManager.ts ~385 lines, crypto.ts ~340 lines, boast.ts ~15 lines)
   - `stores/` - Pinia state management stores (oastStore.ts for managing interactions and tabs)
   - `views/` - Vue components (7 Vue files: App.vue, Oast.vue, OastTabs.vue, Polling.vue, Providers.vue, Settings.vue, About.vue)
   - `plugins/` - SDK plugin configuration (sdk.ts)
@@ -54,7 +54,7 @@ OmniOAST is a Caido security testing plugin for Out-of-Band Application Security
 - `caido.config.ts` - Main Caido plugin configuration defining backend and frontend plugins
 - `package.json` - Root workspace configuration with scripts (typecheck, lint, build, watch)
 - `pnpm-workspace.yaml` - pnpm workspace configuration (`packages: - 'packages/*'`)
-- `packages/frontend/package.json` - Frontend dependencies (Vue 3.4.37, Pinia 3.0.2, PrimeVue 4.1.0, axios 1.10.0, @caido/sdk-frontend 0.46.0, crypto-js 4.2.0, uuid 11.1.0)
+- `packages/frontend/package.json` - Frontend dependencies (Vue 3.4.37, Pinia 3.0.2, PrimeVue 4.1.0, axios 1.10.0, @caido/sdk-frontend 0.46.0, uuid 11.1.0). Note: crypto-js was removed; AES is now pure JS.
 - `packages/backend/package.json` - Backend dependencies (@caido/sdk-backend 0.46.0, uuid 11.1.0, zod 3.25.67)
 - `eslint.config.mjs` - ESLint configuration using Caido's default config
 - `tsconfig.json` - TypeScript configuration (target: esnext, strict mode enabled)
@@ -65,7 +65,7 @@ OmniOAST is a Caido security testing plugin for Out-of-Band Application Security
 - `packages/frontend/src/views/App.vue` - Main Vue application component with tab-based interface
 - `packages/frontend/src/services/interactsh.ts` - Interactsh client implementation with encryption support (470 lines)
 - `packages/frontend/src/services/pollingManager.ts` - Manages polling tasks for OAST interactions (385 lines)
-- `packages/frontend/src/services/crypto.ts` - Cryptographic utilities for secure communication (182 lines)
+- `packages/frontend/src/services/crypto.ts` - Cryptographic utilities: RSA-OAEP via Web Crypto, AES-CTR via pure JS (interactsh server uses Go's cipher.NewCTR, not CFB)
 - `packages/frontend/src/stores/oastStore.ts` - Pinia store managing OAST interactions, tabs, and polling state
 - `packages/backend/src/validation/schemas.ts` - Zod schemas for Provider (name, type, url, token, enabled) and Settings (pollingInterval, payloadPrefix)
 
@@ -82,7 +82,7 @@ OmniOAST is a Caido security testing plugin for Out-of-Band Application Security
 - **Services**:
   - `interactsh.ts`: Handles Interactsh protocol with AES encryption, correlation IDs, polling
   - `pollingManager.ts`: Manages interval-based polling for all provider types
-  - `crypto.ts`: RSA key generation, AES encryption/decryption for secure OAST communications
+  - `crypto.ts`: RSA key generation (Web Crypto), AES-CTR decryption (pure JS) for secure OAST communications. Uses pure JS AES block cipher to avoid Web Crypto AES quirks in Caido's sandbox.
   - `boast.ts`: Simple BOAST URL generation
 
 ### Backend Architecture
@@ -99,7 +99,7 @@ OmniOAST is a Caido security testing plugin for Out-of-Band Application Security
 - **API Methods**: Backend exposes methods via Caido SDK API registry (createProvider, getProvider, updateProvider, deleteProvider, listProviders, toggleProviderEnabled, registerAndGetPayload, getOASTEvents, settings CRUD)
 
 ### Provider Types & Implementations
-1. **Interactsh**: Full client implementation with encryption, correlation IDs, session restore, keep-alive polling
+1. **Interactsh**: Full client implementation with encryption (RSA-OAEP key exchange + AES-CTR data encryption), correlation IDs, session restore, keep-alive polling. Server uses Go's `cipher.NewCTR` — NOT CFB.
 2. **BOAST**: Simple URL generation service
 3. **Webhook.site**: REST API integration, supports API keys, extracts token from existing URLs
 4. **PostBin**: Auto-creates temporary bins (30-minute expiry), REST API polling

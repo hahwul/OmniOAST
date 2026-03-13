@@ -180,10 +180,19 @@ class InteractshClient {
         }
 
         try {
-          const interaction = JSON.parse(decryptedData.toString());
+          const raw = decryptedData.toString();
+          console.warn(
+            "[interactsh] decrypted length:", raw.length,
+            "| first 100 chars:", JSON.stringify(raw.substring(0, 100)),
+          );
+          const interaction = JSON.parse(raw);
           callback(interaction);
         } catch (err) {
+          const raw = decryptedData.toString();
+          const codes = Array.from(raw.substring(0, 60), c => c.charCodeAt(0));
           console.error("Failed to parse interaction:", err);
+          console.error("[interactsh] raw charCodes[0..60]:", codes);
+          console.error("[interactsh] raw hex[0..60]:", codes.map(c => c.toString(16).padStart(2, "0")).join(" "));
         }
       }
     }
@@ -224,7 +233,13 @@ class InteractshClient {
           );
         } catch (e) {
           console.error("Failed to import provided keypair, generating new", e);
+          // Trigger key generation via encodePublicKey which calls ensureKeys internally
+          await this.cryptoService.encodePublicKey();
         }
+      } else {
+        // No private key available (empty or undefined) - generate fresh keys
+        // so that decryption doesn't fail with "Private key not initialized"
+        await this.cryptoService.encodePublicKey();
       }
       this.correlationID.value = options.sessionInfo.correlationID;
       this.secretKey.value = options.sessionInfo.secretKey;
@@ -273,8 +288,7 @@ class InteractshClient {
         try {
           await this.getInteractions(callback);
         } catch (err) {
-          console.error("Polling error:", err);
-          throw new Error("Polling error");
+          console.error("Polling error (will retry next cycle):", err);
         }
         await new Promise((resolve) =>
           setTimeout(resolve, this.pollingInterval.value),
