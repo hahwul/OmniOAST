@@ -102,6 +102,18 @@ export const useOastStore = defineStore("oast", () => {
   // Counter for auto-incrementing interaction index
   const interactionCounter = ref(0);
 
+  // ─── Debounced Storage Writes ──────────────────────────────────────
+  // Avoids hammering sdk.storage.set() on every poll tick / interaction.
+  const pendingFlush: Record<string, ReturnType<typeof setTimeout>> = {};
+
+  function debouncedSave(key: string, saveFn: () => Promise<void>, delayMs = 2000) {
+    if (pendingFlush[key]) clearTimeout(pendingFlush[key]);
+    pendingFlush[key] = setTimeout(() => {
+      delete pendingFlush[key];
+      saveFn();
+    }, delayMs);
+  }
+
   // Storage keys for persisting data between sessions
   const storageKeyTabs = "omnioast.tabs";
   const storageKeyActiveTabId = "omnioast.activeTabId";
@@ -442,19 +454,14 @@ export const useOastStore = defineStore("oast", () => {
    * @param pollingId The ID of the polling entry to update.
    * @param timestamp The new timestamp.
    */
-  const updatePollingLastPolled = async (
+  const updatePollingLastPolled = (
     pollingId: string,
     timestamp: number,
   ) => {
-    const index = pollingList.value.findIndex((p) => p.id === pollingId);
-    if (index !== -1) {
-      const currentPolling = pollingList.value[index] as PollingListItem;
-      const updatedPolling: PollingListItem = {
-        ...currentPolling,
-        lastChecked: timestamp,
-      };
-      pollingList.value.splice(index, 1, updatedPolling);
-      await savePollingList();
+    const item = pollingList.value.find((p) => p.id === pollingId);
+    if (item) {
+      item.lastChecked = timestamp;
+      debouncedSave("pollingList", savePollingList);
     }
   };
 

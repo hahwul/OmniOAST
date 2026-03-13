@@ -18,6 +18,45 @@ interface RunningTask {
 
 const runningTasks: Record<string, RunningTask> = {};
 
+/**
+ * Creates an interactsh interaction callback for use with the client.
+ * Extracts the common logic that was duplicated across resume paths.
+ */
+function createInteractshCallback(
+  oastStore: ReturnType<typeof useOastStore>,
+  pollingId: string,
+  providerName: string,
+  tabId: string,
+) {
+  return (interaction: Record<string, unknown>) => {
+    const method = (interaction as any)["q-type"]
+      ? String((interaction as any)["q-type"])
+      : typeof (interaction as any)["raw-request"] === "string"
+        ? (interaction as any)["raw-request"].split(" ")[0] || ""
+        : "";
+
+    oastStore.addInteraction(
+      {
+        id: uuidv4(),
+        type: "interactsh",
+        correlationId: String((interaction as any)["full-id"]),
+        data: interaction,
+        protocol: String((interaction as any).protocol),
+        method,
+        source: String((interaction as any)["remote-address"]),
+        destination: String((interaction as any)["full-id"]),
+        provider: providerName,
+        timestamp: formatTimestamp((interaction as any).timestamp),
+        timestampNum: toNumericTimestamp((interaction as any).timestamp),
+        rawRequest: String((interaction as any)["raw-request"]),
+        rawResponse: String((interaction as any)["raw-response"]),
+      },
+      tabId,
+    );
+    oastStore.updatePollingLastPolled(pollingId, Date.now());
+  };
+}
+
 export function usePollingManager() {
   const oastStore = useOastStore();
   const sdk = useSDK();
@@ -77,35 +116,7 @@ export function usePollingManager() {
               publicKey: item.session.publicKey,
             },
           } as any,
-          (interaction: Record<string, unknown>) => {
-            const method = (interaction as any)["q-type"]
-              ? String((interaction as any)["q-type"])
-              : typeof (interaction as any)["raw-request"] === "string"
-                ? (interaction as any)["raw-request"].split(" ")[0] || ""
-                : "";
-
-            oastStore.addInteraction(
-              {
-                id: uuidv4(),
-                type: "interactsh",
-                correlationId: String((interaction as any)["full-id"]),
-                data: interaction,
-                protocol: String((interaction as any).protocol),
-                method,
-                source: String((interaction as any)["remote-address"]),
-                destination: String((interaction as any)["full-id"]),
-                provider: item.provider,
-                timestamp: formatTimestamp((interaction as any).timestamp),
-                timestampNum: toNumericTimestamp(
-                  (interaction as any).timestamp,
-                ),
-                rawRequest: String((interaction as any)["raw-request"]),
-                rawResponse: String((interaction as any)["raw-response"]),
-              },
-              item.tabId,
-            );
-            oastStore.updatePollingLastPolled(pollingId, Date.now());
-          },
+          createInteractshCallback(oastStore, pollingId, item.provider, item.tabId),
         );
 
         // Record last-checked periodically regardless of new events
@@ -170,35 +181,7 @@ export function usePollingManager() {
             token: provider.token || "",
             keepAliveInterval: item.interval,
           } as any,
-          (interaction: Record<string, unknown>) => {
-            const method = (interaction as any)["q-type"]
-              ? String((interaction as any)["q-type"])
-              : typeof (interaction as any)["raw-request"] === "string"
-                ? (interaction as any)["raw-request"].split(" ")[0] || ""
-                : "";
-
-            oastStore.addInteraction(
-              {
-                id: uuidv4(),
-                type: "interactsh",
-                correlationId: String((interaction as any)["full-id"]),
-                data: interaction,
-                protocol: String((interaction as any).protocol),
-                method,
-                source: String((interaction as any)["remote-address"]),
-                destination: String((interaction as any)["full-id"]),
-                provider: provider.name,
-                timestamp: formatTimestamp((interaction as any).timestamp),
-                timestampNum: toNumericTimestamp(
-                  (interaction as any).timestamp,
-                ),
-                rawRequest: String((interaction as any)["raw-request"]),
-                rawResponse: String((interaction as any)["raw-response"]),
-              },
-              item.tabId,
-            );
-            oastStore.updatePollingLastPolled(pollingId, Date.now());
-          },
+          createInteractshCallback(oastStore, pollingId, provider.name, item.tabId),
         );
 
         // Update the polling item with new session and payload URL
@@ -253,35 +236,7 @@ export function usePollingManager() {
               token: provider.token || "",
               keepAliveInterval: item.interval,
             },
-            (interaction: Record<string, unknown>) => {
-              const method = (interaction as any)["q-type"]
-                ? String((interaction as any)["q-type"])
-                : typeof (interaction as any)["raw-request"] === "string"
-                  ? (interaction as any)["raw-request"].split(" ")[0] || ""
-                  : "";
-
-              oastStore.addInteraction(
-                {
-                  id: uuidv4(),
-                  type: "interactsh",
-                  correlationId: String((interaction as any)["full-id"]),
-                  data: interaction,
-                  protocol: String((interaction as any).protocol),
-                  method,
-                  source: String((interaction as any)["remote-address"]),
-                  destination: String((interaction as any)["full-id"]),
-                  provider: provider.name,
-                  timestamp: formatTimestamp((interaction as any).timestamp),
-                  timestampNum: toNumericTimestamp(
-                    (interaction as any).timestamp,
-                  ),
-                  rawRequest: String((interaction as any)["raw-request"]),
-                  rawResponse: String((interaction as any)["raw-response"]),
-                },
-                item.tabId,
-              );
-              oastStore.updatePollingLastPolled(pollingId, Date.now());
-            },
+            createInteractshCallback(oastStore, pollingId, provider.name, item.tabId),
           );
 
           // Update polling item with new session + payload

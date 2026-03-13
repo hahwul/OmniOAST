@@ -180,19 +180,10 @@ class InteractshClient {
         }
 
         try {
-          const raw = decryptedData.toString();
-          console.warn(
-            "[interactsh] decrypted length:", raw.length,
-            "| first 100 chars:", JSON.stringify(raw.substring(0, 100)),
-          );
-          const interaction = JSON.parse(raw);
+          const interaction = JSON.parse(decryptedData.toString());
           callback(interaction);
         } catch (err) {
-          const raw = decryptedData.toString();
-          const codes = Array.from(raw.substring(0, 60), c => c.charCodeAt(0));
           console.error("Failed to parse interaction:", err);
-          console.error("[interactsh] raw charCodes[0..60]:", codes);
-          console.error("[interactsh] raw hex[0..60]:", codes.map(c => c.toString(16).padStart(2, "0")).join(" "));
         }
       }
     }

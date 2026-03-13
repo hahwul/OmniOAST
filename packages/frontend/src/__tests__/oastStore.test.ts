@@ -350,7 +350,7 @@ describe("oastStore", () => {
         tabName: tab.name,
       });
 
-      await store.updatePollingLastPolled("poll-1", 9999);
+      store.updatePollingLastPolled("poll-1", 9999);
       expect(store.pollingList[0]!.lastChecked).toBe(9999);
     });
 
