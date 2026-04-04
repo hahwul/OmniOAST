@@ -72,9 +72,7 @@ export class SettingsService {
 
   async getSettings(id: string | undefined): Promise<Settings | null> {
     try {
-      this.console.log("getSettings id:", id);
       if (!id) {
-        this.console.error("Invalid ID provided to getSettings");
         return null;
       }
       const db = await this.getDb();
@@ -115,7 +113,6 @@ export class SettingsService {
 
       if (!result) {
         // If no settings exist yet, create default settings
-        this.console.log("No settings found, creating default settings");
         return this.createDefaultSettings();
       }
 

@@ -24,22 +24,17 @@ export class WebhooksiteService implements OASTService {
       if (match && match[1]) {
         this.tokenId = match[1];
         this.payloadUrl = `https://webhook.site/${this.tokenId}`;
-        this.sdk.console.log(
-          `Webhook.site: Using existing token ${this.tokenId}`,
-        );
       }
     }
   }
 
   public async getEvents(): Promise<OASTEvent[]> {
     if (!this.tokenId) {
-      this.sdk.console.log("Webhook.site: No token ID available for polling");
       return [];
     }
 
     try {
       const url = `https://webhook.site/token/${this.tokenId}/requests?sorting=newest`;
-      this.sdk.console.log(`Webhook.site: Polling events from ${url}`);
 
       const spec = new RequestSpec(url);
       if (this.apiKey) {
@@ -59,12 +54,8 @@ export class WebhooksiteService implements OASTService {
       }
 
       const data = body.toJson() as any;
-      this.sdk.console.log(`Webhook.site: Received data:`, data);
 
       if (!data.data || !Array.isArray(data.data)) {
-        this.sdk.console.log(
-          "Webhook.site: No events in response or invalid format",
-        );
         return [];
       }
 
@@ -82,7 +73,6 @@ export class WebhooksiteService implements OASTService {
         rawResponse: "",
       }));
 
-      this.sdk.console.log(`Webhook.site: Mapped ${events.length} events`);
       return events;
     } catch (error) {
       this.sdk.console.error("Error fetching webhook.site events:", error);

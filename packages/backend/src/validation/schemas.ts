@@ -19,7 +19,7 @@ export type Provider = z.infer<typeof ProviderSchema>;
 export const SettingsSchema = z
   .object({
     id: z.string().optional(),
-    pollingInterval: z.number().int().positive().default(30),
+    pollingInterval: z.number().int().min(5, "Polling interval must be at least 5 seconds").max(3600, "Polling interval must be at most 3600 seconds").default(30),
     payloadPrefix: z.string().default(""),
   })
   .partial({ id: true });

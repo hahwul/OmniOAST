@@ -340,6 +340,7 @@ describe("PostbinService", () => {
         undefined,
         mockSdk as any,
         existingUrl,
+        0, // Disable rate limiting for test
       );
       const events = await service.getEvents();
 

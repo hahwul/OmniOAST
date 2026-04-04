@@ -2,7 +2,7 @@
 import { openSearchPanel, search, searchKeymap } from "@codemirror/search";
 import { StateEffect } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
-import { useClipboard } from "@vueuse/core";
+import { refDebounced, useClipboard } from "@vueuse/core";
 import Button from "primevue/button";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
@@ -108,30 +108,21 @@ const payloadInput = computed({
 });
 
 const searchQuery = ref("");
+const debouncedSearchQuery = refDebounced(searchQuery, 300);
 const timeFrom = ref("");
 const timeTo = ref("");
 
-const filteredInteractions = computed(() =>
-  oastStore.interactions.filter((i) => {
+const filteredInteractions = computed(() => {
+  const query = debouncedSearchQuery.value.toLowerCase();
+  return oastStore.interactions.filter((i) => {
     const matchesSearch =
-      (i.protocol?.toLowerCase() ?? "").includes(
-        searchQuery.value.toLowerCase(),
-      ) ||
-      (i.source?.toLowerCase() ?? "").includes(
-        searchQuery.value.toLowerCase(),
-      ) ||
-      (i.destination?.toLowerCase() ?? "").includes(
-        searchQuery.value.toLowerCase(),
-      ) ||
-      (i.provider?.toLowerCase() ?? "").includes(
-        searchQuery.value.toLowerCase(),
-      ) ||
-      (i.rawRequest?.toLowerCase() ?? "").includes(
-        searchQuery.value.toLowerCase(),
-      ) ||
-      (i.rawResponse?.toLowerCase() ?? "").includes(
-        searchQuery.value.toLowerCase(),
-      );
+      !query ||
+      (i.protocol?.toLowerCase() ?? "").includes(query) ||
+      (i.source?.toLowerCase() ?? "").includes(query) ||
+      (i.destination?.toLowerCase() ?? "").includes(query) ||
+      (i.provider?.toLowerCase() ?? "").includes(query) ||
+      (i.rawRequest?.toLowerCase() ?? "").includes(query) ||
+      (i.rawResponse?.toLowerCase() ?? "").includes(query);
     const matchesProvider =
       !selectedProviderB.value ||
       i.provider ===
@@ -150,8 +141,8 @@ const filteredInteractions = computed(() =>
     }
 
     return matchesSearch && matchesProvider && matchesTime;
-  }),
-);
+  });
+});
 
 const clearTimeFilter = () => {
   timeFrom.value = "";

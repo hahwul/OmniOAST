@@ -202,7 +202,7 @@ describe("SettingsSchema", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0]?.message).toContain(
-        "Number must be greater than 0",
+        "Polling interval must be at least 5 seconds",
       );
     }
   });
@@ -215,7 +215,7 @@ describe("SettingsSchema", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues[0]?.message).toContain(
-        "Number must be greater than 0",
+        "Polling interval must be at least 5 seconds",
       );
     }
   });

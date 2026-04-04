@@ -22,13 +22,10 @@ export class CustomHttpService implements OASTService {
 
   public async getEvents(): Promise<OASTEvent[]> {
     if (!this.pollUrl) {
-      this.sdk.console.log("CustomHTTP: No polling URL configured");
       return [];
     }
 
     try {
-      this.sdk.console.log(`CustomHTTP: Polling events from ${this.pollUrl}`);
-
       const spec = new RequestSpec(this.pollUrl);
       if (this.apiKey) {
         spec.setHeader("Authorization", `Bearer ${this.apiKey}`);

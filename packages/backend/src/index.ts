@@ -111,7 +111,6 @@ export function init(sdk: CaidoBackendSDK) {
   (sdk as any).api?.register?.("createSettings", (...args: any[]) => {
     // Settings data is located at args[1]
     const settingsData = args[1];
-    console.log("API createSettings received:", JSON.stringify(settingsData));
 
     // Type assertion and validation
     const settingsInput = settingsData as Record<string, any>;
@@ -128,16 +127,13 @@ export function init(sdk: CaidoBackendSDK) {
   });
   (sdk as any).api?.register?.("getSettings", (...args: any[]) => {
     const id = args[1];
-    console.log("API getSettings received id:", id);
     if (!id) {
-      console.error("Invalid ID provided to getSettings");
       return null;
     }
     return settingsService.getSettings(String(id));
   });
 
   (sdk as any).api?.register?.("getCurrentSettings", () => {
-    console.log("API getCurrentSettings called");
     return settingsService.getCurrentSettings();
   });
   (sdk as any).api?.register?.("updateSettings", (...args: any[]) => {
@@ -150,14 +146,7 @@ export function init(sdk: CaidoBackendSDK) {
       updates = args[2];
     }
 
-    console.log("API updateSettings received id:", id);
-    console.log(
-      "API updateSettings received updates:",
-      JSON.stringify(updates),
-    );
-
     if (!id) {
-      console.error("Invalid ID provided to updateSettings");
       return null;
     }
 
@@ -179,9 +168,7 @@ export function init(sdk: CaidoBackendSDK) {
   });
   (sdk as any).api?.register?.("deleteSettings", (...args: any[]) => {
     const id = args[1];
-    console.log("API deleteSettings received id:", id);
     if (!id) {
-      console.error("Invalid ID provided to deleteSettings");
       return false;
     }
     return settingsService.deleteSettings(String(id));

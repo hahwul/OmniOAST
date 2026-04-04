@@ -4,41 +4,36 @@ import { type CaidoBackendSDK, type OASTEvent } from "../../types";
 
 import { type OASTService } from "./provider";
 
+const RATE_LIMIT_DELAY_MS = 200;
+
 export class PostbinService implements OASTService {
   private binId: string | null = null;
   private payloadUrl: string | null = null;
   private sdk: CaidoBackendSDK;
   private processedRequestIds: Set<string> = new Set();
+  private rateLimitDelay: number;
 
   constructor(
     apiKey: string | undefined,
     sdk: CaidoBackendSDK,
     existingUrl?: string,
+    rateLimitDelay = RATE_LIMIT_DELAY_MS,
   ) {
     this.sdk = sdk;
-    this.sdk.console.log(
-      `PostBin: Constructor called with URL: ${existingUrl}`,
-    );
+    this.rateLimitDelay = rateLimitDelay;
 
     // Extract bin ID from existing postb.in URL if provided
     if (existingUrl) {
       const match = existingUrl.match(/postb\.in\/([a-zA-Z0-9\-]+)/i);
-      this.sdk.console.log(`PostBin: URL match result:`, match);
       if (match && match[1]) {
         this.binId = match[1];
         this.payloadUrl = `https://www.postb.in/${this.binId}`;
-        this.sdk.console.log(`PostBin: Using existing bin ${this.binId}`);
-      } else {
-        this.sdk.console.log(`PostBin: No bin ID found in URL: ${existingUrl}`);
       }
     }
   }
 
   public async getEvents(): Promise<OASTEvent[]> {
-    this.sdk.console.log(`PostBin: getEvents called, binId: ${this.binId}`);
-
     if (!this.binId) {
-      this.sdk.console.log("PostBin: No bin ID available for polling");
       return [];
     }
 
@@ -48,38 +43,30 @@ export class PostbinService implements OASTService {
 
       // Keep shifting requests until we get a 404 (no more requests)
       while (requestCount < 100) {
-        // Safety limit
+        // Rate limit: add small delay between requests to avoid hammering the API
+        if (requestCount > 0 && this.rateLimitDelay > 0) {
+          await new Promise((resolve) => setTimeout(resolve, this.rateLimitDelay));
+        }
         const url = `https://www.postb.in/api/bin/${this.binId}/req/shift`;
-        this.sdk.console.log(`PostBin: Shifting request from ${url}`);
 
         const spec = new RequestSpec(url);
         const res: RequestResponse = await this.sdk.requests.send(spec);
 
-        this.sdk.console.log(
-          `PostBin: Response status: ${res.response.getCode()}`,
-        );
-
         if (res.response.getCode() === 404) {
           // No more requests
-          this.sdk.console.log("PostBin: No more requests (404)");
           break;
         }
 
         if (res.response.getCode() >= 300) {
-          this.sdk.console.error(
-            `PostBin: HTTP error! status: ${res.response.getCode()}`,
-          );
           throw new Error(`HTTP error! status: ${res.response.getCode()}`);
         }
 
         const body = res.response.getBody();
         if (!body) {
-          this.sdk.console.log("PostBin: Empty response body");
           break;
         }
 
         const request = body.toJson() as any;
-        this.sdk.console.log(`PostBin: Received request:`, request);
 
         if (
           request &&
@@ -115,13 +102,11 @@ export class PostbinService implements OASTService {
           };
 
           events.push(event);
-          this.sdk.console.log(`PostBin: Added event:`, event);
         }
 
         requestCount++;
       }
 
-      this.sdk.console.log(`PostBin: Retrieved ${events.length} new events`);
       return events;
     } catch (error) {
       this.sdk.console.error("Error fetching PostBin events:", error);

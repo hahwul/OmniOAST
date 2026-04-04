@@ -91,6 +91,7 @@ export function usePollingManager() {
       }
     } catch (e) {
       console.error("PollingManager.pollOnce error", e);
+      throw e;
     }
   };
 
@@ -154,6 +155,10 @@ export function usePollingManager() {
           "Resume Interactsh with stored session failed; will try provider",
           e,
         );
+        // Clean up any partially registered task before falling through
+        const partialTask = runningTasks[pollingId];
+        if (partialTask?.intervalId) clearTimeout(partialTask.intervalId);
+        delete runningTasks[pollingId];
         // fall through to provider-based resume
       }
     }
@@ -227,6 +232,10 @@ export function usePollingManager() {
           "Resume interactsh with session failed, retrying fresh",
           e,
         );
+        // Clean up any partially registered task before retrying
+        const partialTask = runningTasks[pollingId];
+        if (partialTask?.intervalId) clearTimeout(partialTask.intervalId);
+        delete runningTasks[pollingId];
         // Fallback: try fresh start without session
         try {
           const client = useInteractshClient();
@@ -300,13 +309,25 @@ export function usePollingManager() {
     }
 
     // Start interval polling for non-interactsh providers
+    let consecutiveFailures = 0;
+    const MAX_BACKOFF_MULTIPLIER = 8; // Cap at 8x the base interval
+
     const doTick = async () => {
-      await pollOnce(provider, item.tabId);
+      try {
+        await pollOnce(provider, item.tabId);
+        consecutiveFailures = 0; // Reset on success
+      } catch {
+        consecutiveFailures++;
+      }
       await oastStore.updatePollingLastPolled(pollingId, Date.now());
 
       const task = runningTasks[pollingId];
       if (task) {
-        task.intervalId = setTimeout(doTick, item.interval);
+        const backoffMultiplier = Math.min(
+          Math.pow(2, consecutiveFailures),
+          MAX_BACKOFF_MULTIPLIER,
+        );
+        task.intervalId = setTimeout(doTick, item.interval * backoffMultiplier);
       }
     };
 

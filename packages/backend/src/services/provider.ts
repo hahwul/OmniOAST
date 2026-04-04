@@ -194,6 +194,10 @@ export class ProviderService {
         return new PostbinService(provider.token, this.sdk, provider.url);
       case "customhttp":
         return new CustomHttpService(provider.token, this.sdk, provider.url);
+      case "interactsh":
+        // Interactsh is handled entirely on the frontend side via its own client library.
+        // Backend OAST service is not used for this provider type.
+        return null;
       default:
         this.console.error(`Unknown provider type: ${provider.type}`);
         return null;
