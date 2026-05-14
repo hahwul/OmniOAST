@@ -54,16 +54,15 @@ export const init = (sdk: FrontendSDK) => {
   });
   (window as { oastSidebarItem?: unknown }).oastSidebarItem = oastSidebarItem;
 
-  // Pinia store is initialized once App's setup runs (during app.mount above),
-  // so the store is safe to access here.
-  const oastStore = useOastStore(pinia);
+  // Pinia store accesses useSDK() (Vue inject), which needs an app context.
+  // runWithContext provides that context outside of any component's setup.
+  const oastStore = app.runWithContext(() => useOastStore());
 
   // Add the page to the navigation. onEnter is Caido's canonical signal for
   // page entry — more reliable than DOM observers in App.vue.
   sdk.navigation.addPage("/omnioast", {
     body: root,
     onEnter: () => {
-      oastStore.setPluginVisible(true);
       oastStore.clearUnreadCount();
     },
   });

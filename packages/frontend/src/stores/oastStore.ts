@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { computed, ref } from "vue";
 
 import { useSDK } from "@/plugins/sdk";
+import { isPluginCurrentlyVisible } from "@/utils/visibility";
 
 /**
  * Interface representing an Out-of-band Application Security Testing interaction
@@ -97,10 +98,6 @@ export const useOastStore = defineStore("oast", () => {
   const pollingStatus = ref<Record<string, "running" | "stopped">>({});
   // Unread count for sidebar badge
   const unreadCount = ref(0);
-  // True while the OmniOAST plugin page is visible in Caido (any internal sub-tab).
-  // Gates unread-badge increments — the badge counts interactions received while
-  // the user is away from the plugin, not away from the OAST sub-tab.
-  const isPluginVisible = ref(false);
   // Counter for auto-incrementing interaction index
   const interactionCounter = ref(0);
   // Desktop notification setting (default: enabled)
@@ -265,7 +262,7 @@ export const useOastStore = defineStore("oast", () => {
       targetTab.interactions.unshift(interactionWithIndex);
       await saveTabs();
 
-      if (!isPluginVisible.value) {
+      if (!isPluginCurrentlyVisible()) {
         unreadCount.value += 1;
         const sidebarItem = (window as any).oastSidebarItem;
         if (sidebarItem && typeof sidebarItem.setCount === "function") {
@@ -584,9 +581,6 @@ export const useOastStore = defineStore("oast", () => {
     }
   };
 
-  const setPluginVisible = (visible: boolean) => {
-    isPluginVisible.value = visible;
-  };
 
   /**
    * Sets desktop notification enabled/disabled and persists the setting
@@ -641,7 +635,6 @@ export const useOastStore = defineStore("oast", () => {
     registerPollingStop,
     clearUnreadCount,
     unreadCount,
-    setPluginVisible,
     updateTabName,
     setTabPayload,
     removePayloadFromHistory,
