@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 0.6.1
+
+### Fixed
+- Sidebar unread badge not clearing on OAST tab entry — switched to Caido's `addPage.onEnter` callback for reliable entry detection (#85)
+- Unread badge and desktop notifications gated on a synchronous DOM visibility check rather than observer-maintained state, eliminating cases where observers missed Caido page transitions
+
 ## 0.6.0
 
 ### Added
