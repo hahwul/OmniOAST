@@ -54,9 +54,10 @@ function checkPluginVisibility() {
     }
     el = el.parentElement;
   }
-  const isOnOastPage = visible && page.value === "OAST";
-  oastStore.setOastTabActive(isOnOastPage);
-  if (isOnOastPage) {
+  // Set the plugin visibility state - affects whether unread count increments
+  oastStore.setOastTabActive(visible);
+  // Clear unread count when plugin becomes visible (regardless of internal tab)
+  if (visible) {
     oastStore.clearUnreadCount();
   }
 }
