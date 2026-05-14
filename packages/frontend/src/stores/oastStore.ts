@@ -97,8 +97,10 @@ export const useOastStore = defineStore("oast", () => {
   const pollingStatus = ref<Record<string, "running" | "stopped">>({});
   // Unread count for sidebar badge
   const unreadCount = ref(0);
-  // OAST 탭 활성화 상태
-  const isOastTabActive = ref(false);
+  // True while the OmniOAST plugin page is visible in Caido (any internal sub-tab).
+  // Gates unread-badge increments — the badge counts interactions received while
+  // the user is away from the plugin, not away from the OAST sub-tab.
+  const isPluginVisible = ref(false);
   // Counter for auto-incrementing interaction index
   const interactionCounter = ref(0);
   // Desktop notification setting (default: enabled)
@@ -263,7 +265,7 @@ export const useOastStore = defineStore("oast", () => {
       targetTab.interactions.unshift(interactionWithIndex);
       await saveTabs();
 
-      if (!isOastTabActive.value) {
+      if (!isPluginVisible.value) {
         unreadCount.value += 1;
         const sidebarItem = (window as any).oastSidebarItem;
         if (sidebarItem && typeof sidebarItem.setCount === "function") {
@@ -582,11 +584,8 @@ export const useOastStore = defineStore("oast", () => {
     }
   };
 
-  /**
-   * OAST 탭 활성화 상태를 설정
-   */
-  const setOastTabActive = (active: boolean) => {
-    isOastTabActive.value = active;
+  const setPluginVisible = (visible: boolean) => {
+    isPluginVisible.value = visible;
   };
 
   /**
@@ -642,7 +641,7 @@ export const useOastStore = defineStore("oast", () => {
     registerPollingStop,
     clearUnreadCount,
     unreadCount,
-    setOastTabActive,
+    setPluginVisible,
     updateTabName,
     setTabPayload,
     removePayloadFromHistory,

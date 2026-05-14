@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import ConfirmDialog from "primevue/confirmdialog";
 import MenuBar from "primevue/menubar";
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 import About from "./About.vue";
 import Oast from "./Oast.vue";
@@ -17,11 +17,6 @@ const page = ref<"OAST" | "Providers" | "Settings" | "About" | "Polling">(
 );
 const oastStore = useOastStore();
 const pollingManager = usePollingManager();
-
-// 플러그인 내부 탭 전환 시 visibility 재확인
-watch(page, () => {
-  checkPluginVisibility();
-});
 
 onBeforeUnmount(() => {
   if (visibilityObserver) {
@@ -54,9 +49,9 @@ function checkPluginVisibility() {
     }
     el = el.parentElement;
   }
-  // Set the plugin visibility state - affects whether unread count increments
-  oastStore.setOastTabActive(visible);
-  // Clear unread count when plugin becomes visible (regardless of internal tab)
+  // Clear unread count on any entry to the plugin — the sidebar badge tracks
+  // visits to the plugin, not to the OAST sub-tab specifically.
+  oastStore.setPluginVisible(visible);
   if (visible) {
     oastStore.clearUnreadCount();
   }
@@ -86,7 +81,7 @@ onMounted(() => {
           if (entry.isIntersecting) {
             checkPluginVisibility();
           } else {
-            oastStore.setOastTabActive(false);
+            oastStore.setPluginVisible(false);
           }
         }
       },

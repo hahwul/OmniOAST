@@ -239,9 +239,9 @@ describe("oastStore", () => {
       expect(secondTab.interactions.length).toBe(1);
     });
 
-    it("should increment unread count when oast tab is not active", async () => {
+    it("should increment unread count when plugin is not visible", async () => {
       const store = useOastStore();
-      store.setOastTabActive(false);
+      store.setPluginVisible(false);
 
       await store.addInteraction({
         id: "int-1",
@@ -256,9 +256,9 @@ describe("oastStore", () => {
       expect(store.unreadCount).toBe(1);
     });
 
-    it("should not increment unread count when oast tab is active", async () => {
+    it("should not increment unread count when plugin is visible", async () => {
       const store = useOastStore();
-      store.setOastTabActive(true);
+      store.setPluginVisible(true);
 
       await store.addInteraction({
         id: "int-1",
@@ -275,7 +275,7 @@ describe("oastStore", () => {
 
     it("should clear unread count", async () => {
       const store = useOastStore();
-      store.setOastTabActive(false);
+      store.setPluginVisible(false);
 
       await store.addInteraction({
         id: "int-1",
