@@ -7,6 +7,7 @@ import ToastService from "primevue/toastservice";
 import { createApp } from "vue";
 
 import { SDKPlugin } from "./plugins/sdk";
+import { useOastStore } from "./stores/oastStore";
 import "./styles/index.css";
 import type { FrontendSDK } from "./types";
 import App from "./views/App.vue";
@@ -45,17 +46,26 @@ export const init = (sdk: FrontendSDK) => {
   // Mount the app to the root element
   app.mount(root);
 
-  // Add the page to the navigation
-  // Make sure to use a unique name for the page
-  sdk.navigation.addPage("/omnioast", {
-    body: root,
-  });
-
-  // Add a sidebar item
+  // Add a sidebar item.
+  // Register BEFORE addPage so the badge handle exists when onEnter fires —
+  // Caido may invoke onEnter synchronously on initial navigation.
   const oastSidebarItem = sdk.sidebar.registerItem("OmniOAST", "/omnioast", {
     icon: "fas fa-satellite-dish",
   });
   (window as { oastSidebarItem?: unknown }).oastSidebarItem = oastSidebarItem;
+
+  // Pinia store accesses useSDK() (Vue inject), which needs an app context.
+  // runWithContext provides that context outside of any component's setup.
+  const oastStore = app.runWithContext(() => useOastStore());
+
+  // Add the page to the navigation. onEnter is Caido's canonical signal for
+  // page entry — more reliable than DOM observers in App.vue.
+  sdk.navigation.addPage("/omnioast", {
+    body: root,
+    onEnter: () => {
+      oastStore.clearUnreadCount();
+    },
+  });
 
   // Register commands
   // Command to navigate to OmniOAST page

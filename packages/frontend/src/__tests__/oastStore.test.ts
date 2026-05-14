@@ -24,7 +24,12 @@ vi.mock("uuid", () => ({
   })(),
 }));
 
+vi.mock("@/utils/visibility", () => ({
+  isPluginCurrentlyVisible: vi.fn(() => false),
+}));
+
 import { useOastStore } from "../stores/oastStore";
+import { isPluginCurrentlyVisible } from "../utils/visibility";
 
 function resetStorage() {
   Object.keys(mockStorage).forEach((k) => delete mockStorage[k]);
@@ -239,9 +244,9 @@ describe("oastStore", () => {
       expect(secondTab.interactions.length).toBe(1);
     });
 
-    it("should increment unread count when oast tab is not active", async () => {
+    it("should increment unread count when plugin is not visible", async () => {
+      vi.mocked(isPluginCurrentlyVisible).mockReturnValue(false);
       const store = useOastStore();
-      store.setOastTabActive(false);
 
       await store.addInteraction({
         id: "int-1",
@@ -256,9 +261,9 @@ describe("oastStore", () => {
       expect(store.unreadCount).toBe(1);
     });
 
-    it("should not increment unread count when oast tab is active", async () => {
+    it("should not increment unread count when plugin is visible", async () => {
+      vi.mocked(isPluginCurrentlyVisible).mockReturnValue(true);
       const store = useOastStore();
-      store.setOastTabActive(true);
 
       await store.addInteraction({
         id: "int-1",
@@ -274,8 +279,8 @@ describe("oastStore", () => {
     });
 
     it("should clear unread count", async () => {
+      vi.mocked(isPluginCurrentlyVisible).mockReturnValue(false);
       const store = useOastStore();
-      store.setOastTabActive(false);
 
       await store.addInteraction({
         id: "int-1",
