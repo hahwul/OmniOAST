@@ -211,17 +211,25 @@ export const useOastStore = defineStore("oast", () => {
   };
 
   /**
-   * Removes a tab
+   * Removes a tab. Also stops and removes any polling tasks attached to the
+   * tab — without this, orphan tasks would keep polling forever while their
+   * interactions get silently dropped (addInteraction skips missing tabs).
    * @param tabId The ID of the tab to remove
    */
-  const removeTab = (tabId: string) => {
+  const removeTab = async (tabId: string) => {
     const index = tabs.value.findIndex((t) => t.id === tabId);
     if (index > -1) {
+      const orphanedPollingIds = pollingList.value
+        .filter((p) => p.tabId === tabId)
+        .map((p) => p.id);
+      for (const id of orphanedPollingIds) {
+        await removePolling(id);
+      }
       tabs.value.splice(index, 1);
       if (activeTabId.value === tabId) {
         activeTabId.value = tabs.value.length > 0 ? tabs.value[0]!.id : null;
       }
-      saveTabs();
+      await saveTabs();
     }
   };
 
@@ -312,7 +320,7 @@ export const useOastStore = defineStore("oast", () => {
   const clearProviderData = async (type: string) => {
     delete activeProviders.value[type];
     const storage = (sdk.storage.get() as Record<string, any>) || {};
-    delete storage[storageKeyActiveProviders];
+    storage[storageKeyActiveProviders] = activeProviders.value;
     await sdk.storage.set(storage);
   };
 

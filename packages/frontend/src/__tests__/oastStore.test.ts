@@ -545,6 +545,61 @@ describe("oastStore", () => {
       await store.clearProviderData("interactsh");
       expect(store.activeProviders["interactsh"]).toBeUndefined();
     });
+
+    it("should preserve other provider types when clearing one", async () => {
+      const store = useOastStore();
+
+      await store.saveProviderData("interactsh", { url: "oast.fun" });
+      await store.saveProviderData("BOAST", { url: "boast.me" });
+
+      await store.clearProviderData("interactsh");
+
+      expect(store.activeProviders["interactsh"]).toBeUndefined();
+      expect(store.activeProviders["BOAST"]).toEqual({ url: "boast.me" });
+      expect(mockStorage["omnioast.activeProviders"]).toEqual({
+        BOAST: { url: "boast.me" },
+      });
+    });
+  });
+
+  describe("Tab Removal Cascade", () => {
+    it("should stop and remove polling tasks when their tab is removed", async () => {
+      const store = useOastStore();
+      store.addTab();
+      const removedTab = store.tabs[0]!;
+      const keptTab = store.tabs[1]!;
+
+      const stopOnRemoved = vi.fn();
+      const stopOnKept = vi.fn();
+
+      await store.addPolling({
+        id: "poll-removed",
+        payload: "removed.example",
+        provider: "interactsh",
+        lastChecked: 1,
+        interval: 5000,
+        stop: stopOnRemoved,
+        tabId: removedTab.id,
+        tabName: removedTab.name,
+      });
+      await store.addPolling({
+        id: "poll-kept",
+        payload: "kept.example",
+        provider: "interactsh",
+        lastChecked: 1,
+        interval: 5000,
+        stop: stopOnKept,
+        tabId: keptTab.id,
+        tabName: keptTab.name,
+      });
+
+      await store.removeTab(removedTab.id);
+
+      expect(stopOnRemoved).toHaveBeenCalled();
+      expect(stopOnKept).not.toHaveBeenCalled();
+      expect(store.pollingList.map((p) => p.id)).toEqual(["poll-kept"]);
+      expect(store.pollingStatus["poll-removed"]).toBeUndefined();
+    });
   });
 
   describe("Storage Persistence", () => {

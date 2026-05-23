@@ -63,7 +63,9 @@ export class WebhooksiteService implements OASTService {
         id: event.uuid,
         type: "webhooksite",
         destination: this.payloadUrl,
-        timestamp: new Date(event.created_at || event.updated_at || Date.now()),
+        timestamp: new Date(
+          event.created_at || event.updated_at || Date.now(),
+        ).getTime(),
         data: event,
         protocol: "HTTP",
         method: event.method,
