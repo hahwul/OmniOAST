@@ -47,6 +47,11 @@ class InteractshClient {
   private token: Ref<string | undefined>;
   private quitPollingFlag: Ref<boolean>;
   private pollingInterval: Ref<number>;
+  // Polling-loop generation counter. Each startPolling increments it; only
+  // the loop matching the current value keeps running. Prevents an in-flight
+  // sleep in a stopped loop from "resuming" alongside the new loop when
+  // setRefreshTimeSecond stops and restarts polling synchronously.
+  private pollingGeneration: number;
   private cryptoService = useCryptoService();
 
   private httpClient: AxiosInstance;
@@ -63,6 +68,7 @@ class InteractshClient {
     this.token = ref<string>();
     this.quitPollingFlag = ref(false);
     this.pollingInterval = ref(5000);
+    this.pollingGeneration = 0;
 
     this.httpClient = axios.create({ timeout: 10000 });
     this.correlationIdNonceLength = 13;
@@ -162,7 +168,7 @@ class InteractshClient {
     }
 
     if (data?.status !== undefined && data.status !== 200) {
-      if (data?.status !== undefined && data.status === 401) {
+      if (data.status === 401) {
         throw new Error("Couldn't authenticate to the server");
       }
       throw new Error(`Could not poll interactions: ${data?.data}`);
@@ -273,14 +279,16 @@ class InteractshClient {
 
     this.quitPollingFlag.value = false;
     this.state.value = State.Polling;
+    const generation = ++this.pollingGeneration;
 
     const pollingLoop = async () => {
-      while (!this.quitPollingFlag.value) {
+      while (!this.quitPollingFlag.value && this.pollingGeneration === generation) {
         try {
           await this.getInteractions(callback);
         } catch (err) {
           console.error("Polling error (will retry next cycle):", err);
         }
+        if (this.quitPollingFlag.value || this.pollingGeneration !== generation) break;
         await new Promise((resolve) =>
           setTimeout(resolve, this.pollingInterval.value),
         );

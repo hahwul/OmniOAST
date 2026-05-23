@@ -51,7 +51,7 @@ export class BoastService implements OASTService {
         id: event.id,
         type: "BOAST",
         destination: this.domain,
-        timestamp: new Date(event.time),
+        timestamp: event.time ? new Date(event.time).getTime() : Date.now(),
         data: event,
         protocol: event.receiver,
         method: event.QueryType,

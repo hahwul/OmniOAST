@@ -52,5 +52,20 @@ describe("Utility Functions", () => {
       const decodedBuffer = base64ToArrayBuffer(base64);
       expect(new Uint8Array(decodedBuffer)).toEqual(originalData);
     });
+
+    it("should handle buffers larger than the spread-arg call-stack limit", () => {
+      // Pre-fix, String.fromCharCode(...uint8) blew the stack around ~125k.
+      // 256 KB is comfortably past that and within plausible payload sizes
+      // for a decrypted interaction.
+      const size = 256 * 1024;
+      const originalData = new Uint8Array(size);
+      for (let i = 0; i < size; i++) originalData[i] = i & 0xff;
+
+      const base64 = arrayBufferToBase64(originalData.buffer);
+      const decoded = new Uint8Array(base64ToArrayBuffer(base64));
+
+      expect(decoded.length).toBe(size);
+      expect(decoded).toEqual(originalData);
+    });
   });
 });

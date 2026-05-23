@@ -210,8 +210,21 @@ export function usePollingManager() {
           });
         }
 
+        // Match the session-based and fallback paths: periodically refresh
+        // lastChecked so the UI doesn't show a stale "last polled" timestamp
+        // when polling is healthy but no interactions are arriving.
+        const tick = () => {
+          oastStore.updatePollingLastPolled(pollingId, Date.now());
+          const task = runningTasks[pollingId];
+          if (task) {
+            task.intervalId = setTimeout(tick, item.interval);
+          }
+        };
+        const intervalId = setTimeout(tick, item.interval);
+
         runningTasks[pollingId] = {
           id: pollingId,
+          intervalId,
           type: provider.type,
           providerId: provider.id,
         };
@@ -220,6 +233,8 @@ export function usePollingManager() {
           try {
             await client.stop();
           } catch (_) {}
+          const task = runningTasks[pollingId];
+          if (task?.intervalId) clearTimeout(task.intervalId);
           delete runningTasks[pollingId];
           oastStore.setPollingRunning(pollingId, false);
         };
