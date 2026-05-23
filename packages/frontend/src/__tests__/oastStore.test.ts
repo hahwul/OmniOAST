@@ -600,6 +600,63 @@ describe("oastStore", () => {
       expect(store.pollingList.map((p) => p.id)).toEqual(["poll-kept"]);
       expect(store.pollingStatus["poll-removed"]).toBeUndefined();
     });
+
+    it("should clean up payload history and tab state for the removed tab", async () => {
+      const store = useOastStore();
+      store.addTab();
+      const removedTab = store.tabs[0]!;
+      const keptTab = store.tabs[1]!;
+
+      await store.addPayloadToHistory(removedTab.id, "rm.example");
+      await store.addPayloadToHistory(keptTab.id, "keep.example");
+      await store.setTabPayload(removedTab.id, "rm.example");
+      await store.setTabProvider(removedTab.id, "interactsh-public");
+
+      await store.removeTab(removedTab.id);
+
+      expect(store.tabPayloadHistory[removedTab.id]).toBeUndefined();
+      expect(store.tabPayloads[removedTab.id]).toBeUndefined();
+      expect(store.tabProviders[removedTab.id]).toBeUndefined();
+      // Other tabs' state is untouched
+      expect(store.tabPayloadHistory[keptTab.id]).toEqual(["keep.example"]);
+    });
+
+    it("should still remove the tab when an individual polling stop fails", async () => {
+      const store = useOastStore();
+      const tab = store.tabs[0]!;
+      const goodStop = vi.fn();
+      const badStop = vi.fn(() => {
+        throw new Error("boom");
+      });
+
+      await store.addPolling({
+        id: "poll-good",
+        payload: "good.example",
+        provider: "interactsh",
+        lastChecked: 1,
+        interval: 5000,
+        stop: goodStop,
+        tabId: tab.id,
+        tabName: tab.name,
+      });
+      await store.addPolling({
+        id: "poll-bad",
+        payload: "bad.example",
+        provider: "interactsh",
+        lastChecked: 1,
+        interval: 5000,
+        stop: badStop,
+        tabId: tab.id,
+        tabName: tab.name,
+      });
+
+      await store.removeTab(tab.id);
+
+      // Tab is gone even though one stop threw
+      expect(store.tabs.find((t) => t.id === tab.id)).toBeUndefined();
+      expect(goodStop).toHaveBeenCalled();
+      expect(badStop).toHaveBeenCalled();
+    });
   });
 
   describe("Storage Persistence", () => {

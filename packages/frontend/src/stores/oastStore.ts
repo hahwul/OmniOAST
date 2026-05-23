@@ -214,23 +214,43 @@ export const useOastStore = defineStore("oast", () => {
    * Removes a tab. Also stops and removes any polling tasks attached to the
    * tab — without this, orphan tasks would keep polling forever while their
    * interactions get silently dropped (addInteraction skips missing tabs).
+   * Per-polling cleanup failures are caught individually so a single bad
+   * stop function can't strand the tab in a half-removed state.
    * @param tabId The ID of the tab to remove
    */
   const removeTab = async (tabId: string) => {
     const index = tabs.value.findIndex((t) => t.id === tabId);
-    if (index > -1) {
-      const orphanedPollingIds = pollingList.value
-        .filter((p) => p.tabId === tabId)
-        .map((p) => p.id);
-      for (const id of orphanedPollingIds) {
+    if (index === -1) return;
+
+    const orphanedPollingIds = pollingList.value
+      .filter((p) => p.tabId === tabId)
+      .map((p) => p.id);
+    for (const id of orphanedPollingIds) {
+      try {
         await removePolling(id);
+      } catch (e) {
+        console.error("Failed to remove polling during tab removal", id, e);
       }
-      tabs.value.splice(index, 1);
-      if (activeTabId.value === tabId) {
-        activeTabId.value = tabs.value.length > 0 ? tabs.value[0]!.id : null;
-      }
-      await saveTabs();
     }
+
+    if (tabPayloadHistory.value[tabId]) {
+      delete tabPayloadHistory.value[tabId];
+      await saveTabPayloadHistory();
+    }
+    if (tabPayloads.value[tabId]) {
+      delete tabPayloads.value[tabId];
+      await saveTabPayloads();
+    }
+    if (tabProviders.value[tabId]) {
+      delete tabProviders.value[tabId];
+      await saveTabProviders();
+    }
+
+    tabs.value.splice(index, 1);
+    if (activeTabId.value === tabId) {
+      activeTabId.value = tabs.value.length > 0 ? tabs.value[0]!.id : null;
+    }
+    await saveTabs();
   };
 
   /**
