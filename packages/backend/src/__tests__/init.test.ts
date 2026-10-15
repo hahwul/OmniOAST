@@ -126,7 +126,8 @@ describe("Backend Initialization", () => {
       const callback = registerMock.mock.calls.find(
         (call: any[]) => call[0] === "getProvider",
       )?.[1];
-      callback("test-id");
+      // Caido passes the SDK as the first handler argument
+      callback("event", "test-id");
       expect(providerServiceMock.getProvider).toHaveBeenCalledWith("test-id");
     });
 

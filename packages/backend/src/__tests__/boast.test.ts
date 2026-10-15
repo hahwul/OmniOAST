@@ -79,6 +79,22 @@ describe("BoastService", () => {
       expect(mockSdk.requests.send).toHaveBeenCalledTimes(1);
     });
 
+    it("should handle null events without logging an error", async () => {
+      mockResponse.getBody.mockReturnValue({
+        toJson: () => ({ id: "test-id", events: null }),
+      });
+      mockSdk.requests.send.mockResolvedValue(mockRequestResponse);
+
+      const service = new BoastService(
+        "https://boast.example.com",
+        "test-secret",
+        mockSdk as any,
+      );
+
+      expect(await service.getEvents()).toEqual([]);
+      expect(mockSdk.console.error).not.toHaveBeenCalled();
+    });
+
     it("should handle empty events", async () => {
       const mockData = {
         id: "test-id",

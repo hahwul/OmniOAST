@@ -340,3 +340,31 @@ describe("End-to-end RSA + AES-CTR decrypt", () => {
     expect(JSON.parse(decrypted).protocol).toBe("http");
   });
 });
+
+describe("Crypto Service - per-instance keys", () => {
+  it("importing a key into one instance does not replace another's key", async () => {
+    const a = useCryptoService();
+    const b = useCryptoService();
+    const aPem = await a.exportPrivateKeyPEM();
+
+    // A keypair from a different (e.g. restored) session
+    const other = await window.crypto.subtle.generateKey(
+      {
+        name: "RSA-OAEP",
+        modulusLength: 2048,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: "SHA-256",
+      },
+      true,
+      ["encrypt", "decrypt"],
+    );
+    const pkcs8 = await window.crypto.subtle.exportKey("pkcs8", other.privateKey);
+    const otherPem = `-----BEGIN PRIVATE KEY-----\n${btoa(
+      String.fromCharCode(...new Uint8Array(pkcs8)),
+    )}\n-----END PRIVATE KEY-----`;
+    await b.setKeyPairFromPEM(otherPem);
+
+    expect(await a.exportPrivateKeyPEM()).toBe(aPem);
+    expect(await b.exportPrivateKeyPEM()).not.toBe(aPem);
+  });
+});

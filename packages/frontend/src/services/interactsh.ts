@@ -103,7 +103,12 @@ class InteractshClient {
       // Treat known resume scenario as success: correlation-id already exists
       const anyErr = error as any;
       const status = anyErr?.response?.status;
-      const msg = String(anyErr?.response?.data || anyErr?.message || "");
+      // interactsh replies {"error": "..."}; String() on that object would be "[object Object]"
+      const body = anyErr?.response?.data;
+      const msg =
+        typeof body === "string"
+          ? body
+          : JSON.stringify(body ?? anyErr?.message ?? "");
       if (
         status === 400 &&
         msg.toLowerCase().includes("correlation-id") &&
@@ -244,18 +249,23 @@ class InteractshClient {
       this.serverURL.value = new URL(options.sessionInfo.serverURL);
     }
 
-    // Skip re-registration if resuming from a session; it may already exist on server
-    if (!options.sessionInfo) {
-      const publicKey = await this.cryptoService.encodePublicKey();
-      await this.performRegistration(
-        this.serverURL.value.toString(),
-        this.token.value,
-        {
-          "public-key": publicKey,
-          "secret-key": this.secretKey.value,
-          "correlation-id": this.correlationID.value,
-        },
+    const registration = this.performRegistration(
+      this.serverURL.value.toString(),
+      this.token.value,
+      {
+        "public-key": await this.cryptoService.encodePublicKey(),
+        "secret-key": this.secretKey.value,
+        "correlation-id": this.correlationID.value,
+      },
+    );
+    if (options.sessionInfo) {
+      // Re-register on resume so a session the server forgot (restart, eviction,
+      // earlier deregister) comes back; any failure keeps the old poll-only behaviour.
+      await registration.catch((e) =>
+        console.warn("Interactsh re-registration on resume failed", e),
       );
+    } else {
+      await registration;
     }
 
     if (options.keepAliveInterval !== undefined) {
@@ -381,8 +391,8 @@ class InteractshClient {
       this.httpClient.post(
         url,
         {
-          correlationID: this.correlationID.value,
-          secretKey: this.secretKey.value,
+          "correlation-id": this.correlationID.value,
+          "secret-key": this.secretKey.value,
         },
         { headers },
       ),

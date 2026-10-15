@@ -27,7 +27,7 @@ const mockUpdatePolling = vi.fn();
 
 const mockOastStore = {
   pollingList: [] as any[],
-  interactions: [] as any[],
+  tabs: [] as any[],
   pollingStatus: {} as Record<string, string>,
   addInteraction: mockAddInteraction,
   updatePollingLastPolled: mockUpdatePollingLastPolled,
@@ -42,6 +42,7 @@ vi.mock("@/stores/oastStore", () => ({
 
 const mockStart = vi.fn();
 const mockStop = vi.fn();
+const mockStopPolling = vi.fn();
 const mockGetSessionInfo = vi.fn();
 const mockGenerateUrl = vi.fn();
 
@@ -49,6 +50,7 @@ vi.mock("@/services/interactsh", () => ({
   useClientService: () => ({
     start: mockStart,
     stop: mockStop,
+    stopPolling: mockStopPolling,
     getSessionInfo: mockGetSessionInfo,
     generateUrl: mockGenerateUrl,
   }),
@@ -69,7 +71,7 @@ describe("usePollingManager", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     mockOastStore.pollingList = [];
-    mockOastStore.interactions = [];
+    mockOastStore.tabs = [];
     mockOastStore.pollingStatus = {};
   });
 
@@ -193,8 +195,8 @@ describe("usePollingManager", () => {
         },
       ];
 
-      // Interaction already exists
-      mockOastStore.interactions = [{ id: "event-1" }];
+      // Interaction already exists in the task's tab
+      mockOastStore.tabs = [{ id: tabId, interactions: [{ id: "event-1" }] }];
 
       mockListProviders.mockResolvedValue([provider]);
       mockGetOASTEvents.mockResolvedValue([
@@ -210,6 +212,40 @@ describe("usePollingManager", () => {
 
       expect(mockGetOASTEvents).toHaveBeenCalled();
       expect(mockAddInteraction).not.toHaveBeenCalled();
+    });
+
+    it("dedups against the task's tab, not other tabs", async () => {
+      const provider = {
+        id: "provider-1",
+        name: "Webhook",
+        type: "webhooksite",
+        url: "https://webhook.site/x",
+      };
+      mockOastStore.pollingList = [
+        {
+          id: "polling-1",
+          providerId: "provider-1",
+          provider: "Webhook",
+          interval: 5000,
+          tabId: "tab-target",
+          payload: "https://webhook.site/x",
+        },
+      ];
+      // Same event id lives in a different tab only (e.g. the active one)
+      mockOastStore.tabs = [
+        { id: "tab-other", interactions: [{ id: "event-1" }] },
+        { id: "tab-target", interactions: [] },
+      ];
+      mockListProviders.mockResolvedValue([provider]);
+      mockGetOASTEvents.mockResolvedValue([{ id: "event-1" }]);
+
+      const { resume } = usePollingManager();
+      await resume("polling-1");
+
+      expect(mockAddInteraction).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "event-1" }),
+        "tab-target",
+      );
     });
 
     it("ensures no overlapping polls with recursive setTimeout", async () => {
@@ -468,10 +504,11 @@ describe("usePollingManager", () => {
       mockListProviders.mockResolvedValue([provider]);
       mockGetOASTEvents.mockResolvedValue([]);
 
-      const { resume, stop } = usePollingManager();
+      const { resume } = usePollingManager();
       await resume(pollingId);
 
-      stop(pollingId);
+      const stopFn = mockRegisterPollingStop.mock.calls[0]?.[1];
+      stopFn();
 
       expect(mockSetPollingRunning).toHaveBeenLastCalledWith(pollingId, false);
 
@@ -506,16 +543,25 @@ describe("usePollingManager", () => {
 
       mockListProviders.mockResolvedValue([provider]);
 
+      mockGenerateUrl.mockReturnValue({ url: "http://new-payload.url" });
+      mockGetSessionInfo.mockResolvedValue(undefined);
+      mockStop.mockResolvedValue(undefined);
+
       const { resume } = usePollingManager();
       await resume(pollingId);
 
       // Get the stop function registered
       const stopFn = mockRegisterPollingStop.mock.calls[0]?.[1];
 
-      if (stopFn) await stopFn();
-
-      expect(mockStop).toHaveBeenCalled();
+      // Pause: stop polling but keep the server-side session
+      await stopFn();
+      expect(mockStopPolling).toHaveBeenCalled();
+      expect(mockStop).not.toHaveBeenCalled();
       expect(mockSetPollingRunning).toHaveBeenLastCalledWith(pollingId, false);
+
+      // Remove: deregister too
+      await stopFn(true);
+      expect(mockStop).toHaveBeenCalled();
     });
   });
 
@@ -561,6 +607,38 @@ describe("usePollingManager", () => {
       expect(mockSetPollingRunning).toHaveBeenCalledWith(pollingId1, true);
       // Should NOT resume pollingId2 (already running)
       expect(mockSetPollingRunning).not.toHaveBeenCalledWith(pollingId2, true);
+    });
+
+    it("keeps resuming other tasks when one fails", async () => {
+      mockOastStore.pollingList = [
+        {
+          id: "bad",
+          providerId: "p1",
+          provider: "A",
+          interval: 5000,
+          tabId: "t1",
+          payload: "a",
+        },
+        {
+          id: "good",
+          providerId: "p2",
+          provider: "B",
+          interval: 5000,
+          tabId: "t2",
+          payload: "b",
+        },
+      ];
+      mockListProviders
+        .mockRejectedValueOnce(new Error("backend down"))
+        .mockResolvedValue([
+          { id: "p2", name: "B", type: "BOAST", url: "url", token: "token" },
+        ]);
+      mockGetOASTEvents.mockResolvedValue([]);
+
+      const { resumeAll } = usePollingManager();
+      await expect(resumeAll()).resolves.toBeUndefined();
+
+      expect(mockSetPollingRunning).toHaveBeenCalledWith("good", true);
     });
   });
 });

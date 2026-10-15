@@ -27,6 +27,9 @@ interface OastInteraction {
   data: any; // Raw event data from OASTEvent
 }
 
+// deregister=true when the task is being removed (vs. paused)
+type StopFn = (deregister?: boolean) => unknown;
+
 /**
  * Interface representing a polling OAST payload
  */
@@ -37,7 +40,7 @@ interface Polling {
   providerId?: string;
   lastChecked: number; // Timestamp
   interval: number; // Polling interval in milliseconds
-  stop: () => void;
+  stop?: StopFn; // optional when pollingManager.resume registers it afterwards
   tabId: string;
   tabName: string;
   session?: {
@@ -94,7 +97,7 @@ export const useOastStore = defineStore("oast", () => {
   const tabProviders = ref<Record<string, string>>({});
   const tabPayloadHistory = ref<Record<string, string[]>>({});
   const pollingList = ref<PollingListItem[]>([]);
-  const pollingFunctions = ref<Record<string, () => void>>({});
+  const pollingFunctions = ref<Record<string, StopFn>>({});
   const pollingStatus = ref<Record<string, "running" | "stopped">>({});
   // Unread count for sidebar badge
   const unreadCount = ref(0);
@@ -144,7 +147,10 @@ export const useOastStore = defineStore("oast", () => {
       tabs.value = storage[storageKeyTabs];
       activeTabId.value = storage[storageKeyActiveTabId] || null;
 
-      if (tabs.value.length > 0 && !activeTabId.value) {
+      if (
+        tabs.value.length > 0 &&
+        !tabs.value.some((t) => t.id === activeTabId.value)
+      ) {
         activeTabId.value = tabs.value[0]!.id;
       }
     }
@@ -246,7 +252,9 @@ export const useOastStore = defineStore("oast", () => {
       await saveTabProviders();
     }
 
-    tabs.value.splice(index, 1);
+    // Re-find: the list may have changed while the awaits above ran
+    const currentIndex = tabs.value.findIndex((t) => t.id === tabId);
+    if (currentIndex !== -1) tabs.value.splice(currentIndex, 1);
     if (activeTabId.value === tabId) {
       activeTabId.value = tabs.value.length > 0 ? tabs.value[0]!.id : null;
     }
@@ -480,7 +488,7 @@ export const useOastStore = defineStore("oast", () => {
       session: polling.session,
     };
     pollingList.value.push(newPollingItem);
-    pollingFunctions.value[polling.id] = polling.stop;
+    if (polling.stop) pollingFunctions.value[polling.id] = polling.stop;
     pollingStatus.value[polling.id] = "running";
     await savePollingList();
   };
@@ -525,7 +533,11 @@ export const useOastStore = defineStore("oast", () => {
     const toRemove = pollingList.value.find((p) => p.id === pollingId);
     const stopFn = pollingFunctions.value[pollingId];
     if (stopFn) {
-      stopFn();
+      try {
+        await stopFn(true);
+      } catch (e) {
+        console.error("Failed to stop polling", pollingId, e);
+      }
       delete pollingFunctions.value[pollingId];
     }
     pollingList.value = pollingList.value.filter((p) => p.id !== pollingId);
@@ -561,7 +573,7 @@ export const useOastStore = defineStore("oast", () => {
   /**
    * Register/replace a stop function for a polling id
    */
-  const registerPollingStop = (pollingId: string, stopFn: () => void) => {
+  const registerPollingStop = (pollingId: string, stopFn: StopFn) => {
     pollingFunctions.value[pollingId] = stopFn;
   };
 

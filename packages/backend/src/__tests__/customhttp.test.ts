@@ -309,7 +309,27 @@ describe("CustomHttpService", () => {
       ]);
     });
 
-    it("should generate a uuid when no id field is present", async () => {
+    it("should give an id-less item the same id on every poll", async () => {
+      mockResponse.getBody.mockReturnValue({
+        toJson: () => [{ method: "GET", path: "/x" }],
+      });
+      mockSdk.requests.send.mockResolvedValue(mockRequestResponse);
+
+      const first = await new CustomHttpService(
+        undefined,
+        mockSdk as any,
+        "https://example.com/oast",
+      ).getEvents();
+      const second = await new CustomHttpService(
+        undefined,
+        mockSdk as any,
+        "https://example.com/oast",
+      ).getEvents();
+
+      expect(second[0]?.id).toBe(first[0]?.id);
+    });
+
+    it("should still produce an id when no id field is present", async () => {
       mockResponse.getBody.mockReturnValue({
         toJson: () => [{ method: "GET" }],
       });
