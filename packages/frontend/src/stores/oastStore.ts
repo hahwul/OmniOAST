@@ -252,7 +252,9 @@ export const useOastStore = defineStore("oast", () => {
       await saveTabProviders();
     }
 
-    tabs.value.splice(index, 1);
+    // Re-find: the list may have changed while the awaits above ran
+    const currentIndex = tabs.value.findIndex((t) => t.id === tabId);
+    if (currentIndex !== -1) tabs.value.splice(currentIndex, 1);
     if (activeTabId.value === tabId) {
       activeTabId.value = tabs.value.length > 0 ? tabs.value[0]!.id : null;
     }

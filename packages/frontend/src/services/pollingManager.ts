@@ -153,7 +153,8 @@ export function usePollingManager() {
     // removing the task (deregister=true) also deregisters the session.
     const stopFn = async (deregister?: boolean) => {
       try {
-        if (deregister) await client.stop();
+        // Deregister in the background: removal must not wait on a slow server
+        if (deregister) void client.stop().catch(() => {});
         else client.stopPolling();
       } catch (_) {}
       clearTask(pollingId);

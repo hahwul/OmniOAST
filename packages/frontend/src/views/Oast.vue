@@ -243,7 +243,8 @@ async function getPayload() {
     prefix && !/^[a-z][a-z0-9+.-]*:\/\//i.test(payloadUrl)
       ? `${prefix}.${payloadUrl}`
       : payloadUrl;
-  payloadInput.value = finalPayload;
+  // The tab captured at click time, not whichever tab is active after the awaits
+  await oastStore.setTabPayload(activeTab.id, finalPayload);
   await oastStore.addPayloadToHistory(activeTab.id, finalPayload);
 
   const pollingId = uuidv4();

@@ -543,6 +543,10 @@ describe("usePollingManager", () => {
 
       mockListProviders.mockResolvedValue([provider]);
 
+      mockGenerateUrl.mockReturnValue({ url: "http://new-payload.url" });
+      mockGetSessionInfo.mockResolvedValue(undefined);
+      mockStop.mockResolvedValue(undefined);
+
       const { resume } = usePollingManager();
       await resume(pollingId);
 
