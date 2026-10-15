@@ -51,7 +51,7 @@ export function init(sdk: CaidoBackendSDK) {
     const provider = args[1];
     return providerService.createProvider(provider);
   });
-  (sdk as any).api?.register?.("getProvider", (id: string) =>
+  (sdk as any).api?.register?.("getProvider", (_sdk: unknown, id: string) =>
     providerService.getProvider(id),
   );
   (sdk as any).api?.register?.("updateProvider", (...args: any[]) => {

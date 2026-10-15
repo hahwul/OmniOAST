@@ -604,5 +604,37 @@ describe("usePollingManager", () => {
       // Should NOT resume pollingId2 (already running)
       expect(mockSetPollingRunning).not.toHaveBeenCalledWith(pollingId2, true);
     });
+
+    it("keeps resuming other tasks when one fails", async () => {
+      mockOastStore.pollingList = [
+        {
+          id: "bad",
+          providerId: "p1",
+          provider: "A",
+          interval: 5000,
+          tabId: "t1",
+          payload: "a",
+        },
+        {
+          id: "good",
+          providerId: "p2",
+          provider: "B",
+          interval: 5000,
+          tabId: "t2",
+          payload: "b",
+        },
+      ];
+      mockListProviders
+        .mockRejectedValueOnce(new Error("backend down"))
+        .mockResolvedValue([
+          { id: "p2", name: "B", type: "BOAST", url: "url", token: "token" },
+        ]);
+      mockGetOASTEvents.mockResolvedValue([]);
+
+      const { resumeAll } = usePollingManager();
+      await expect(resumeAll()).resolves.toBeUndefined();
+
+      expect(mockSetPollingRunning).toHaveBeenCalledWith("good", true);
+    });
   });
 });

@@ -47,7 +47,8 @@ export class BoastService implements OASTService {
         this.payloadUrl = `http://${this.domain}`;
       }
 
-      return data.events.map((event: any) => ({
+      // A fresh BOAST session reports `"events": null`
+      return (data.events ?? []).map((event: any) => ({
         id: event.id,
         type: "BOAST",
         destination: this.domain,

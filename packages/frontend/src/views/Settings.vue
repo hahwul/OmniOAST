@@ -58,7 +58,9 @@ const saveSettings = () => {
     // 명시적으로 타입을 지정하여 API 호출
     sdk.backend
       .updateSettings(String(settings.value.id), payload)
-      .then(() => {
+      .then((result: any) => {
+        // The backend returns null (not an error) when validation fails
+        if (!result) throw new Error("Settings update rejected");
         sdk.window.showToast("Settings updated successfully", {
           variant: "success",
         });
@@ -75,9 +77,8 @@ const saveSettings = () => {
     sdk.backend
       .createSettings(payload)
       .then((result: any) => {
-        if (result) {
-          settings.value = result;
-        }
+        if (!result) throw new Error("Settings creation rejected");
+        settings.value = result;
         sdk.window.showToast("Settings created successfully", {
           variant: "success",
         });

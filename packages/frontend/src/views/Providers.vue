@@ -98,6 +98,7 @@ const openNew = () => {
 const editProvider = (provider: FetchedProvider) => {
   currentProvider.value = { ...provider };
   isEdit.value = true;
+  autoGenerate.value = false;
   displayDialog.value = true;
 };
 
@@ -119,7 +120,10 @@ const saveProvider = async () => {
   try {
     if (isEdit.value && providerData.id) {
       const payload = JSON.parse(JSON.stringify(providerData));
-      await sdk.backend.updateProvider(providerData.id, payload);
+      // The backend returns null (not an error) when validation fails
+      if (!(await sdk.backend.updateProvider(providerData.id, payload))) {
+        throw new Error("Provider update rejected");
+      }
       sdk.window.showToast("Provider updated", { variant: "success" });
     } else {
       // Creation mode
@@ -143,20 +147,23 @@ const saveProvider = async () => {
       };
 
       const createdProvider = await sdk.backend.createProvider(payload as any);
+      if (!createdProvider) throw new Error("Provider creation rejected");
 
       // Auto-generate payload if requested
-      if (autoGenerate.value && createdProvider && supportsAutoGenerate.value) {
+      if (autoGenerate.value && supportsAutoGenerate.value) {
         try {
           const payloadInfo =
             await sdk.backend.registerAndGetPayload(createdProvider);
-          if (payloadInfo?.payloadUrl) {
+          if (!payloadInfo?.payloadUrl) throw new Error("No payload URL");
+          // BOAST keeps its events API URL; its payload is a bare domain
+          if (createdProvider.type !== "BOAST") {
             await sdk.backend.updateProvider(createdProvider.id, {
               url: payloadInfo.payloadUrl,
             });
-            sdk.window.showToast("Provider created with auto-generated URL", {
-              variant: "success",
-            });
           }
+          sdk.window.showToast("Provider created with auto-generated URL", {
+            variant: "success",
+          });
         } catch (autoGenError) {
           console.error("Auto-generation failed:", autoGenError);
           sdk.window.showToast("Provider created but auto-generation failed", {

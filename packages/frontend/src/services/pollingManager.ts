@@ -215,7 +215,10 @@ export function usePollingManager() {
           });
           return true;
         } catch (e) {
-          console.error(`Fresh Interactsh start failed (attempt ${attempt})`, e);
+          console.error(
+            `Fresh Interactsh start failed (attempt ${attempt})`,
+            e,
+          );
           clearTask(pollingId);
         }
       }
@@ -265,11 +268,14 @@ export function usePollingManager() {
     return true;
   };
 
+  // Concurrent so one slow first poll (a PostBin drain can take 20s+) doesn't
+  // hold up the rest; allSettled so one failure doesn't abort the others.
   const resumeAll = async () => {
-    for (const item of oastStore.pollingList) {
-      if (oastStore.pollingStatus[item.id] === "running") continue;
-      await resume(item.id);
-    }
+    await Promise.allSettled(
+      oastStore.pollingList
+        .filter((item) => oastStore.pollingStatus[item.id] !== "running")
+        .map((item) => resume(item.id)),
+    );
   };
 
   return {

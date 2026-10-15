@@ -100,7 +100,6 @@ const availableProvidersWithAll = computed(() => [
   ...availableProviders.value,
 ]);
 
-onMounted(() => {});
 const selectedInteraction = ref<any>(null);
 const payloadInput = computed({
   get: () =>
