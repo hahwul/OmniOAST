@@ -18,13 +18,20 @@ import OastTabs from "./OastTabs.vue";
 
 import { useSDK } from "@/plugins/sdk";
 import { useClientService } from "@/services/interactsh";
+import {
+  createInteractshCallback,
+  usePollingManager,
+} from "@/services/pollingManager";
 import { useOastStore } from "@/stores/oastStore";
-import { formatTimestamp, toNumericTimestamp } from "@/utils/time";
+
+type PollingItem = ReturnType<typeof useOastStore>["pollingList"][number];
+type PollingSession = PollingItem["session"];
 
 const { copy } = useClipboard();
 const sdk = useSDK();
 const toast = useToast();
 const oastStore = useOastStore();
+const pollingManager = usePollingManager();
 
 const requestEditor = ref<any>(null);
 const responseEditor = ref<any>(null);
@@ -180,65 +187,19 @@ async function getPayload() {
   const pollingInterval = (settings?.pollingInterval || 5) * 1000;
 
   let payloadUrl = "";
-  let stopPolling: () => void;
-  let sessionInfo: any = undefined;
-
-  const pollingId = uuidv4();
-  const updateLastPolled = () => {
-    oastStore.updatePollingLastPolled(pollingId, Date.now());
-  };
+  let session: PollingSession | undefined;
 
   if (currentProvider.type === "interactsh") {
     try {
+      // Register only; pollingManager.resume below polls from this session
       const client = useClientService();
-      await client.start(
-        {
-          serverURL: currentProvider.url,
-          token: currentProvider.token || "",
-          keepAliveInterval: pollingInterval,
-        },
-        (interaction: { [key: string]: any }) => {
-          const method = interaction["q-type"]
-            ? String(interaction["q-type"])
-            : typeof interaction["raw-request"] === "string"
-              ? interaction["raw-request"].split(" ")[0] || ""
-              : "";
-
-          oastStore.addInteraction(
-            {
-              id: uuidv4(),
-              type: "interactsh",
-              correlationId: String(interaction["full-id"]),
-              data: interaction,
-              protocol: String(interaction.protocol),
-              method: method,
-              source: String(interaction["remote-address"]),
-              destination: String(interaction["full-id"]),
-              provider: currentProvider.name,
-              timestamp: formatTimestamp(interaction.timestamp),
-              timestampNum: toNumericTimestamp(interaction.timestamp),
-              rawRequest: String(interaction["raw-request"]),
-              rawResponse: String(interaction["raw-response"]),
-            },
-            activeTab.id,
-          );
-          updateLastPolled();
-        },
-      );
-
-      const { url } = client.generateUrl();
-      payloadUrl = url;
-      // Record last-checked periodically regardless of new events
-      const lcInterval = setInterval(() => {
-        oastStore.updatePollingLastPolled(pollingId, Date.now());
-      }, pollingInterval);
-      stopPolling = () => {
-        clearInterval(lcInterval);
-        return client.stop();
-      };
-      if (client.getSessionInfo) {
-        sessionInfo = await client.getSessionInfo();
-      }
+      await client.start({
+        serverURL: currentProvider.url,
+        token: currentProvider.token || "",
+      });
+      payloadUrl = client.generateUrl().url;
+      const si = await client.getSessionInfo();
+      session = si ? { type: "interactsh", ...si } : undefined;
     } catch (error) {
       console.error("Registration failed:", error);
       sdk.window.showToast("Failed to register interactsh provider", {
@@ -251,45 +212,21 @@ async function getPayload() {
       const payloadInfo =
         await sdk.backend.registerAndGetPayload(currentProvider);
 
-      if (payloadInfo && payloadInfo.payloadUrl) {
+      if (payloadInfo?.payloadUrl) {
         payloadUrl = payloadInfo.payloadUrl;
-
-        if (currentProvider.id) {
+        // webhook.site/PostBin identify the bin by its URL; BOAST must keep its
+        // events API URL (its payload is a bare domain).
+        if (currentProvider.type !== "BOAST") {
           await sdk.backend.updateProvider(currentProvider.id, {
-            url: payloadInfo.payloadUrl,
+            url: payloadUrl,
           });
+          currentProvider.url = payloadUrl;
         }
-        currentProvider.url = payloadInfo.payloadUrl;
-
-        const pollFunction = () => {
-          switch (currentProvider.type) {
-            case "BOAST":
-              pollBoastEvents(currentProvider, activeTab.id);
-              break;
-            case "webhooksite":
-              pollWebhooksiteEvents(currentProvider, activeTab.id);
-              break;
-            case "postbin":
-              pollPostbinEvents(currentProvider, activeTab.id);
-              break;
-            case "customhttp":
-              pollCustomHttpEvents(currentProvider, activeTab.id);
-              break;
-          }
-          updateLastPolled();
-        };
-
-        const intervalId = setInterval(pollFunction, pollingInterval);
-        stopPolling = () => clearInterval(intervalId);
-
-        sdk.window.showToast("Provider registered and polling started", {
-          variant: "success",
-        });
-      } else {
+      } else if (currentProvider.type === "customhttp") {
+        // No registration step: the configured URL is polled as-is
         payloadUrl = currentProvider.url;
-        sdk.window.showToast(`Using existing ${currentProvider.type} URL`, {
-          variant: "info",
-        });
+      } else {
+        throw new Error("No payload URL returned");
       }
     } catch (error) {
       console.error(`${currentProvider.type} registration failed:`, error);
@@ -301,44 +238,34 @@ async function getPayload() {
     }
   }
 
+  // Prefix is a subdomain label, so only apply it to bare-domain payloads
   const prefix = settings?.payloadPrefix;
-  let finalPayload = payloadUrl;
-  if (prefix) {
-    finalPayload = `${prefix}.${payloadUrl}`;
-  }
+  const finalPayload =
+    prefix && !/^[a-z][a-z0-9+.-]*:\/\//i.test(payloadUrl)
+      ? `${prefix}.${payloadUrl}`
+      : payloadUrl;
   payloadInput.value = finalPayload;
-  // Save to per-tab payload history
-  if (oastStore.activeTab) {
-    await oastStore.addPayloadToHistory(oastStore.activeTab.id, finalPayload);
-  }
+  await oastStore.addPayloadToHistory(activeTab.id, finalPayload);
 
-  // sessionInfo may be set for interactsh above; otherwise undefined
-
-  oastStore.addPolling({
+  const pollingId = uuidv4();
+  await oastStore.addPolling({
     id: pollingId,
-    payload: payloadInput.value,
+    payload: finalPayload,
     provider: currentProvider.name,
     providerId: currentProvider.id,
     lastChecked: Date.now(),
     interval: pollingInterval,
-    stop: () => {
-      stopPolling();
-    },
     tabId: activeTab.id,
     tabName: activeTab.name,
-    session:
-      currentProvider.type === "interactsh" && sessionInfo
-        ? {
-            type: "interactsh",
-            serverURL: sessionInfo.serverURL,
-            token: sessionInfo.token,
-            correlationID: sessionInfo.correlationID,
-            secretKey: sessionInfo.secretKey,
-            privateKey: sessionInfo.privateKey,
-            publicKey: sessionInfo.publicKey,
-          }
-        : undefined,
+    session,
   });
+
+  const started = await pollingManager.resume(pollingId);
+  if (started && currentProvider.type !== "interactsh") {
+    sdk.window.showToast("Provider registered and polling started", {
+      variant: "success",
+    });
+  }
 }
 
 function clearInteractions() {
@@ -347,167 +274,48 @@ function clearInteractions() {
   sdk.window.showToast("Interactions cleared", { variant: "success" });
 }
 
-// Helper function for BOAST polling
-async function pollBoastEvents(provider: Provider, tabId: string) {
-  if (!provider) {
-    console.error("BOAST polling called without a provider.");
-    return;
-  }
-  try {
-    const events = await sdk.backend.getOASTEvents(provider);
-    if (events && events.length > 0) {
-      events.forEach((event: any) => {
-        const exists = oastStore.interactions.some((i) => i.id === event.id);
-        if (!exists) {
-          oastStore.addInteraction(
-            {
-              id: event.id,
-              type: "BOAST",
-              correlationId: event.correlationId,
-              data: event,
-              protocol: event.protocol,
-              method: event.method,
-              source: event.source,
-              destination: event.destination,
-              provider: provider.name,
-              timestamp: formatTimestamp(event.timestamp),
-              timestampNum: toNumericTimestamp(event.timestamp),
-              rawRequest: event.rawRequest,
-              rawResponse: event.rawResponse,
-            },
-            tabId,
-          );
-        }
-      });
-    }
-  } catch (pollError) {
-    console.error("Error polling BOAST events:", pollError);
-    sdk.window.showToast("Failed to poll BOAST events", {
-      variant: "error",
-    });
-  }
-}
+// One-shot poll of the given tasks (Poll button and "Polling All Tabs" command)
+async function pollTasks(tasks: PollingItem[]) {
+  for (const task of tasks) {
+    const provider =
+      availableProviders.value.find((p) => p.id === task.providerId) ??
+      availableProviders.value.find((p) => p.name === task.provider);
+    if (!provider) continue;
 
-// Helper function for webhook.site polling
-async function pollWebhooksiteEvents(provider: Provider, tabId: string) {
-  if (!provider) {
-    console.error("Webhook.site polling called without a provider.");
-    return;
-  }
-  try {
-    const events = await sdk.backend.getOASTEvents(provider);
-    if (events && events.length > 0) {
-      events.forEach((event: any) => {
-        const exists = oastStore.interactions.some((i) => i.id === event.id);
-        if (!exists) {
-          oastStore.addInteraction(
-            {
-              id: event.id,
-              type: "webhooksite",
-              correlationId: event.correlationId,
-              data: event,
-              protocol: event.protocol,
-              method: event.method,
-              source: event.source,
-              destination: event.destination,
-              provider: provider.name,
-              timestamp: formatTimestamp(event.timestamp),
-              timestampNum: toNumericTimestamp(event.timestamp),
-              rawRequest: event.rawRequest,
-              rawResponse: event.rawResponse,
-            },
-            tabId,
-          );
+    try {
+      if (provider.type === "interactsh") {
+        if (task.session?.type !== "interactsh") {
+          console.warn("Interactsh manual poll skipped: no stored session");
+          continue;
         }
+        const tmpClient = useClientService();
+        await tmpClient.start(
+          {
+            serverURL: task.session.serverURL,
+            token: task.session.token,
+            sessionInfo: {
+              serverURL: task.session.serverURL,
+              token: task.session.token,
+              privateKey: task.session.privateKey || "",
+              correlationID: task.session.correlationID,
+              secretKey: task.session.secretKey,
+              publicKey: task.session.publicKey,
+            },
+          },
+          createInteractshCallback(oastStore, task.id, provider.name, task.tabId),
+        );
+        // Do not close/deregister: the background task still uses this session
+        await tmpClient.poll();
+      } else {
+        await pollingManager.pollOnce(provider, task.tabId);
+      }
+      oastStore.updatePollingLastPolled(task.id, Date.now());
+    } catch (e) {
+      console.error(`Manual poll failed for ${provider.name}:`, e);
+      sdk.window.showToast(`Failed to poll ${provider.name}`, {
+        variant: "error",
       });
     }
-  } catch (pollError) {
-    console.error("Error polling webhook.site events:", pollError);
-    sdk.window.showToast("Failed to poll webhook.site events", {
-      variant: "error",
-    });
-  }
-}
-
-// Helper function for PostBin polling
-async function pollPostbinEvents(provider: Provider, tabId: string) {
-  if (!provider) {
-    console.error("PostBin polling called without a provider.");
-    return;
-  }
-  try {
-    const events = await sdk.backend.getOASTEvents(provider);
-    if (events && events.length > 0) {
-      events.forEach((event: any) => {
-        const exists = oastStore.interactions.some((i) => i.id === event.id);
-        if (!exists) {
-          oastStore.addInteraction(
-            {
-              id: event.id,
-              type: "postbin",
-              correlationId: event.correlationId,
-              data: event,
-              protocol: event.protocol,
-              method: event.method,
-              source: event.source,
-              destination: event.destination,
-              provider: provider.name,
-              timestamp: formatTimestamp(event.timestamp),
-              timestampNum: toNumericTimestamp(event.timestamp),
-              rawRequest: event.rawRequest,
-              rawResponse: event.rawResponse,
-            },
-            tabId,
-          );
-        }
-      });
-    }
-  } catch (pollError) {
-    console.error("Error polling PostBin events:", pollError);
-    sdk.window.showToast("Failed to poll PostBin events", {
-      variant: "error",
-    });
-  }
-}
-
-// Helper function for Custom HTTP polling
-async function pollCustomHttpEvents(provider: Provider, tabId: string) {
-  if (!provider) {
-    console.error("CustomHTTP polling called without a provider.");
-    return;
-  }
-  try {
-    const events = await sdk.backend.getOASTEvents(provider);
-    if (events && events.length > 0) {
-      events.forEach((event: any) => {
-        const exists = oastStore.interactions.some((i) => i.id === event.id);
-        if (!exists) {
-          oastStore.addInteraction(
-            {
-              id: event.id,
-              type: "customhttp",
-              correlationId: event.correlationId,
-              data: event,
-              protocol: event.protocol,
-              method: event.method,
-              source: event.source,
-              destination: event.destination,
-              provider: provider.name,
-              timestamp: formatTimestamp(event.timestamp),
-              timestampNum: toNumericTimestamp(event.timestamp),
-              rawRequest: event.rawRequest,
-              rawResponse: event.rawResponse,
-            },
-            tabId,
-          );
-        }
-      });
-    }
-  } catch (pollError) {
-    console.error("Error polling CustomHTTP events:", pollError);
-    sdk.window.showToast("Failed to poll CustomHTTP events", {
-      variant: "error",
-    });
   }
 }
 
@@ -535,86 +343,7 @@ async function pollInteractions() {
     life: 2000,
   });
 
-  for (const task of tabPollingTasks) {
-    const provider = availableProviders.value.find(
-      (p) => p.name === task.provider,
-    );
-    if (!provider) continue;
-
-    switch (provider.type) {
-      case "interactsh": {
-        // Perform a one-shot poll using the stored session without permanent start/stop
-        if (!task.session || task.session.type !== "interactsh") {
-          console.warn("Interactsh manual poll skipped: no stored session");
-          break;
-        }
-        try {
-          const tmpClient = useClientService();
-          await tmpClient.start(
-            {
-              serverURL: task.session.serverURL,
-              token: task.session.token,
-              sessionInfo: {
-                serverURL: task.session.serverURL,
-                token: task.session.token,
-                privateKey: task.session.privateKey || "",
-                correlationID: task.session.correlationID,
-                secretKey: task.session.secretKey,
-                publicKey: task.session.publicKey,
-              },
-            },
-            (interaction: { [key: string]: any }) => {
-              const method = interaction["q-type"]
-                ? String(interaction["q-type"])
-                : typeof interaction["raw-request"] === "string"
-                  ? interaction["raw-request"].split(" ")[0] || ""
-                  : "";
-
-              oastStore.addInteraction(
-                {
-                  id: uuidv4(),
-                  type: "interactsh",
-                  correlationId: String(interaction["full-id"]),
-                  data: interaction,
-                  protocol: String(interaction.protocol),
-                  method: method,
-                  source: String(interaction["remote-address"]),
-                  destination: String(interaction["full-id"]),
-                  provider: provider.name,
-                  timestamp: formatTimestamp(interaction.timestamp),
-                  timestampNum: toNumericTimestamp(interaction.timestamp),
-                  rawRequest: String(interaction["raw-request"]),
-                  rawResponse: String(interaction["raw-response"]),
-                },
-                activeTab.id,
-              );
-            },
-          );
-          await tmpClient.poll();
-          // Do not close/deregister to preserve existing session
-          oastStore.updatePollingLastPolled(task.id, Date.now());
-        } catch (e) {
-          console.error("Manual Interactsh poll error:", e);
-          sdk.window.showToast("Failed to poll Interactsh for this task", {
-            variant: "error",
-          });
-        }
-        break;
-      }
-      case "BOAST":
-        await pollBoastEvents(provider, activeTab.id);
-        break;
-      case "webhooksite":
-        await pollWebhooksiteEvents(provider, activeTab.id);
-        break;
-      case "postbin":
-        await pollPostbinEvents(provider, activeTab.id);
-        break;
-      case "customhttp":
-        await pollCustomHttpEvents(provider, activeTab.id);
-        break;
-    }
-  }
+  await pollTasks(tabPollingTasks);
 }
 
 function copyToClipboard(value: string, field: string) {
@@ -710,113 +439,11 @@ watch(selectedInteraction, (interaction) => {
 
 // Function to poll all tabs - exposed globally for command access
 async function pollAllTabs() {
-  const allTabs = oastStore.tabs;
-  const allPollingTasks = oastStore.pollingList;
-
-  if (allTabs.length === 0) {
-    sdk.window.showToast("No tabs available for polling", {
-      variant: "warning",
-    });
+  if (oastStore.pollingList.length === 0) {
+    sdk.window.showToast("No polling tasks to poll", { variant: "info" });
     return;
   }
-
-  if (allPollingTasks.length === 0) {
-    sdk.window.showToast("Polling started for all tasks in this tab", {
-      variant: "info",
-    });
-    return;
-  }
-
-  let totalPolled = 0;
-
-  for (const tab of allTabs) {
-    const tabPollingTasks = allPollingTasks.filter((p) => p.tabId === tab.id);
-    if (tabPollingTasks.length === 0) continue;
-
-    for (const task of tabPollingTasks) {
-      const provider = availableProviders.value.find(
-        (p) => p.name === task.provider,
-      );
-      if (!provider) continue;
-
-      try {
-        switch (provider.type) {
-          case "interactsh": {
-            if (!task.session || task.session.type !== "interactsh") {
-              console.warn("Interactsh manual poll skipped: no stored session");
-              break;
-            }
-            try {
-              const tmpClient = useClientService();
-              await tmpClient.start(
-                {
-                  serverURL: task.session.serverURL,
-                  token: task.session.token,
-                  sessionInfo: {
-                    serverURL: task.session.serverURL,
-                    token: task.session.token,
-                    privateKey: task.session.privateKey || "",
-                    correlationID: task.session.correlationID,
-                    secretKey: task.session.secretKey,
-                    publicKey: task.session.publicKey,
-                  },
-                },
-                (interaction: { [key: string]: any }) => {
-                  const method = interaction["q-type"]
-                    ? String(interaction["q-type"])
-                    : typeof interaction["raw-request"] === "string"
-                      ? interaction["raw-request"].split(" ")[0] || ""
-                      : "";
-
-                  oastStore.addInteraction(
-                    {
-                      id: uuidv4(),
-                      type: "interactsh",
-                      correlationId: String(interaction["full-id"]),
-                      data: interaction,
-                      protocol: String(interaction.protocol),
-                      method: method,
-                      source: String(interaction["remote-address"]),
-                      destination: String(interaction["full-id"]),
-                      provider: provider.name,
-                      timestamp: formatTimestamp(interaction.timestamp),
-                      timestampNum: toNumericTimestamp(interaction.timestamp),
-                      rawRequest: String(interaction["raw-request"]),
-                      rawResponse: String(interaction["raw-response"]),
-                    },
-                    tab.id,
-                  );
-                },
-              );
-              await tmpClient.poll();
-              oastStore.updatePollingLastPolled(task.id, Date.now());
-            } catch (e) {
-              console.error("Manual Interactsh poll error:", e);
-            }
-            break;
-          }
-          case "BOAST":
-            await pollBoastEvents(provider, tab.id);
-            break;
-          case "webhooksite":
-            await pollWebhooksiteEvents(provider, tab.id);
-            break;
-          case "postbin":
-            await pollPostbinEvents(provider, tab.id);
-            break;
-          case "customhttp":
-            await pollCustomHttpEvents(provider, tab.id);
-            break;
-        }
-        totalPolled++;
-      } catch (error) {
-        console.error(
-          `Error polling ${provider.type} for tab ${tab.name}:`,
-          error,
-        );
-      }
-    }
-  }
+  await pollTasks(oastStore.pollingList);
 }
 
 // Expose function globally for command access

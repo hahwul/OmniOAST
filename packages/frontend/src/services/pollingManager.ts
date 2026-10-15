@@ -8,6 +8,11 @@ import { useOastStore } from "@/stores/oastStore";
 import { formatTimestamp, toNumericTimestamp } from "@/utils/time";
 
 type IntervalHandle = ReturnType<typeof setTimeout>;
+type OastStore = ReturnType<typeof useOastStore>;
+type PollingItem = OastStore["pollingList"][number];
+type InteractshOptions = Parameters<
+  ReturnType<typeof useInteractshClient>["start"]
+>[0];
 
 interface RunningTask {
   id: string;
@@ -20,10 +25,10 @@ const runningTasks: Record<string, RunningTask> = {};
 
 /**
  * Creates an interactsh interaction callback for use with the client.
- * Extracts the common logic that was duplicated across resume paths.
+ * Shared by background polling and the manual one-shot poll in Oast.vue.
  */
-function createInteractshCallback(
-  oastStore: ReturnType<typeof useOastStore>,
+export function createInteractshCallback(
+  oastStore: OastStore,
   pollingId: string,
   providerName: string,
   tabId: string,
@@ -65,8 +70,12 @@ export function usePollingManager() {
     try {
       const events = await sdk.backend.getOASTEvents(provider);
       if (events && events.length > 0) {
+        // Dedup against the task's own tab: providers like webhook.site return
+        // their full history on every poll, and the active tab may be another one.
+        const tabInteractions =
+          oastStore.tabs.find((t) => t.id === tabId)?.interactions ?? [];
         for (const event of events) {
-          const exists = oastStore.interactions.some((i) => i.id === event.id);
+          const exists = tabInteractions.some((i) => i.id === event.id);
           if (!exists) {
             oastStore.addInteraction(
               {
@@ -95,6 +104,65 @@ export function usePollingManager() {
     }
   };
 
+  const clearTask = (pollingId: string) => {
+    const task = runningTasks[pollingId];
+    if (task?.intervalId) clearTimeout(task.intervalId);
+    delete runningTasks[pollingId];
+  };
+
+  // Starts an interactsh client for a polling task and registers its timer and
+  // stop function. Throws if the client fails to start.
+  const startInteractsh = async (
+    item: PollingItem,
+    providerName: string,
+    providerId: string | undefined,
+    options: InteractshOptions,
+  ) => {
+    const pollingId = item.id;
+    const client = useInteractshClient();
+    await client.start(
+      { ...options, keepAliveInterval: item.interval },
+      createInteractshCallback(oastStore, pollingId, providerName, item.tabId),
+    );
+
+    // A fresh start gets a new correlation ID: persist the new session + payload
+    if (!options.sessionInfo) {
+      const si = await client.getSessionInfo();
+      const { url } = client.generateUrl();
+      await oastStore.updatePolling(pollingId, {
+        session: si ? { type: "interactsh", ...si } : undefined,
+        providerId,
+        payload: url || item.payload,
+      });
+    }
+
+    // Record last-checked periodically regardless of new events
+    const tick = () => {
+      oastStore.updatePollingLastPolled(pollingId, Date.now());
+      const task = runningTasks[pollingId];
+      if (task) task.intervalId = setTimeout(tick, item.interval);
+    };
+    runningTasks[pollingId] = {
+      id: pollingId,
+      intervalId: setTimeout(tick, item.interval),
+      type: "interactsh",
+      providerId,
+    };
+
+    // Pausing only stops polling so callbacks keep queueing on the server;
+    // removing the task (deregister=true) also deregisters the session.
+    const stopFn = async (deregister?: boolean) => {
+      try {
+        if (deregister) await client.stop();
+        else client.stopPolling();
+      } catch (_) {}
+      clearTask(pollingId);
+      oastStore.setPollingRunning(pollingId, false);
+    };
+    oastStore.registerPollingStop(pollingId, stopFn);
+    oastStore.setPollingRunning(pollingId, true);
+  };
+
   const resume = async (pollingId: string) => {
     const item = oastStore.pollingList.find((p) => p.id === pollingId);
     if (!item) return false;
@@ -102,72 +170,33 @@ export function usePollingManager() {
     // Fast path for Interactsh: resume directly from stored session without provider lookup
     if (item.session && item.session.type === "interactsh") {
       try {
-        const client = useInteractshClient();
-        await client.start(
-          {
+        await startInteractsh(item, item.provider, item.providerId, {
+          serverURL: item.session.serverURL,
+          token: item.session.token,
+          sessionInfo: {
             serverURL: item.session.serverURL,
             token: item.session.token,
-            keepAliveInterval: item.interval,
-            sessionInfo: {
-              serverURL: item.session.serverURL,
-              token: item.session.token,
-              privateKey: item.session.privateKey || "",
-              correlationID: item.session.correlationID,
-              secretKey: item.session.secretKey,
-              publicKey: item.session.publicKey,
-            },
-          } as any,
-          createInteractshCallback(oastStore, pollingId, item.provider, item.tabId),
-        );
-
-        // Record last-checked periodically regardless of new events
-        const tick = () => {
-          oastStore.updatePollingLastPolled(pollingId, Date.now());
-          const task = runningTasks[pollingId];
-          if (task) {
-            task.intervalId = setTimeout(tick, item.interval);
-          }
-        };
-
-        const intervalId = setTimeout(tick, item.interval);
-
-        runningTasks[pollingId] = {
-          id: pollingId,
-          intervalId,
-          type: "interactsh",
-          providerId: item.providerId,
-        };
-
-        const stopFn = async () => {
-          try {
-            await client.stop();
-          } catch (_) {}
-          const task = runningTasks[pollingId];
-          if (task?.intervalId) clearTimeout(task.intervalId);
-          delete runningTasks[pollingId];
-          oastStore.setPollingRunning(pollingId, false);
-        };
-        oastStore.registerPollingStop(pollingId, stopFn);
-        oastStore.setPollingRunning(pollingId, true);
+            privateKey: item.session.privateKey || "",
+            correlationID: item.session.correlationID,
+            secretKey: item.session.secretKey,
+            publicKey: item.session.publicKey,
+          },
+        });
         return true;
       } catch (e) {
         console.error(
           "Resume Interactsh with stored session failed; will try provider",
           e,
         );
-        // Clean up any partially registered task before falling through
-        const partialTask = runningTasks[pollingId];
-        if (partialTask?.intervalId) clearTimeout(partialTask.intervalId);
-        delete runningTasks[pollingId];
-        // fall through to provider-based resume
+        clearTask(pollingId);
       }
     }
 
     // Resolve provider by ID first, fallback to name
     const providers = await sdk.backend.listProviders();
-    const provider = providers.find(
-      (p: Provider) => p.id === item.providerId || p.name === item.provider,
-    );
+    const provider =
+      providers.find((p: Provider) => p.id === item.providerId) ??
+      providers.find((p: Provider) => p.name === item.provider);
     if (!provider) {
       oastStore.setPollingRunning(pollingId, false);
       sdk.window.showToast("Provider not found for this task", {
@@ -177,150 +206,22 @@ export function usePollingManager() {
     }
 
     if (provider.type === "interactsh") {
-      try {
-        const client = useInteractshClient();
-        // Start fresh session using provider settings
-        await client.start(
-          {
+      // Fresh session from provider settings, retried once for transient failures
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          await startInteractsh(item, provider.name, provider.id, {
             serverURL: provider.url,
             token: provider.token || "",
-            keepAliveInterval: item.interval,
-          } as any,
-          createInteractshCallback(oastStore, pollingId, provider.name, item.tabId),
-        );
-
-        // Update the polling item with new session and payload URL
-        if (client.getSessionInfo) {
-          const si = await client.getSessionInfo();
-          const { url } = client.generateUrl();
-          await oastStore.updatePolling(pollingId, {
-            session: si
-              ? {
-                  type: "interactsh",
-                  serverURL: si.serverURL,
-                  token: si.token,
-                  correlationID: si.correlationID,
-                  secretKey: si.secretKey,
-                  privateKey: si.privateKey,
-                  publicKey: si.publicKey,
-                }
-              : undefined,
-            providerId: provider.id,
-            payload: url || item.payload,
           });
-        }
-
-        // Match the session-based and fallback paths: periodically refresh
-        // lastChecked so the UI doesn't show a stale "last polled" timestamp
-        // when polling is healthy but no interactions are arriving.
-        const tick = () => {
-          oastStore.updatePollingLastPolled(pollingId, Date.now());
-          const task = runningTasks[pollingId];
-          if (task) {
-            task.intervalId = setTimeout(tick, item.interval);
-          }
-        };
-        const intervalId = setTimeout(tick, item.interval);
-
-        runningTasks[pollingId] = {
-          id: pollingId,
-          intervalId,
-          type: provider.type,
-          providerId: provider.id,
-        };
-
-        const stopFn = async () => {
-          try {
-            await client.stop();
-          } catch (_) {}
-          const task = runningTasks[pollingId];
-          if (task?.intervalId) clearTimeout(task.intervalId);
-          delete runningTasks[pollingId];
-          oastStore.setPollingRunning(pollingId, false);
-        };
-
-        oastStore.registerPollingStop(pollingId, stopFn);
-        oastStore.setPollingRunning(pollingId, true);
-        return true;
-      } catch (e) {
-        console.error(
-          "Resume interactsh with session failed, retrying fresh",
-          e,
-        );
-        // Clean up any partially registered task before retrying
-        const partialTask = runningTasks[pollingId];
-        if (partialTask?.intervalId) clearTimeout(partialTask.intervalId);
-        delete runningTasks[pollingId];
-        // Fallback: try fresh start without session
-        try {
-          const client = useInteractshClient();
-          await client.start(
-            {
-              serverURL: provider.url,
-              token: provider.token || "",
-              keepAliveInterval: item.interval,
-            },
-            createInteractshCallback(oastStore, pollingId, provider.name, item.tabId),
-          );
-
-          // Update polling item with new session + payload
-          if (client.getSessionInfo) {
-            const si = await client.getSessionInfo();
-            const { url } = client.generateUrl();
-            await oastStore.updatePolling(pollingId, {
-              session: si
-                ? {
-                    type: "interactsh",
-                    serverURL: si.serverURL,
-                    token: si.token,
-                    correlationID: si.correlationID,
-                    secretKey: si.secretKey,
-                    privateKey: si.privateKey,
-                    publicKey: si.publicKey,
-                  }
-                : undefined,
-              providerId: provider.id,
-              payload: url || item.payload,
-            });
-          }
-
-          const tick = () => {
-            oastStore.updatePollingLastPolled(pollingId, Date.now());
-            const task = runningTasks[pollingId];
-            if (task) {
-              task.intervalId = setTimeout(tick, item.interval);
-            }
-          };
-          const intervalId = setTimeout(tick, item.interval);
-
-          runningTasks[pollingId] = {
-            id: pollingId,
-            intervalId,
-            type: provider.type,
-            providerId: provider.id,
-          };
-
-          const stopFn = async () => {
-            try {
-              await client.stop();
-            } catch (_) {}
-            const task = runningTasks[pollingId];
-            if (task?.intervalId) clearTimeout(task.intervalId);
-            delete runningTasks[pollingId];
-            oastStore.setPollingRunning(pollingId, false);
-          };
-          oastStore.registerPollingStop(pollingId, stopFn);
-          oastStore.setPollingRunning(pollingId, true);
           return true;
-        } catch (e2) {
-          console.error("Fresh resume failed", e2);
-          sdk.window.showToast("Failed to resume Interactsh", {
-            variant: "error",
-          });
-          oastStore.setPollingRunning(pollingId, false);
-          return false;
+        } catch (e) {
+          console.error(`Fresh Interactsh start failed (attempt ${attempt})`, e);
+          clearTask(pollingId);
         }
       }
+      sdk.window.showToast("Failed to resume Interactsh", { variant: "error" });
+      oastStore.setPollingRunning(pollingId, false);
+      return false;
     }
 
     // Start interval polling for non-interactsh providers
@@ -352,30 +253,19 @@ export function usePollingManager() {
       providerId: provider.id,
     };
 
+    // Registered before the first (possibly slow) tick so a pause during it sticks
+    oastStore.registerPollingStop(pollingId, () => {
+      clearTask(pollingId);
+      oastStore.setPollingRunning(pollingId, false);
+    });
+    oastStore.setPollingRunning(pollingId, true);
+
     // First immediate tick then recursive timeout
     await doTick();
-
-    const stopFn = () => {
-      const task = runningTasks[pollingId];
-      if (task?.intervalId) clearTimeout(task.intervalId);
-      delete runningTasks[pollingId];
-      oastStore.setPollingRunning(pollingId, false);
-    };
-
-    oastStore.registerPollingStop(pollingId, stopFn);
-    oastStore.setPollingRunning(pollingId, true);
     return true;
   };
 
-  const stop = (pollingId: string) => {
-    const task = runningTasks[pollingId];
-    if (task?.intervalId) clearTimeout(task.intervalId);
-    delete runningTasks[pollingId];
-    oastStore.setPollingRunning(pollingId, false);
-  };
-
   const resumeAll = async () => {
-    // Try to resume all non-interactsh tasks. Interactsh marked stopped.
     for (const item of oastStore.pollingList) {
       if (oastStore.pollingStatus[item.id] === "running") continue;
       await resume(item.id);
@@ -385,6 +275,6 @@ export function usePollingManager() {
   return {
     resumeAll,
     resume,
-    stop,
+    pollOnce,
   };
 }

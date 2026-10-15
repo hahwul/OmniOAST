@@ -129,8 +129,9 @@ describe("Interactsh Service", () => {
       );
     });
 
-    it("should skip registration when sessionInfo is provided", async () => {
+    it("should re-register with the stored session and tolerate failure", async () => {
       const mockInstance = createMockAxiosInstance();
+      mockInstance.post.mockRejectedValue(new Error("server down"));
       mockedAxios.create = vi.fn().mockReturnValue(mockInstance);
 
       const client = useClientService();
@@ -146,13 +147,39 @@ describe("Interactsh Service", () => {
         },
       });
 
-      // Should NOT call register
-      expect(mockInstance.post).not.toHaveBeenCalled();
+      // Re-registers the same correlation ID; the failure must not throw
+      expect(mockInstance.post).toHaveBeenCalledWith(
+        expect.stringContaining("/register"),
+        expect.objectContaining({
+          "correlation-id": "existing-corr-id",
+          "secret-key": "existing-secret",
+        }),
+        expect.anything(),
+      );
       // Should import keypair
       expect(mockSetKeyPairFromPEM).toHaveBeenCalledWith(
         "valid-pem-key",
         undefined,
       );
+    });
+
+    it("should treat the JSON 'already exists' error body as success", async () => {
+      const mockInstance = createMockAxiosInstance();
+      mockInstance.post.mockRejectedValue({
+        response: {
+          status: 400,
+          data: {
+            error:
+              "could not set id and public key: correlation-id provided already exists",
+          },
+        },
+      });
+      mockedAxios.create = vi.fn().mockReturnValue(mockInstance);
+
+      const client = useClientService();
+      await expect(
+        client.start({ serverURL: "https://interact.sh", token: "" }),
+      ).resolves.toBeUndefined();
     });
 
     it("should handle 'correlation-id already exists' as success", async () => {
@@ -509,9 +536,10 @@ describe("Interactsh Service", () => {
       expect(mockInstance.post).toHaveBeenCalledTimes(2);
       expect(mockInstance.post).toHaveBeenLastCalledWith(
         expect.stringContaining("/deregister"),
+        // interactsh server's DeregisterRequest JSON tags
         expect.objectContaining({
-          correlationID: expect.any(String),
-          secretKey: expect.any(String),
+          "correlation-id": expect.any(String),
+          "secret-key": expect.any(String),
         }),
         expect.anything(),
       );

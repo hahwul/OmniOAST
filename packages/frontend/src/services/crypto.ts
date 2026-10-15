@@ -1,5 +1,3 @@
-import { defineStore } from "pinia";
-
 import { arrayBufferToBase64, base64ToArrayBuffer } from "@/utils/utils";
 
 function pemToArrayBuffer(pem: string): ArrayBuffer {
@@ -211,9 +209,11 @@ function decryptAesCtr(
 // Export for testing
 export { aesKeyExpansion, aesEncryptBlock, decryptAesCtr };
 
-// ─── Crypto Service (Pinia Store) ──────────────────────────────────────
+// ─── Crypto Service ─────────────────────────────────────────────────────
+// One instance per interactsh client: each session's RSA keypair must stay
+// separate, or importing one session's key breaks decryption for the others.
 
-export const useCryptoService = defineStore("services.crypto", () => {
+export const useCryptoService = () => {
   let privKey: CryptoKey | undefined = undefined;
   let pubKey: CryptoKey | undefined = undefined;
   let initialized = false;
@@ -301,7 +301,7 @@ export const useCryptoService = defineStore("services.crypto", () => {
    * Decrypts an interactsh interaction message.
    * 1. RSA-OAEP decrypt the AES key (Web Crypto — RSA works fine)
    * 2. Base64-decode the message → IV (16 bytes) + ciphertext
-   * 3. AES-CFB decrypt using pure JS AES (no Web Crypto for AES)
+   * 3. AES-CTR decrypt using pure JS AES (no Web Crypto for AES)
    * 4. Decode plaintext bytes as UTF-8
    */
   async function decryptMessage(
@@ -344,4 +344,4 @@ export const useCryptoService = defineStore("services.crypto", () => {
     decryptRSA,
     decryptMessage,
   };
-});
+};
