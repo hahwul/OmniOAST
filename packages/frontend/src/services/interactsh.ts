@@ -39,6 +39,11 @@ interface SessionInfo {
   publicKey?: string;
 }
 
+// Like the Go client, append the endpoint to the server URL: new URL("/x", base)
+// would drop a path prefix (e.g. a server behind a reverse proxy at /oast).
+const endpointUrl = (serverURL: string | URL, path: string) =>
+  `${String(serverURL).replace(/\/+$/, "")}${path}`;
+
 class InteractshClient {
   private state: Ref<State>;
   private correlationID: Ref<string | undefined>;
@@ -88,7 +93,7 @@ class InteractshClient {
     token: string,
     payload: object,
   ) {
-    const url = new URL("/register", serverURL).toString();
+    const url = endpointUrl(serverURL, "/register");
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
@@ -154,10 +159,10 @@ class InteractshClient {
       throw new Error("Missing required client configuration");
     }
 
-    const url = new URL(
+    const url = endpointUrl(
+      this.serverURL.value,
       `/poll?id=${this.correlationID.value}&secret=${this.secretKey.value}`,
-      this.serverURL.value.toString(),
-    ).toString();
+    );
 
     const headers: Record<string, string> = {};
     if (this.token.value && this.token.value.trim() !== "") {
@@ -376,10 +381,7 @@ class InteractshClient {
       throw new Error("Client is already closed");
     }
 
-    const url = new URL(
-      "/deregister",
-      this.serverURL.value?.toString(),
-    ).toString();
+    const url = endpointUrl(this.serverURL.value ?? "", "/deregister");
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",

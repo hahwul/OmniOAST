@@ -17,8 +17,6 @@ type InteractshOptions = Parameters<
 interface RunningTask {
   id: string;
   intervalId?: IntervalHandle;
-  type: Provider["type"];
-  providerId: string | undefined;
 }
 
 const runningTasks: Record<string, RunningTask> = {};
@@ -72,10 +70,13 @@ export function usePollingManager() {
       if (events && events.length > 0) {
         // Dedup against the task's own tab: providers like webhook.site return
         // their full history on every poll, and the active tab may be another one.
-        const tabInteractions =
-          oastStore.tabs.find((t) => t.id === tabId)?.interactions ?? [];
+        const tab = oastStore.tabs.find((t) => t.id === tabId);
+        const tabInteractions = tab?.interactions ?? [];
+        const dismissed = new Set(tab?.dismissedIds);
         for (const event of events) {
-          const exists = tabInteractions.some((i) => i.id === event.id);
+          const exists =
+            dismissed.has(event.id) ||
+            tabInteractions.some((i) => i.id === event.id);
           if (!exists) {
             oastStore.addInteraction(
               {
@@ -104,16 +105,19 @@ export function usePollingManager() {
     }
   };
 
-  const clearTask = (pollingId: string) => {
-    const task = runningTasks[pollingId];
-    if (task?.intervalId) clearTimeout(task.intervalId);
-    delete runningTasks[pollingId];
+  // Only clears `task` if it is still the current one, so a stale stop
+  // function can't tear down a newer run of the same polling id.
+  const clearTask = (pollingId: string, task: RunningTask) => {
+    if (task.intervalId) clearTimeout(task.intervalId);
+    if (runningTasks[pollingId] === task) delete runningTasks[pollingId];
   };
 
   // Starts an interactsh client for a polling task and registers its timer and
-  // stop function. Throws if the client fails to start.
+  // stop function. Throws if the client fails to start; returns false if the
+  // task was paused or removed while the client was starting.
   const startInteractsh = async (
     item: PollingItem,
+    task: RunningTask,
     providerName: string,
     providerId: string | undefined,
     options: InteractshOptions,
@@ -136,18 +140,24 @@ export function usePollingManager() {
       });
     }
 
+    if (runningTasks[pollingId] !== task) {
+      // Paused or removed mid-start: don't leave an unstoppable client polling
+      if (oastStore.pollingList.some((p) => p.id === pollingId)) {
+        client.stopPolling();
+      } else {
+        void client.stop().catch(() => {});
+      }
+      return false;
+    }
+
     // Record last-checked periodically regardless of new events
     const tick = () => {
       oastStore.updatePollingLastPolled(pollingId, Date.now());
-      const task = runningTasks[pollingId];
-      if (task) task.intervalId = setTimeout(tick, item.interval);
+      if (runningTasks[pollingId] === task) {
+        task.intervalId = setTimeout(tick, item.interval);
+      }
     };
-    runningTasks[pollingId] = {
-      id: pollingId,
-      intervalId: setTimeout(tick, item.interval),
-      type: "interactsh",
-      providerId,
-    };
+    task.intervalId = setTimeout(tick, item.interval);
 
     // Pausing only stops polling so callbacks keep queueing on the server;
     // removing the task (deregister=true) also deregisters the session.
@@ -157,44 +167,79 @@ export function usePollingManager() {
         if (deregister) void client.stop().catch(() => {});
         else client.stopPolling();
       } catch (_) {}
-      clearTask(pollingId);
+      clearTask(pollingId, task);
       oastStore.setPollingRunning(pollingId, false);
     };
     oastStore.registerPollingStop(pollingId, stopFn);
     oastStore.setPollingRunning(pollingId, true);
+    return true;
   };
 
   const resume = async (pollingId: string) => {
     const item = oastStore.pollingList.find((p) => p.id === pollingId);
     if (!item) return false;
 
+    // Already running or mid-start (e.g. Resume clicked during resumeAll): a
+    // second start would overwrite the first's stop function and orphan it.
+    if (runningTasks[pollingId]) return true;
+    const task: RunningTask = { id: pollingId };
+    runningTasks[pollingId] = task;
+    // Registered up front so a pause/removal during a slow start cancels it
+    oastStore.registerPollingStop(pollingId, () => {
+      clearTask(pollingId, task);
+      oastStore.setPollingRunning(pollingId, false);
+    });
+
+    try {
+      const started = await startTask(item, task);
+      if (!started) clearTask(pollingId, task);
+      return started;
+    } catch (e) {
+      clearTask(pollingId, task);
+      throw e;
+    }
+  };
+
+  const startTask = async (
+    item: PollingItem,
+    task: RunningTask,
+  ): Promise<boolean> => {
+    const pollingId = item.id;
+    const isCurrent = () => runningTasks[pollingId] === task;
+
     // Fast path for Interactsh: resume directly from stored session without provider lookup
     if (item.session && item.session.type === "interactsh") {
       try {
-        await startInteractsh(item, item.provider, item.providerId, {
-          serverURL: item.session.serverURL,
-          token: item.session.token,
-          sessionInfo: {
+        return await startInteractsh(
+          item,
+          task,
+          item.provider,
+          item.providerId,
+          {
             serverURL: item.session.serverURL,
             token: item.session.token,
-            privateKey: item.session.privateKey || "",
-            correlationID: item.session.correlationID,
-            secretKey: item.session.secretKey,
-            publicKey: item.session.publicKey,
+            sessionInfo: {
+              serverURL: item.session.serverURL,
+              token: item.session.token,
+              privateKey: item.session.privateKey ?? "",
+              correlationID: item.session.correlationID,
+              secretKey: item.session.secretKey,
+              publicKey: item.session.publicKey,
+            },
           },
-        });
-        return true;
+        );
       } catch (e) {
         console.error(
           "Resume Interactsh with stored session failed; will try provider",
           e,
         );
-        clearTask(pollingId);
+        if (!isCurrent()) return false;
       }
     }
 
     // Resolve provider by ID first, fallback to name
     const providers = await sdk.backend.listProviders();
+    if (!isCurrent()) return false;
     const provider =
       providers.find((p: Provider) => p.id === item.providerId) ??
       providers.find((p: Provider) => p.name === item.provider);
@@ -210,17 +255,16 @@ export function usePollingManager() {
       // Fresh session from provider settings, retried once for transient failures
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
-          await startInteractsh(item, provider.name, provider.id, {
+          return await startInteractsh(item, task, provider.name, provider.id, {
             serverURL: provider.url,
             token: provider.token || "",
           });
-          return true;
         } catch (e) {
           console.error(
             `Fresh Interactsh start failed (attempt ${attempt})`,
             e,
           );
-          clearTask(pollingId);
+          if (!isCurrent()) return false;
         }
       }
       sdk.window.showToast("Failed to resume Interactsh", { variant: "error" });
@@ -241,8 +285,9 @@ export function usePollingManager() {
       }
       await oastStore.updatePollingLastPolled(pollingId, Date.now());
 
-      const task = runningTasks[pollingId];
-      if (task) {
+      // Identity check: after a pause+resume during this (slow) tick, a newer
+      // task owns the id and this chain must end rather than run alongside it.
+      if (isCurrent()) {
         const backoffMultiplier = Math.min(
           Math.pow(2, consecutiveFailures),
           MAX_BACKOFF_MULTIPLIER,
@@ -251,17 +296,6 @@ export function usePollingManager() {
       }
     };
 
-    runningTasks[pollingId] = {
-      id: pollingId,
-      type: provider.type,
-      providerId: provider.id,
-    };
-
-    // Registered before the first (possibly slow) tick so a pause during it sticks
-    oastStore.registerPollingStop(pollingId, () => {
-      clearTask(pollingId);
-      oastStore.setPollingRunning(pollingId, false);
-    });
     oastStore.setPollingRunning(pollingId, true);
 
     // First immediate tick then recursive timeout

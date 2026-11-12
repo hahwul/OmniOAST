@@ -129,6 +129,32 @@ describe("Interactsh Service", () => {
       );
     });
 
+    it("keeps the server URL's path prefix on register, poll and deregister", async () => {
+      const mockInstance = createMockAxiosInstance();
+      mockInstance.post.mockResolvedValue({ status: 200 });
+      mockInstance.get.mockResolvedValue({ status: 200, data: {} });
+      mockedAxios.create = vi.fn().mockReturnValue(mockInstance);
+
+      // Self-hosted server behind a reverse proxy, trailing slash included
+      const client = useClientService();
+      await client.start({
+        serverURL: "https://proxy.example/oast/",
+        token: "",
+      });
+      await client.poll();
+      await client.close();
+
+      expect(mockInstance.post.mock.calls[0]?.[0]).toBe(
+        "https://proxy.example/oast/register",
+      );
+      expect(mockInstance.get.mock.calls[0]?.[0]).toMatch(
+        /^https:\/\/proxy\.example\/oast\/poll\?id=/,
+      );
+      expect(mockInstance.post.mock.calls[1]?.[0]).toBe(
+        "https://proxy.example/oast/deregister",
+      );
+    });
+
     it("should re-register with the stored session and tolerate failure", async () => {
       const mockInstance = createMockAxiosInstance();
       mockInstance.post.mockRejectedValue(new Error("server down"));
