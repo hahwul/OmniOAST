@@ -120,6 +120,30 @@ describe("WebhooksiteService", () => {
       });
     });
 
+    it("reads webhook.site's zone-less created_at as UTC", async () => {
+      // A non-UTC zone so a local-time parse would be visibly off
+      vi.stubEnv("TZ", "Asia/Seoul");
+      try {
+        mockResponse.getBody.mockReturnValue({
+          toJson: () => ({
+            data: [{ uuid: "event-1", created_at: "2026-11-12 14:31:40" }],
+          }),
+        });
+        mockSdk.requests.send.mockResolvedValue(mockRequestResponse);
+
+        const service = new WebhooksiteService(
+          undefined,
+          mockSdk as never,
+          "https://webhook.site/12345678-1234-1234-1234-123456789abc",
+        );
+        const events = await service.getEvents();
+
+        expect(events[0]!.timestamp).toBe(Date.UTC(2026, 10, 12, 14, 31, 40));
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    });
+
     it("should return empty array if no token ID", async () => {
       const service = new WebhooksiteService(undefined, mockSdk as any);
       const events = await service.getEvents();

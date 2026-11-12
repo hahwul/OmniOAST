@@ -367,4 +367,37 @@ describe("Crypto Service - per-instance keys", () => {
     expect(await a.exportPrivateKeyPEM()).toBe(aPem);
     expect(await b.exportPrivateKeyPEM()).not.toBe(aPem);
   });
+
+  it("importing only a private key keeps it and derives its public key", async () => {
+    const svc = useCryptoService();
+    const pair = await window.crypto.subtle.generateKey(
+      {
+        name: "RSA-OAEP",
+        modulusLength: 2048,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: "SHA-256",
+      },
+      true,
+      ["encrypt", "decrypt"],
+    );
+    const b64 = async (format: "pkcs8" | "spki", key: CryptoKey) =>
+      btoa(
+        String.fromCharCode(
+          ...new Uint8Array(await window.crypto.subtle.exportKey(format, key)),
+        ),
+      );
+    const strip = (pem: string) => pem.replace(/-----[^-]+-----|\s/g, "");
+
+    // A persisted session that only has its private key
+    await svc.setKeyPairFromPEM(
+      `-----BEGIN PRIVATE KEY-----\n${await b64("pkcs8", pair.privateKey)}\n-----END PRIVATE KEY-----`,
+    );
+
+    expect(strip(await svc.exportPrivateKeyPEM())).toBe(
+      await b64("pkcs8", pair.privateKey),
+    );
+    expect(strip(await svc.exportPublicKeyPEM())).toBe(
+      await b64("spki", pair.publicKey),
+    );
+  });
 });

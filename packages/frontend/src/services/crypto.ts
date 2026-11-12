@@ -250,7 +250,19 @@ export const useCryptoService = () => {
         "encrypt",
       ]);
     } else {
-      if (!pubKey) await ensureKeys();
+      // Derive the matching public key. ensureKeys() here would generate a
+      // fresh pair and overwrite the private key just imported.
+      const { kty, n, e } = await window.crypto.subtle.exportKey(
+        "jwk",
+        privKey,
+      );
+      pubKey = await window.crypto.subtle.importKey(
+        "jwk",
+        { kty, n, e, ext: true },
+        algo,
+        true,
+        ["encrypt"],
+      );
     }
     initialized = true;
   }

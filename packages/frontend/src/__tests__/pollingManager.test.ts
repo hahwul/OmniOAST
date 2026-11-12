@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { usePollingManager } from "../services/pollingManager";
+import type { usePollingManager as UsePollingManager } from "../services/pollingManager";
+
+// Re-imported per test: runningTasks is module state and would leak between tests
+let usePollingManager: typeof UsePollingManager;
 
 // Mock dependencies
 const mockGetOASTEvents = vi.fn();
@@ -67,7 +70,9 @@ vi.mock("uuid", () => ({
 }));
 
 describe("usePollingManager", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.resetModules();
+    ({ usePollingManager } = await import("../services/pollingManager"));
     vi.clearAllMocks();
     vi.useFakeTimers();
     mockOastStore.pollingList = [];
@@ -212,6 +217,44 @@ describe("usePollingManager", () => {
 
       expect(mockGetOASTEvents).toHaveBeenCalled();
       expect(mockAddInteraction).not.toHaveBeenCalled();
+    });
+
+    it("does not re-add events the user cleared from the tab", async () => {
+      const provider = {
+        id: "w",
+        name: "Webhook",
+        type: "webhooksite",
+        url: "https://webhook.site/x",
+      };
+      mockOastStore.pollingList = [
+        {
+          id: "polling-1",
+          providerId: "w",
+          provider: "Webhook",
+          interval: 5000,
+          tabId: "tab-1",
+          payload: "x",
+        },
+      ];
+      // After "Clear": no interactions, but the cleared ids are remembered
+      mockOastStore.tabs = [
+        { id: "tab-1", interactions: [], dismissedIds: ["event-1"] },
+      ];
+      mockListProviders.mockResolvedValue([provider]);
+      // webhook.site returns its whole history on every poll
+      mockGetOASTEvents.mockResolvedValue([
+        { id: "event-1" },
+        { id: "event-2" },
+      ]);
+
+      const { resume } = usePollingManager();
+      await resume("polling-1");
+
+      expect(mockAddInteraction).toHaveBeenCalledTimes(1);
+      expect(mockAddInteraction).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "event-2" }),
+        "tab-1",
+      );
     });
 
     it("dedups against the task's tab, not other tabs", async () => {
@@ -507,7 +550,7 @@ describe("usePollingManager", () => {
       const { resume } = usePollingManager();
       await resume(pollingId);
 
-      const stopFn = mockRegisterPollingStop.mock.calls[0]?.[1];
+      const stopFn = mockRegisterPollingStop.mock.calls.at(-1)?.[1];
       stopFn();
 
       expect(mockSetPollingRunning).toHaveBeenLastCalledWith(pollingId, false);
@@ -551,7 +594,7 @@ describe("usePollingManager", () => {
       await resume(pollingId);
 
       // Get the stop function registered
-      const stopFn = mockRegisterPollingStop.mock.calls[0]?.[1];
+      const stopFn = mockRegisterPollingStop.mock.calls.at(-1)?.[1];
 
       // Pause: stop polling but keep the server-side session
       await stopFn();
@@ -562,6 +605,114 @@ describe("usePollingManager", () => {
       // Remove: deregister too
       await stopFn(true);
       expect(mockStop).toHaveBeenCalled();
+    });
+  });
+
+  describe("lifecycle races", () => {
+    const session = {
+      type: "interactsh",
+      serverURL: "https://interact.sh",
+      token: "",
+      correlationID: "corr",
+      secretKey: "secret",
+      privateKey: "private",
+      publicKey: "public",
+    };
+
+    it("a second resume during a slow interactsh start does not start a second client", async () => {
+      mockOastStore.pollingList = [
+        {
+          id: "p-race",
+          provider: "I",
+          interval: 5000,
+          tabId: "t",
+          payload: "x",
+          session,
+        },
+      ];
+      mockStart.mockResolvedValue(undefined);
+
+      const { resume } = usePollingManager();
+      // Both calls are made before the first start() settles, e.g. Resume
+      // clicked while resumeAll is still starting the task
+      const first = resume("p-race");
+      const second = resume("p-race");
+
+      expect(await first).toBe(true);
+      expect(await second).toBe(true);
+      expect(mockStart).toHaveBeenCalledTimes(1);
+    });
+
+    it("removing a task while its interactsh client starts deregisters the client", async () => {
+      mockOastStore.pollingList = [
+        {
+          id: "p-rm",
+          provider: "I",
+          interval: 5000,
+          tabId: "t",
+          payload: "x",
+          session,
+        },
+      ];
+      mockStart.mockResolvedValue(undefined);
+      mockStop.mockResolvedValue(undefined);
+
+      const { resume } = usePollingManager();
+      const pending = resume("p-rm"); // suspended inside client.start()
+
+      // What oastStore.removePolling does: call the stop fn, drop the item
+      const stopFn = mockRegisterPollingStop.mock.calls.at(-1)?.[1];
+      mockOastStore.pollingList = [];
+      await stopFn(true);
+
+      expect(await pending).toBe(false);
+      expect(mockStop).toHaveBeenCalled();
+      expect(mockSetPollingRunning).not.toHaveBeenCalledWith("p-rm", true);
+    });
+
+    it("pause+resume during an in-flight tick leaves a single polling chain", async () => {
+      const interval = 1000;
+      mockOastStore.pollingList = [
+        {
+          id: "p-chain",
+          providerId: "b",
+          provider: "B",
+          interval,
+          tabId: "t",
+          payload: "x",
+        },
+      ];
+      mockListProviders.mockResolvedValue([
+        { id: "b", name: "B", type: "BOAST", url: "http://boast.url" },
+      ]);
+      let finishSlowTick!: (v: unknown[]) => void;
+      mockGetOASTEvents
+        .mockResolvedValueOnce([]) // first tick
+        // Slow second tick: a thenable that settles when the test says so
+        .mockImplementationOnce(async () => {
+          return await {
+            then: (resolve: (v: unknown[]) => void) => {
+              finishSlowTick = resolve;
+            },
+          };
+        })
+        .mockResolvedValue([]);
+
+      const { resume } = usePollingManager();
+      await resume("p-chain");
+      await vi.advanceTimersByTimeAsync(interval); // second tick now in flight
+      expect(mockGetOASTEvents).toHaveBeenCalledTimes(2);
+
+      const pause = mockRegisterPollingStop.mock.calls.at(-1)?.[1];
+      pause();
+      await resume("p-chain"); // new run: immediate tick (#3)
+      finishSlowTick([]); // old in-flight tick finishes after the new run started
+      await vi.advanceTimersByTimeAsync(0);
+      expect(mockGetOASTEvents).toHaveBeenCalledTimes(3);
+
+      await vi.advanceTimersByTimeAsync(interval);
+      // Only the new chain ticks; without the fix the old one ticks too (5)
+      expect(mockGetOASTEvents).toHaveBeenCalledTimes(4);
     });
   });
 

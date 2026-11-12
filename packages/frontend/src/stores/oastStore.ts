@@ -81,7 +81,13 @@ interface OastTab {
   id: string;
   name: string;
   interactions: OastInteraction[];
+  // Ids of cleared interactions, so providers that return their full history
+  // on every poll (webhook.site, BOAST, custom HTTP) don't re-add them
+  dismissedIds?: string[];
 }
+
+// ponytail: capped id list; providers keeping >1000 events can resurface the oldest
+const MAX_DISMISSED_IDS = 1000;
 
 /**
  * Store for managing OAST (Out-of-band Application Security Testing) data
@@ -313,8 +319,16 @@ export const useOastStore = defineStore("oast", () => {
    * Clears all stored interactions for the active tab
    */
   const clearInteractions = async () => {
-    if (activeTab.value) {
-      activeTab.value.interactions = [];
+    const tab = activeTab.value;
+    if (tab) {
+      // Interactsh ids are generated locally per callback and never repeat
+      const cleared = tab.interactions
+        .filter((i) => i.type !== "interactsh")
+        .map((i) => i.id);
+      tab.dismissedIds = [...(tab.dismissedIds ?? []), ...cleared].slice(
+        -MAX_DISMISSED_IDS,
+      );
+      tab.interactions = [];
       await saveTabs();
     }
   };

@@ -4,6 +4,17 @@ import { type CaidoBackendSDK, type OASTEvent } from "../../types";
 
 import { type OASTService } from "./provider";
 
+// webhook.site sends UTC as "YYYY-MM-DD HH:mm:ss" with no zone; new Date()
+// would read that as local time and shift every interaction by the UTC offset.
+const parseWebhooksiteDate = (value: string | undefined): number => {
+  if (value === undefined || value === "") return Date.now();
+  return new Date(
+    /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)
+      ? `${value.replace(" ", "T")}Z`
+      : value,
+  ).getTime();
+};
+
 export class WebhooksiteService implements OASTService {
   private tokenId: string | null = null;
   private payloadUrl: string | null = null;
@@ -63,9 +74,10 @@ export class WebhooksiteService implements OASTService {
         id: event.uuid,
         type: "webhooksite",
         destination: this.payloadUrl,
-        timestamp: new Date(
-          event.created_at || event.updated_at || Date.now(),
-        ).getTime(),
+        timestamp: parseWebhooksiteDate(
+          (event.created_at as string | undefined) ??
+            (event.updated_at as string | undefined),
+        ),
         data: event,
         protocol: "HTTP",
         method: event.method,

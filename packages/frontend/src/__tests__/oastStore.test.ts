@@ -244,6 +244,32 @@ describe("oastStore", () => {
       expect(secondTab.interactions.length).toBe(1);
     });
 
+    it("remembers cleared provider event ids so re-polled history stays cleared", async () => {
+      const store = useOastStore();
+      const tab = store.tabs[0]!;
+      const base = {
+        timestamp: "",
+        timestampNum: 1,
+        provider: "p",
+        correlationId: "c",
+        data: {},
+      };
+      await store.addInteraction(
+        { ...base, id: "wh-1", type: "webhooksite" },
+        tab.id,
+      );
+      await store.addInteraction(
+        { ...base, id: "uuid-1", type: "interactsh" },
+        tab.id,
+      );
+
+      store.setActiveTab(tab.id);
+      await store.clearInteractions();
+
+      // Only ids a provider can send again are kept (interactsh ids are local uuids)
+      expect(tab.dismissedIds).toEqual(["wh-1"]);
+    });
+
     it("should increment unread count when plugin is not visible", async () => {
       vi.mocked(isPluginCurrentlyVisible).mockReturnValue(false);
       const store = useOastStore();

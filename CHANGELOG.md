@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Fixed
+- Resuming a polling task while it was still starting (e.g. clicking Resume during startup) started a second Interactsh client that could never be stopped; removing or pausing a task mid-start now cancels the start
+- Pausing and resuming a task during a slow poll left two polling loops running for the same task
+- Clearing a tab's interactions no longer brings back the whole webhook.site / BOAST / Custom HTTP history on the next poll
+- Webhook.site interaction timestamps were shifted by the local UTC offset (its `created_at` is UTC without a zone marker)
+- Interactsh servers configured with a path prefix (e.g. behind a reverse proxy at `/oast`) had the prefix dropped from register/poll/deregister requests
+- Restoring an Interactsh session that only stored its private key replaced that key with a freshly generated pair, so its interactions could no longer be decrypted
+
 ## 0.6.1
 
 ### Fixed
