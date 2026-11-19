@@ -28,7 +28,7 @@ const setActiveTab = (tabId: string) => {
   oastStore.setActiveTab(tabId);
 };
 
-const startEditing = (tab: any) => {
+const startEditing = (tab: { id: string; name: string }) => {
   editingTabId.value = tab.id;
   editingName.value = tab.name;
   nextTick(() => {

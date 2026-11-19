@@ -32,12 +32,12 @@ const settings = ref<SettingsData>({
 const loadSettings = () => {
   sdk.backend
     .getCurrentSettings()
-    .then((result: any) => {
+    .then((result) => {
       if (result) {
         settings.value = result;
       }
     })
-    .catch((error: any) => {
+    .catch((error: unknown) => {
       sdk.window.showToast("Failed to load settings", {
         variant: "error",
       });
@@ -53,19 +53,19 @@ const saveSettings = () => {
     payloadPrefix: String(settings.value.payloadPrefix || ""),
   };
 
-  if (settings.value.id) {
+  if (settings.value.id !== undefined && settings.value.id !== "") {
     // Update existing settings
     // 명시적으로 타입을 지정하여 API 호출
     sdk.backend
       .updateSettings(String(settings.value.id), payload)
-      .then((result: any) => {
+      .then((result) => {
         // The backend returns null (not an error) when validation fails
         if (!result) throw new Error("Settings update rejected");
         sdk.window.showToast("Settings updated successfully", {
           variant: "success",
         });
       })
-      .catch((error: any) => {
+      .catch((error: unknown) => {
         sdk.window.showToast("Failed to update settings", {
           variant: "error",
         });
@@ -76,14 +76,14 @@ const saveSettings = () => {
     // 명시적으로 타입을 지정하여 API 호출
     sdk.backend
       .createSettings(payload)
-      .then((result: any) => {
+      .then((result) => {
         if (!result) throw new Error("Settings creation rejected");
         settings.value = result;
         sdk.window.showToast("Settings created successfully", {
           variant: "success",
         });
       })
-      .catch((error: any) => {
+      .catch((error: unknown) => {
         sdk.window.showToast("Failed to create settings", {
           variant: "error",
         });
@@ -95,11 +95,14 @@ const saveSettings = () => {
 // Reset settings to defaults
 const resetToDefaults = () => {
   // 원래 ID 값을 보존
-  const currentId = settings.value.id ? String(settings.value.id) : undefined;
+  const currentId =
+    settings.value.id !== undefined && settings.value.id !== ""
+      ? String(settings.value.id)
+      : undefined;
 
   // 기본값으로 설정
   settings.value = {
-    ...(currentId ? { id: currentId } : {}),
+    ...(currentId !== undefined ? { id: currentId } : {}),
     pollingInterval: 30,
     payloadPrefix: "",
   };
@@ -107,7 +110,7 @@ const resetToDefaults = () => {
   sdk.window.showToast("Settings reset to defaults", { variant: "info" });
 
   // If we have an ID, also save the reset settings
-  if (currentId) {
+  if (currentId !== undefined) {
     saveSettings();
   }
 };

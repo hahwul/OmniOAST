@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { computed, ref } from "vue";
 
 import { useSDK } from "@/plugins/sdk";
+import { type JSONValue } from "@/types";
 import { isPluginCurrentlyVisible } from "@/utils/visibility";
 
 /**
@@ -19,12 +20,12 @@ interface OastInteraction {
   correlationId: string;
   // Optional fields for specific interaction types
   protocol?: string;
-  method?: string;
-  source?: string;
-  destination?: string;
+  method?: string | null;
+  source?: string | null;
+  destination?: string | null;
   rawRequest?: string;
   rawResponse?: string;
-  data: any; // Raw event data from OASTEvent
+  data: object; // Raw event data from OASTEvent
 }
 
 // deregister=true when the task is being removed (vs. paused)
@@ -86,6 +87,31 @@ interface OastTab {
   dismissedIds?: string[];
 }
 
+// A polling entry as read back from storage, before loadPollingList has
+// checked it. Older versions stored `lastPolled` instead of `lastChecked`.
+type StoredPollingItem = {
+  [K in Exclude<keyof PollingListItem, "session"> | "lastPolled"]?: JSONValue;
+} & {
+  session?: { [key: string]: JSONValue } | null;
+};
+
+// What the store keeps in sdk.storage. It is read back unvalidated, and any
+// key can be missing (first run, data written by an older version).
+type StoredState = {
+  "omnioast.tabs"?: OastTab[];
+  "omnioast.activeTabId"?: string | null;
+  "omnioast.activeProviders"?: Record<string, JSONValue>;
+  "omnioast.pollingList"?: StoredPollingItem[];
+  "omnioast.tabPayloads"?: Record<string, string>;
+  "omnioast.tabProviders"?: Record<string, string>;
+  "omnioast.tabPayloadHistory"?: Record<string, string[]>;
+  "omnioast.interactionCounter"?: number;
+  "omnioast.desktopNotification"?: boolean;
+};
+
+// The sidebar item index.ts leaves on window, as far as it is relied on here
+type SidebarItem = { setCount?: (count: number) => void };
+
 // ponytail: capped id list; providers keeping >1000 events can resurface the oldest
 const MAX_DISMISSED_IDS = 1000;
 
@@ -98,7 +124,7 @@ export const useOastStore = defineStore("oast", () => {
   const tabs = ref<OastTab[]>([]);
   const activeTabId = ref<string | null>(null);
 
-  const activeProviders = ref<Record<string, any>>({}); // Stores data for active providers by type
+  const activeProviders = ref<Record<string, JSONValue>>({}); // Stores data for active providers by type
   const tabPayloads = ref<Record<string, string>>({});
   const tabProviders = ref<Record<string, string>>({});
   const tabPayloadHistory = ref<Record<string, string[]>>({});
@@ -136,12 +162,12 @@ export const useOastStore = defineStore("oast", () => {
   // interactions is one write, not one per interaction).
   let storageWrites: Promise<void> = Promise.resolve();
   const waitingWrites = new Map<string, Promise<void>>();
-  const persist = (key: string, values: () => Record<string, unknown>) => {
+  const persist = (key: string, values: () => StoredState) => {
     const waiting = waitingWrites.get(key);
     if (waiting) return waiting;
     const run = async () => {
       waitingWrites.delete(key);
-      const storage = (sdk.storage.get() as Record<string, any>) || {};
+      const storage = (sdk.storage.get() as StoredState | null) || {};
       await sdk.storage.set({ ...storage, ...values() });
     };
     const write = storageWrites.then(run, run);
@@ -162,7 +188,7 @@ export const useOastStore = defineStore("oast", () => {
   const storageKeyDesktopNotification = "omnioast.desktopNotification";
 
   const activeTab = computed(() => {
-    if (!activeTabId.value) return null;
+    if (activeTabId.value === null || activeTabId.value === "") return null;
     return tabs.value.find((t) => t.id === activeTabId.value) || null;
   });
 
@@ -174,20 +200,27 @@ export const useOastStore = defineStore("oast", () => {
    * Loads saved tabs and active tab from storage
    */
   const loadTabs = () => {
-    const storage = sdk.storage.get() as Record<string, any> | null;
+    const storage = sdk.storage.get() as StoredState | null;
     if (storage && storage[storageKeyTabs]) {
       tabs.value = storage[storageKeyTabs];
       // Older versions could store a parsed JSON body here; search and the
       // editors need text.
       const asText = (v: unknown) =>
-        v == null || typeof v === "string" ? v : JSON.stringify(v, null, 2);
+        v === null || v === undefined || typeof v === "string"
+          ? v
+          : JSON.stringify(v, null, 2);
       for (const tab of tabs.value) {
         for (const i of tab.interactions ?? []) {
           i.rawRequest = asText(i.rawRequest) as string | undefined;
           i.rawResponse = asText(i.rawResponse) as string | undefined;
         }
       }
-      activeTabId.value = storage[storageKeyActiveTabId] || null;
+      activeTabId.value =
+        storage[storageKeyActiveTabId] !== undefined &&
+        storage[storageKeyActiveTabId] !== null &&
+        storage[storageKeyActiveTabId] !== ""
+          ? storage[storageKeyActiveTabId]
+          : null;
 
       if (
         tabs.value.length > 0 &&
@@ -287,11 +320,17 @@ export const useOastStore = defineStore("oast", () => {
       delete tabPayloadHistory.value[tabId];
       await saveTabPayloadHistory();
     }
-    if (tabPayloads.value[tabId]) {
+    if (
+      tabPayloads.value[tabId] !== undefined &&
+      tabPayloads.value[tabId] !== ""
+    ) {
       delete tabPayloads.value[tabId];
       await saveTabPayloads();
     }
-    if (tabProviders.value[tabId]) {
+    if (
+      tabProviders.value[tabId] !== undefined &&
+      tabProviders.value[tabId] !== ""
+    ) {
       delete tabProviders.value[tabId];
       await saveTabProviders();
     }
@@ -330,9 +369,10 @@ export const useOastStore = defineStore("oast", () => {
     interaction: Omit<OastInteraction, "index">,
     tabId?: string,
   ) => {
-    const targetTab = tabId
-      ? tabs.value.find((t) => t.id === tabId)
-      : activeTab.value;
+    const targetTab =
+      tabId !== undefined && tabId !== ""
+        ? tabs.value.find((t) => t.id === tabId)
+        : activeTab.value;
 
     if (targetTab) {
       const interactionWithIndex: OastInteraction = {
@@ -344,7 +384,8 @@ export const useOastStore = defineStore("oast", () => {
 
       if (!isPluginCurrentlyVisible()) {
         unreadCount.value += 1;
-        const sidebarItem = (window as any).oastSidebarItem;
+        const sidebarItem = (window as { oastSidebarItem?: SidebarItem })
+          .oastSidebarItem;
         if (sidebarItem && typeof sidebarItem.setCount === "function") {
           sidebarItem.setCount(unreadCount.value);
         }
@@ -375,7 +416,7 @@ export const useOastStore = defineStore("oast", () => {
    * Loads saved provider data from storage
    */
   const loadProviderData = () => {
-    const storage = sdk.storage.get() as Record<string, any> | null;
+    const storage = sdk.storage.get() as StoredState | null;
     if (storage && storage[storageKeyActiveProviders]) {
       activeProviders.value = storage[storageKeyActiveProviders];
     }
@@ -386,7 +427,7 @@ export const useOastStore = defineStore("oast", () => {
    * @param type Provider type identifier
    * @param data Provider-specific data to save
    */
-  const saveProviderData = async (type: string, data: any) => {
+  const saveProviderData = async (type: string, data: JSONValue) => {
     activeProviders.value[type] = data;
     await persist(storageKeyActiveProviders, () => ({
       [storageKeyActiveProviders]: activeProviders.value,
@@ -408,14 +449,14 @@ export const useOastStore = defineStore("oast", () => {
    * Loads saved polling list from storage
    */
   const loadPollingList = () => {
-    const storage = sdk.storage.get() as Record<string, any> | null;
+    const storage = sdk.storage.get() as StoredState | null;
     if (storage && storage[storageKeyPollingList]) {
       const rawList = storage[storageKeyPollingList];
       if (Array.isArray(rawList)) {
         // Migrate and validate items. Support legacy lastPolled.
         pollingList.value = rawList
-          .map((item: any) => {
-            if (item && typeof item === "object") {
+          .map((item) => {
+            if (item !== null && typeof item === "object") {
               if (
                 item.lastChecked === undefined &&
                 typeof item.lastPolled === "number"
@@ -425,7 +466,7 @@ export const useOastStore = defineStore("oast", () => {
             }
             return item;
           })
-          .filter((item: any): item is PollingListItem => {
+          .filter((item): item is PollingListItem => {
             const baseValid =
               typeof item.id === "string" &&
               typeof item.payload === "string" &&
@@ -439,7 +480,7 @@ export const useOastStore = defineStore("oast", () => {
               typeof item.providerId === "string";
             const sessionValid =
               item.session === undefined ||
-              (item.session &&
+              (item.session !== null &&
                 item.session.type === "interactsh" &&
                 typeof item.session.serverURL === "string" &&
                 typeof item.session.token === "string" &&
@@ -460,7 +501,7 @@ export const useOastStore = defineStore("oast", () => {
     }));
 
   const loadTabPayloads = () => {
-    const storage = sdk.storage.get() as Record<string, any> | null;
+    const storage = sdk.storage.get() as StoredState | null;
     if (storage && storage[storageKeyTabPayloads]) {
       tabPayloads.value = storage[storageKeyTabPayloads];
     }
@@ -477,7 +518,7 @@ export const useOastStore = defineStore("oast", () => {
   };
 
   const loadTabPayloadHistory = () => {
-    const storage = sdk.storage.get() as Record<string, any> | null;
+    const storage = sdk.storage.get() as StoredState | null;
     if (storage && storage[storageKeyTabPayloadHistory]) {
       tabPayloadHistory.value = storage[storageKeyTabPayloadHistory];
     }
@@ -503,7 +544,7 @@ export const useOastStore = defineStore("oast", () => {
   };
 
   const loadTabProviders = () => {
-    const storage = sdk.storage.get() as Record<string, any> | null;
+    const storage = sdk.storage.get() as StoredState | null;
     if (storage && storage[storageKeyTabProviders]) {
       tabProviders.value = storage[storageKeyTabProviders];
     }
@@ -564,7 +605,7 @@ export const useOastStore = defineStore("oast", () => {
     const index = pollingList.value.findIndex((p) => p.id === pollingId);
     if (index !== -1) {
       const current = pollingList.value[index] as PollingListItem;
-      const updated: PollingListItem = { ...current, ...fields } as any;
+      const updated: PollingListItem = { ...current, ...fields };
       pollingList.value.splice(index, 1, updated);
       await savePollingList();
     }
@@ -602,7 +643,9 @@ export const useOastStore = defineStore("oast", () => {
     if (stopFn) {
       try {
         await Promise.resolve(stopFn());
-      } catch (_) {}
+      } catch (_) {
+        // The task is marked stopped below whether or not its stop function threw
+      }
     }
     pollingStatus.value[pollingId] = "stopped";
     await savePollingList();
@@ -660,7 +703,8 @@ export const useOastStore = defineStore("oast", () => {
   const clearUnreadCount = () => {
     unreadCount.value = 0;
     // SidebarItem의 setCount 사용
-    const sidebarItem = (window as any).oastSidebarItem;
+    const sidebarItem = (window as { oastSidebarItem?: SidebarItem })
+      .oastSidebarItem;
     if (sidebarItem && typeof sidebarItem.setCount === "function") {
       sidebarItem.setCount(0);
     }
@@ -684,9 +728,16 @@ export const useOastStore = defineStore("oast", () => {
   ) => {
     if (!desktopNotification.value) return;
 
-    const protocol = interaction.protocol?.toUpperCase() || interaction.type;
+    const upperProtocol = interaction.protocol?.toUpperCase();
+    const protocol =
+      upperProtocol !== undefined && upperProtocol !== ""
+        ? upperProtocol
+        : interaction.type;
     const detail = [
-      interaction.source && `From: ${interaction.source}`,
+      interaction.source !== undefined &&
+        interaction.source !== null &&
+        interaction.source !== "" &&
+        `From: ${interaction.source}`,
       interaction.provider && `Provider: ${interaction.provider}`,
     ]
       .filter(Boolean)

@@ -1,4 +1,4 @@
-import axios, { type AxiosInstance } from "axios";
+import axios, { type AxiosError, type AxiosInstance } from "axios";
 import { ref, type Ref } from "vue";
 
 import { useCryptoService } from "@/services/crypto";
@@ -39,6 +39,20 @@ interface SessionInfo {
   publicKey?: string;
 }
 
+/**
+ * A decrypted interaction, limited to the fields this plugin reads. The server
+ * leaves the optional ones out when they are empty.
+ */
+export type Interaction = {
+  protocol: string;
+  "full-id": string;
+  "q-type"?: string;
+  "raw-request"?: string;
+  "raw-response"?: string;
+  "remote-address": string;
+  timestamp: string;
+};
+
 // interactsh-server >= 1.4.0 only attributes callbacks to ids made of an xid
 // prefix and a zbase32 nonce (what the Go client generates), and newer builds
 // reject other correlation ids at /register.
@@ -67,9 +81,7 @@ class InteractshClient {
 
   private httpClient: AxiosInstance;
   private correlationIdNonceLength: number;
-  private interactionCallback:
-    | ((interaction: Record<string, unknown>) => void)
-    | undefined;
+  private interactionCallback: ((interaction: Interaction) => void) | undefined;
 
   constructor() {
     this.state = ref<State>(State.Idle);
@@ -112,7 +124,7 @@ class InteractshClient {
 
     if (error) {
       // Treat known resume scenario as success: correlation-id already exists
-      const anyErr = error as any;
+      const anyErr: Pick<Partial<AxiosError>, "response" | "message"> = error;
       const status = anyErr?.response?.status;
       // interactsh replies {"error": "..."}; String() on that object would be "[object Object]"
       const body = anyErr?.response?.data;
@@ -154,9 +166,7 @@ class InteractshClient {
    * Fetches interactions from the Interactsh server
    * @param callback Function to call for each interaction received
    */
-  private async getInteractions(
-    callback: (interaction: Record<string, unknown>) => void,
-  ) {
+  private async getInteractions(callback: (interaction: Interaction) => void) {
     if (
       this.correlationID.value === undefined ||
       this.secretKey.value === undefined ||
@@ -171,7 +181,7 @@ class InteractshClient {
     );
 
     const headers: Record<string, string> = {};
-    if (this.token.value && this.token.value.trim() !== "") {
+    if (this.token.value !== undefined && this.token.value.trim() !== "") {
       headers["Authorization"] = this.token.value;
     }
     const { data, error } = await tryCatch(
@@ -218,7 +228,7 @@ class InteractshClient {
    */
   private async initialize(
     options: Options,
-    interactionCallbackParam?: (interaction: Record<string, unknown>) => void,
+    interactionCallbackParam?: (interaction: Interaction) => void,
   ) {
     this.httpClient = options.httpClient || axios.create({ timeout: 10000 });
 
@@ -226,15 +236,19 @@ class InteractshClient {
     this.token.value = options.token;
 
     this.correlationID.value =
-      options.sessionInfo?.correlationID ||
-      generateRandomString(
-        options.correlationIdLength || 20,
-        false,
-        XID_ALPHABET,
-      );
+      options.sessionInfo?.correlationID !== undefined &&
+      options.sessionInfo.correlationID !== ""
+        ? options.sessionInfo.correlationID
+        : generateRandomString(
+            options.correlationIdLength ?? 20,
+            false,
+            XID_ALPHABET,
+          );
     this.secretKey.value =
-      options.sessionInfo?.secretKey ||
-      generateRandomString(options.correlationIdNonceLength || 13);
+      options.sessionInfo?.secretKey !== undefined &&
+      options.sessionInfo.secretKey !== ""
+        ? options.sessionInfo.secretKey
+        : generateRandomString(options.correlationIdNonceLength ?? 13);
 
     if (interactionCallbackParam) {
       this.interactionCallback = interactionCallbackParam;
@@ -295,9 +309,7 @@ class InteractshClient {
    * Starts polling the server for interactions
    * @param callback Function to call for each interaction received
    */
-  private startPolling(
-    callback: (interaction: Record<string, unknown>) => void,
-  ) {
+  private startPolling(callback: (interaction: Interaction) => void) {
     if (this.state.value === State.Polling) {
       throw new Error("Client is already polling");
     }
@@ -400,7 +412,7 @@ class InteractshClient {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (this.token.value && this.token.value.trim() !== "") {
+    if (this.token.value !== undefined && this.token.value.trim() !== "") {
       headers["Authorization"] = this.token.value;
     }
     const { data, error } = await tryCatch(
@@ -433,7 +445,7 @@ class InteractshClient {
    */
   public async start(
     options: Options,
-    interactionCallbackParam?: (interaction: Record<string, unknown>) => void,
+    interactionCallbackParam?: (interaction: Interaction) => void,
   ) {
     await this.initialize(options, interactionCallbackParam);
   }
@@ -463,14 +475,10 @@ class InteractshClient {
     return {
       serverURL: this.serverURL.value.toString(),
       token: this.token.value,
-      privateKey: this.cryptoService.exportPrivateKeyPEM
-        ? await this.cryptoService.exportPrivateKeyPEM()
-        : "",
+      privateKey: await this.cryptoService.exportPrivateKeyPEM(),
       correlationID: this.correlationID.value,
       secretKey: this.secretKey.value,
-      publicKey: this.cryptoService.exportPublicKeyPEM
-        ? await this.cryptoService.exportPublicKeyPEM()
-        : undefined,
+      publicKey: await this.cryptoService.exportPublicKeyPEM(),
     };
   }
 

@@ -10,7 +10,7 @@ function pemToArrayBuffer(pem: string): ArrayBuffer {
 
 function arrayBufferToPem(buf: ArrayBuffer, label: string): string {
   const base64 = arrayBufferToBase64(buf);
-  const wrapped = base64.match(/.{1,64}/g)?.join("\n") || base64;
+  const wrapped = base64.match(/.{1,64}/g)?.join("\n") ?? base64;
   return `-----BEGIN ${label}-----\n${wrapped}\n-----END ${label}-----`;
 }
 
@@ -247,7 +247,7 @@ export const useCryptoService = () => {
     privKey = await window.crypto.subtle.importKey("pkcs8", pkcs8, algo, true, [
       "decrypt",
     ]);
-    if (publicKeyPem) {
+    if (publicKeyPem !== undefined && publicKeyPem !== "") {
       const spki = pemToArrayBuffer(publicKeyPem);
       pubKey = await window.crypto.subtle.importKey("spki", spki, algo, true, [
         "encrypt",

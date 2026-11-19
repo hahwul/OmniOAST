@@ -1,10 +1,28 @@
 import { type RequestResponse, RequestSpec } from "caido:utils";
 
-import { type CaidoBackendSDK, type OASTEvent } from "../../types";
+import { type CaidoBackendSDK, type Json, type OASTEvent } from "../../types";
 
 import { type OASTService } from "./provider";
 
 const RATE_LIMIT_DELAY_MS = 200;
+
+// The parts of PostBin's responses that are read here. The bodies are not
+// validated beyond the checks below.
+type PostbinRequest = {
+  reqId?: string | null;
+  inserted?: number | null;
+  method?: string | null;
+  ip?: string | null;
+  path?: Json;
+  headers?: Json;
+  query?: Json;
+  body?: Json;
+};
+
+type PostbinBin = {
+  binId?: string | null;
+  expires: number;
+};
 
 export class PostbinService implements OASTService {
   private binId: string | null = null;
@@ -23,9 +41,9 @@ export class PostbinService implements OASTService {
     this.rateLimitDelay = rateLimitDelay;
 
     // Extract bin ID from existing postb.in URL if provided
-    if (existingUrl) {
-      const match = existingUrl.match(/postb\.in\/([a-zA-Z0-9\-]+)/i);
-      if (match && match[1]) {
+    if (existingUrl !== undefined && existingUrl !== "") {
+      const match = existingUrl.match(/postb\.in\/([a-zA-Z0-9-]+)/i);
+      if (match && match[1] !== undefined && match[1] !== "") {
         this.binId = match[1];
         this.payloadUrl = `https://www.postb.in/${this.binId}`;
       }
@@ -33,7 +51,7 @@ export class PostbinService implements OASTService {
   }
 
   public async getEvents(): Promise<OASTEvent[]> {
-    if (!this.binId) {
+    if (this.binId === null || this.binId === "") {
       return [];
     }
 
@@ -70,11 +88,13 @@ export class PostbinService implements OASTService {
           break;
         }
 
-        const request = body.toJson() as any;
+        const request = body.toJson() as PostbinRequest | null;
 
         if (
           request &&
-          request.reqId &&
+          request.reqId !== undefined &&
+          request.reqId !== null &&
+          request.reqId !== "" &&
           !this.processedRequestIds.has(request.reqId)
         ) {
           this.processedRequestIds.add(request.reqId);
@@ -83,13 +103,26 @@ export class PostbinService implements OASTService {
             id: request.reqId,
             type: "postbin",
             destination: this.payloadUrl,
-            timestamp: request.inserted
-              ? new Date(request.inserted).getTime()
-              : Date.now(),
+            timestamp:
+              request.inserted !== undefined &&
+              request.inserted !== null &&
+              request.inserted !== 0
+                ? new Date(request.inserted).getTime()
+                : Date.now(),
             data: request,
             protocol: "HTTP",
-            method: request.method || "GET",
-            source: request.ip || "unknown",
+            method:
+              request.method !== undefined &&
+              request.method !== null &&
+              request.method !== ""
+                ? request.method
+                : "GET",
+            source:
+              request.ip !== undefined &&
+              request.ip !== null &&
+              request.ip !== ""
+                ? request.ip
+                : "unknown",
             correlationId: request.reqId,
             rawRequest: JSON.stringify(
               {
@@ -143,7 +176,13 @@ export class PostbinService implements OASTService {
     id: string;
     payloadUrl: string;
   } | null> {
-    if (this.payloadUrl && this.binId && (await this.binExists())) {
+    if (
+      this.payloadUrl !== null &&
+      this.payloadUrl !== "" &&
+      this.binId !== null &&
+      this.binId !== "" &&
+      (await this.binExists())
+    ) {
       return { id: this.binId, payloadUrl: this.payloadUrl };
     }
 
@@ -163,9 +202,13 @@ export class PostbinService implements OASTService {
         throw new Error("Response body is empty");
       }
 
-      const data = body.toJson() as any;
+      const data = body.toJson() as PostbinBin;
 
-      if (!data.binId) {
+      if (
+        data.binId === undefined ||
+        data.binId === null ||
+        data.binId === ""
+      ) {
         throw new Error("PostBin registration response missing binId");
       }
 
@@ -176,7 +219,7 @@ export class PostbinService implements OASTService {
         `PostBin: Created new bin ${this.binId} (expires: ${new Date(data.expires)})`,
       );
 
-      return { id: this.binId!, payloadUrl: this.payloadUrl };
+      return { id: this.binId, payloadUrl: this.payloadUrl };
     } catch (err) {
       this.sdk.console.error("Error during PostBin registration:", err);
       return null;

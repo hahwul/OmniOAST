@@ -104,7 +104,7 @@ const editProvider = (provider: FetchedProvider) => {
 
 const saveProvider = async () => {
   const isValidUrl = (url: string | undefined) =>
-    !!url && /^https?:\/\/.+/.test(url);
+    url !== undefined && url !== "" && /^https?:\/\/.+/.test(url);
 
   const providerData = currentProvider.value;
 
@@ -118,7 +118,11 @@ const saveProvider = async () => {
   }
 
   try {
-    if (isEdit.value && providerData.id) {
+    if (
+      isEdit.value &&
+      providerData.id !== undefined &&
+      providerData.id !== ""
+    ) {
       const payload = JSON.parse(JSON.stringify(providerData));
       // The backend returns null (not an error) when validation fails
       if (!(await sdk.backend.updateProvider(providerData.id, payload))) {
@@ -146,15 +150,20 @@ const saveProvider = async () => {
         enabled: providerData.enabled ?? true,
       };
 
-      const createdProvider = await sdk.backend.createProvider(payload as any);
+      const createdProvider = await sdk.backend.createProvider(payload);
       if (!createdProvider) throw new Error("Provider creation rejected");
 
       // Auto-generate payload if requested
-      if (autoGenerate.value && supportsAutoGenerate.value) {
+      if (autoGenerate.value && supportsAutoGenerate.value === true) {
         try {
           const payloadInfo =
             await sdk.backend.registerAndGetPayload(createdProvider);
-          if (!payloadInfo?.payloadUrl) throw new Error("No payload URL");
+          if (
+            payloadInfo?.payloadUrl === undefined ||
+            payloadInfo.payloadUrl === ""
+          ) {
+            throw new Error("No payload URL");
+          }
           // BOAST keeps its events API URL; its payload is a bare domain
           if (createdProvider.type !== "BOAST") {
             await sdk.backend.updateProvider(createdProvider.id, {
@@ -228,7 +237,7 @@ const addPublicInteractshProvider = async () => {
 
   const selectedUrl = publicUrls[Math.floor(Math.random() * publicUrls.length)];
 
-  if (!selectedUrl) {
+  if (selectedUrl === undefined || selectedUrl === "") {
     sdk.window.showToast("Could not select a public URL.", {
       variant: "error",
     });
@@ -246,7 +255,7 @@ const addPublicInteractshProvider = async () => {
       token: "",
       enabled: true,
     };
-    await sdk.backend.createProvider(payload as any);
+    await sdk.backend.createProvider(payload);
     sdk.window.showToast("Public Interactsh Provider created", {
       variant: "success",
     });

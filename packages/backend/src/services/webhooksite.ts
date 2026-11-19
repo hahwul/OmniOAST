@@ -15,6 +15,25 @@ const parseWebhooksiteDate = (value: string | undefined): number => {
   ).getTime();
 };
 
+// The parts of webhook.site's responses that are read here. The bodies are not
+// validated beyond the checks below.
+type WebhooksiteRequest = {
+  uuid: string;
+  created_at?: string;
+  updated_at?: string;
+  method?: string | null;
+  ip?: string | null;
+  content?: string | null;
+};
+
+type WebhooksiteRequests = {
+  data?: WebhooksiteRequest[] | null;
+};
+
+type WebhooksiteToken = {
+  uuid?: string | null;
+};
+
 export class WebhooksiteService implements OASTService {
   private tokenId: string | null = null;
   private payloadUrl: string | null = null;
@@ -30,9 +49,9 @@ export class WebhooksiteService implements OASTService {
     this.sdk = sdk;
 
     // Extract token ID from existing webhook.site URL if provided
-    if (existingUrl) {
-      const match = existingUrl.match(/webhook\.site\/([a-f0-9\-]{36})/i);
-      if (match && match[1]) {
+    if (existingUrl !== undefined && existingUrl !== "") {
+      const match = existingUrl.match(/webhook\.site\/([a-f0-9-]{36})/i);
+      if (match && match[1] !== undefined && match[1] !== "") {
         this.tokenId = match[1];
         this.payloadUrl = `https://webhook.site/${this.tokenId}`;
       }
@@ -40,7 +59,7 @@ export class WebhooksiteService implements OASTService {
   }
 
   public async getEvents(): Promise<OASTEvent[]> {
-    if (!this.tokenId) {
+    if (this.tokenId === null || this.tokenId === "") {
       return [];
     }
 
@@ -48,7 +67,7 @@ export class WebhooksiteService implements OASTService {
       const url = `https://webhook.site/token/${this.tokenId}/requests?sorting=newest`;
 
       const spec = new RequestSpec(url);
-      if (this.apiKey) {
+      if (this.apiKey !== undefined && this.apiKey !== "") {
         spec.setHeader("Api-Key", this.apiKey);
       }
 
@@ -64,26 +83,28 @@ export class WebhooksiteService implements OASTService {
         return [];
       }
 
-      const data = body.toJson() as any;
+      const data = body.toJson() as WebhooksiteRequests;
 
       if (!data.data || !Array.isArray(data.data)) {
         return [];
       }
 
-      const events = data.data.map((event: any) => ({
+      const events = data.data.map((event) => ({
         id: event.uuid,
         type: "webhooksite",
         destination: this.payloadUrl,
-        timestamp: parseWebhooksiteDate(
-          (event.created_at as string | undefined) ??
-            (event.updated_at as string | undefined),
-        ),
+        timestamp: parseWebhooksiteDate(event.created_at ?? event.updated_at),
         data: event,
         protocol: "HTTP",
         method: event.method,
         source: event.ip,
         correlationId: event.uuid,
-        rawRequest: event.content || JSON.stringify(event),
+        rawRequest:
+          event.content !== undefined &&
+          event.content !== null &&
+          event.content !== ""
+            ? event.content
+            : JSON.stringify(event),
         rawResponse: "",
       }));
 
@@ -106,7 +127,12 @@ export class WebhooksiteService implements OASTService {
     id: string;
     payloadUrl: string;
   } | null> {
-    if (this.payloadUrl && this.tokenId) {
+    if (
+      this.payloadUrl !== null &&
+      this.payloadUrl !== "" &&
+      this.tokenId !== null &&
+      this.tokenId !== ""
+    ) {
       return { id: this.tokenId, payloadUrl: this.payloadUrl };
     }
 
@@ -114,7 +140,7 @@ export class WebhooksiteService implements OASTService {
       const spec = new RequestSpec("https://webhook.site/token");
       spec.setMethod("POST");
       spec.setHeader("Content-Type", "application/json");
-      if (this.apiKey) {
+      if (this.apiKey !== undefined && this.apiKey !== "") {
         spec.setHeader("Api-Key", this.apiKey);
       }
       spec.setBody(
@@ -136,16 +162,16 @@ export class WebhooksiteService implements OASTService {
         throw new Error("Response body is empty");
       }
 
-      const data = body.toJson() as any;
+      const data = body.toJson() as WebhooksiteToken;
 
-      if (!data.uuid) {
+      if (data.uuid === undefined || data.uuid === null || data.uuid === "") {
         throw new Error("Webhook.site registration response missing uuid");
       }
 
       this.tokenId = data.uuid;
       this.payloadUrl = `https://webhook.site/${this.tokenId}`;
 
-      return { id: this.tokenId!, payloadUrl: this.payloadUrl };
+      return { id: this.tokenId, payloadUrl: this.payloadUrl };
     } catch (err) {
       this.sdk.console.error("Error during webhook.site registration:", err);
       return null;

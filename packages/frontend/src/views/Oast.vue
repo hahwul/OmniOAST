@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { openSearchPanel, search, searchKeymap } from "@codemirror/search";
 import { StateEffect } from "@codemirror/state";
-import { keymap } from "@codemirror/view";
+import { type EditorView, keymap } from "@codemirror/view";
 import { refDebounced, useClipboard } from "@vueuse/core";
 import Button from "primevue/button";
 import Column from "primevue/column";
-import DataTable from "primevue/datatable";
+import DataTable, { type DataTableRowSelectEvent } from "primevue/datatable";
 import Dialog from "primevue/dialog";
 import Dropdown from "primevue/dropdown";
 import { useToast } from "primevue/usetoast";
@@ -26,6 +26,13 @@ import { useOastStore } from "@/stores/oastStore";
 
 type PollingItem = ReturnType<typeof useOastStore>["pollingList"][number];
 type PollingSession = PollingItem["session"];
+type Interaction = ReturnType<typeof useOastStore>["interactions"][number];
+// An editor from sdk.ui. The SDK types getEditorView as always there and always
+// returning a view; the checks below do not take either for granted.
+type SdkEditor = {
+  getElement: () => HTMLElement;
+  getEditorView?: () => EditorView | undefined;
+};
 
 const { copy } = useClipboard();
 const sdk = useSDK();
@@ -33,8 +40,8 @@ const toast = useToast();
 const oastStore = useOastStore();
 const pollingManager = usePollingManager();
 
-const requestEditor = ref<any>(null);
-const responseEditor = ref<any>(null);
+const requestEditor = ref<SdkEditor | null>(null);
+const responseEditor = ref<SdkEditor | null>(null);
 const requestContainer = ref<HTMLElement | null>(null);
 const responseContainer = ref<HTMLElement | null>(null);
 
@@ -74,16 +81,16 @@ const expandedContent = ref("");
 const expandedTitle = ref("");
 const showExpandModal = ref(false);
 
-function openExpandModal(title: string, content: string) {
+function openExpandModal(title: string, content: string | undefined) {
   expandedTitle.value = title;
-  expandedContent.value = content || "";
+  expandedContent.value = content ?? "";
   showExpandModal.value = true;
 }
 
 const selectedProviderA = computed({
   get: () =>
     oastStore.activeTab
-      ? oastStore.tabProviders[oastStore.activeTab.id] || ""
+      ? (oastStore.tabProviders[oastStore.activeTab.id] ?? "")
       : "",
   set: (value) => {
     if (oastStore.activeTab) {
@@ -91,7 +98,7 @@ const selectedProviderA = computed({
     }
   },
 });
-const selectedProviderB = ref<string | undefined>(undefined); // Interaction 필터용
+const selectedProviderB = ref<string | null | undefined>(undefined); // Interaction 필터용
 const availableProviders = ref<Provider[]>([]);
 
 const availableProvidersWithAll = computed(() => [
@@ -99,11 +106,11 @@ const availableProvidersWithAll = computed(() => [
   ...availableProviders.value,
 ]);
 
-const selectedInteraction = ref<any>(null);
+const selectedInteraction = ref<Interaction | null>(null);
 const payloadInput = computed({
   get: () =>
     oastStore.activeTab
-      ? oastStore.tabPayloads[oastStore.activeTab.id] || ""
+      ? (oastStore.tabPayloads[oastStore.activeTab.id] ?? "")
       : "",
   set: (value) => {
     if (oastStore.activeTab) {
@@ -129,12 +136,12 @@ const filteredInteractions = computed(() => {
       (i.rawRequest?.toLowerCase() ?? "").includes(query) ||
       (i.rawResponse?.toLowerCase() ?? "").includes(query);
     const matchesProvider =
-      !selectedProviderB.value ||
+      selectedProviderB.value === undefined ||
+      selectedProviderB.value === null ||
+      selectedProviderB.value === "" ||
       i.provider ===
-        ((availableProviders.value &&
-          availableProviders.value.find((p) => p.id === selectedProviderB.value)
-            ?.name) ??
-          "");
+        (availableProviders.value.find((p) => p.id === selectedProviderB.value)
+          ?.name ?? "");
 
     // Time range filter
     let matchesTime = true;
@@ -176,7 +183,11 @@ async function getPayload() {
   const currentProvider = availableProviders.value.find(
     (p) => p.id === selectedProviderA.value,
   );
-  if (!currentProvider || !currentProvider.id) {
+  if (
+    !currentProvider ||
+    currentProvider.id === undefined ||
+    currentProvider.id === ""
+  ) {
     sdk.window.showToast("Please select a valid provider", {
       variant: "warning",
     });
@@ -184,7 +195,7 @@ async function getPayload() {
   }
 
   const settings = await sdk.backend.getCurrentSettings();
-  const pollingInterval = (settings?.pollingInterval || 5) * 1000;
+  const pollingInterval = (settings?.pollingInterval ?? 5) * 1000;
 
   let payloadUrl = "";
   let session: PollingSession | undefined;
@@ -195,7 +206,7 @@ async function getPayload() {
       const client = useClientService();
       await client.start({
         serverURL: currentProvider.url,
-        token: currentProvider.token || "",
+        token: currentProvider.token ?? "",
       });
       payloadUrl = client.generateUrl().url;
       const si = await client.getSessionInfo();
@@ -212,7 +223,10 @@ async function getPayload() {
       const payloadInfo =
         await sdk.backend.registerAndGetPayload(currentProvider);
 
-      if (payloadInfo?.payloadUrl) {
+      if (
+        payloadInfo?.payloadUrl !== undefined &&
+        payloadInfo.payloadUrl !== ""
+      ) {
         payloadUrl = payloadInfo.payloadUrl;
         // webhook.site/PostBin identify the bin by its URL; BOAST must keep its
         // events API URL (its payload is a bare domain).
@@ -250,7 +264,9 @@ async function getPayload() {
   // Prefix is a subdomain label, so only apply it to bare-domain payloads
   const prefix = settings?.payloadPrefix;
   const finalPayload =
-    prefix && !/^[a-z][a-z0-9+.-]*:\/\//i.test(payloadUrl)
+    prefix !== undefined &&
+    prefix !== "" &&
+    !/^[a-z][a-z0-9+.-]*:\/\//i.test(payloadUrl)
       ? `${prefix}.${payloadUrl}`
       : payloadUrl;
   // The tab captured at click time, not whichever tab is active after the awaits
@@ -294,7 +310,7 @@ async function getPayload() {
 
 function clearInteractions() {
   oastStore.clearInteractions();
-  selectedInteraction.value = "";
+  selectedInteraction.value = null;
   sdk.window.showToast("Interactions cleared", { variant: "success" });
 }
 
@@ -320,7 +336,7 @@ async function pollTasks(tasks: PollingItem[]) {
             sessionInfo: {
               serverURL: task.session.serverURL,
               token: task.session.token,
-              privateKey: task.session.privateKey || "",
+              privateKey: task.session.privateKey ?? "",
               correlationID: task.session.correlationID,
               secretKey: task.session.secretKey,
               publicKey: task.session.publicKey,
@@ -392,12 +408,12 @@ async function removePayload(payload: string) {
   });
 }
 
-function showDetails(event: any) {
+function showDetails(event: DataTableRowSelectEvent) {
   selectedInteraction.value = event.data;
 }
 
 // Inject CodeMirror search extension into a Caido SDK editor
-function enableEditorSearch(editor: any) {
+function enableEditorSearch(editor: SdkEditor | null) {
   const view = editor?.getEditorView?.();
   if (!view) return;
   view.dispatch({
@@ -405,7 +421,7 @@ function enableEditorSearch(editor: any) {
   });
 }
 
-function triggerEditorSearch(editor: any) {
+function triggerEditorSearch(editor: SdkEditor | null) {
   const view = editor?.getEditorView?.();
   if (!view) return;
   openSearchPanel(view);

@@ -61,8 +61,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      #- name: Run linter
-      #  run: pnpm lint
+      - name: Run linter
+        run: pnpm exec eslint packages/*/src
 
   test:
     name: "Test"
