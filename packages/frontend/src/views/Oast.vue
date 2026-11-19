@@ -8,7 +8,6 @@ import Column from "primevue/column";
 import DataTable, { type DataTableRowSelectEvent } from "primevue/datatable";
 import Dialog from "primevue/dialog";
 import Dropdown from "primevue/dropdown";
-import { useToast } from "primevue/usetoast";
 import { v4 as uuidv4 } from "uuid";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
@@ -36,7 +35,6 @@ type SdkEditor = {
 
 const { copy } = useClipboard();
 const sdk = useSDK();
-const toast = useToast();
 const oastStore = useOastStore();
 const pollingManager = usePollingManager();
 
@@ -173,7 +171,21 @@ const loadProviders = async () => {
   }
 };
 
+// One registration at a time: a second click made before the first has stored
+// its bin on the provider would register another bin, and after a reload both
+// payloads would poll the last one.
+const gettingPayload = ref(false);
 async function getPayload() {
+  if (gettingPayload.value) return;
+  gettingPayload.value = true;
+  try {
+    await registerPayload();
+  } finally {
+    gettingPayload.value = false;
+  }
+}
+
+async function registerPayload() {
   const activeTab = oastStore.activeTab;
   if (!activeTab) {
     sdk.window.showToast("No active tab found", { variant: "error" });
@@ -194,16 +206,25 @@ async function getPayload() {
     return;
   }
 
-  const settings = await sdk.backend.getCurrentSettings();
-  const pollingInterval = (settings?.pollingInterval ?? 5) * 1000;
+  let settings: Awaited<ReturnType<typeof sdk.backend.getCurrentSettings>>;
+  try {
+    settings = await sdk.backend.getCurrentSettings();
+  } catch (error) {
+    console.error("Failed to load settings:", error);
+    sdk.window.showToast("Failed to load settings", { variant: "error" });
+    return;
+  }
+  // Same default as the Settings page and the backend
+  const pollingInterval = (settings?.pollingInterval ?? 30) * 1000;
 
   let payloadUrl = "";
   let session: PollingSession | undefined;
+  let client: ReturnType<typeof useClientService> | undefined;
 
   if (currentProvider.type === "interactsh") {
     try {
       // Register only; pollingManager.resume below polls from this session
-      const client = useClientService();
+      client = useClientService();
       await client.start({
         serverURL: currentProvider.url,
         token: currentProvider.token ?? "",
@@ -261,6 +282,13 @@ async function getPayload() {
     }
   }
 
+  // The tab was closed while the provider was registering: a task for it would
+  // keep polling with nowhere to put its interactions
+  if (!oastStore.tabs.some((t) => t.id === activeTab.id)) {
+    void client?.stop().catch(() => {});
+    return;
+  }
+
   // Prefix is a subdomain label, so only apply it to bare-domain payloads
   const prefix = settings?.payloadPrefix;
   const finalPayload =
@@ -300,7 +328,13 @@ async function getPayload() {
     });
   }
 
-  const started = await pollingManager.resume(pollingId);
+  const started = await pollingManager
+    .resume(pollingId)
+    .catch((error: unknown) => {
+      console.error("Failed to start polling:", error);
+      sdk.window.showToast("Failed to start polling", { variant: "error" });
+      return false;
+    });
   if (started && currentProvider.type !== "interactsh") {
     sdk.window.showToast("Provider registered and polling started", {
       variant: "success",
@@ -316,11 +350,15 @@ function clearInteractions() {
 
 // One-shot poll of the given tasks (Poll button and "Polling All Tabs" command)
 async function pollTasks(tasks: PollingItem[]) {
+  const skipped = new Set<string>();
   for (const task of tasks) {
     const provider =
       availableProviders.value.find((p) => p.id === task.providerId) ??
       availableProviders.value.find((p) => p.name === task.provider);
-    if (!provider) continue;
+    if (!provider) {
+      skipped.add(task.provider);
+      continue;
+    }
 
     try {
       if (provider.type === "interactsh") {
@@ -362,6 +400,12 @@ async function pollTasks(tasks: PollingItem[]) {
       });
     }
   }
+  if (skipped.size > 0) {
+    sdk.window.showToast(
+      `Not polled, provider disabled or deleted: ${[...skipped].join(", ")}`,
+      { variant: "warning" },
+    );
+  }
 }
 
 async function pollInteractions() {
@@ -381,12 +425,10 @@ async function pollInteractions() {
     return;
   }
 
-  toast.add({
-    severity: "info",
-    summary: "Info",
-    detail: `Polling ${tabPollingTasks.length} task(s) for this tab...`,
-    life: 2000,
-  });
+  sdk.window.showToast(
+    `Polling ${tabPollingTasks.length} task(s) for this tab...`,
+    { variant: "info" },
+  );
 
   await pollTasks(tabPollingTasks);
 }
@@ -482,6 +524,14 @@ watch(selectedInteraction, (interaction) => {
   }
 });
 
+// The request/response shown below belongs to the tab it was selected in
+watch(
+  () => oastStore.activeTabId,
+  () => {
+    selectedInteraction.value = null;
+  },
+);
+
 // Function to poll all tabs - exposed globally for command access
 async function pollAllTabs() {
   if (oastStore.pollingList.length === 0) {
@@ -516,7 +566,11 @@ onMounted(() => {
               placeholder="Select a Provider"
               class="w-64 md:w-14rem"
             />
-            <Button label="Get Payload" @click="getPayload" />
+            <Button
+              label="Get Payload"
+              :loading="gettingPayload"
+              @click="getPayload"
+            />
             <input
               v-model="payloadInput"
               placeholder="Payload URL"

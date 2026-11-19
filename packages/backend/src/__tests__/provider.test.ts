@@ -155,6 +155,22 @@ describe("ProviderService", () => {
       expect(result?.id).toBe("test-id");
     });
 
+    it("reads a row whose token column is NULL", async () => {
+      mockStatement.get.mockResolvedValue({
+        id: "test-id",
+        name: "No Token",
+        type: "postbin",
+        url: "https://www.postb.in",
+        token: null,
+        enabled: 1,
+      });
+
+      const result = await service.getProvider("test-id");
+
+      expect(result?.id).toBe("test-id");
+      expect(result?.token).toBeUndefined();
+    });
+
     it("should handle database errors", async () => {
       mockStatement.get.mockRejectedValue(new Error("Database error"));
 
@@ -274,6 +290,32 @@ describe("ProviderService", () => {
       expect(result).toHaveLength(2);
       expect(result[0]?.enabled).toBe(true);
       expect(result[1]?.enabled).toBe(false);
+    });
+
+    it("lists every provider when one row has a NULL token", async () => {
+      mockStatement.all.mockResolvedValue([
+        {
+          id: "id-1",
+          name: "With Token",
+          type: "BOAST",
+          url: "https://boast.example.com",
+          token: "secret",
+          enabled: 1,
+        },
+        {
+          id: "id-2",
+          name: "No Token",
+          type: "postbin",
+          url: "https://www.postb.in",
+          token: null,
+          enabled: 1,
+        },
+      ]);
+
+      const result = await service.listProviders();
+
+      expect(result.map((p) => p.id)).toEqual(["id-1", "id-2"]);
+      expect(result[1]?.token).toBeUndefined();
     });
 
     it("should return empty array if no providers", async () => {

@@ -27,6 +27,7 @@ const mockUpdatePollingLastPolled = vi.fn();
 const mockSetPollingRunning = vi.fn();
 const mockRegisterPollingStop = vi.fn();
 const mockUpdatePolling = vi.fn();
+const mockPausePolling = vi.fn();
 
 const mockOastStore = {
   pollingList: [] as any[],
@@ -37,6 +38,20 @@ const mockOastStore = {
   setPollingRunning: mockSetPollingRunning,
   registerPollingStop: mockRegisterPollingStop,
   updatePolling: mockUpdatePolling,
+  pausePolling: mockPausePolling,
+};
+
+// What the store does with these: pause runs the task's stop function,
+// update replaces the list item
+const storeLikePauseAndUpdate = () => {
+  mockPausePolling.mockImplementation(async (id: string) => {
+    mockRegisterPollingStop.mock.calls.findLast((c) => c[0] === id)?.[1]();
+  });
+  mockUpdatePolling.mockImplementation(async (id: string, fields: object) => {
+    mockOastStore.pollingList = mockOastStore.pollingList.map((p) =>
+      p.id === id ? { ...p, ...fields } : p,
+    );
+  });
 };
 
 vi.mock("@/stores/oastStore", () => ({
@@ -78,6 +93,9 @@ describe("usePollingManager", () => {
     mockOastStore.pollingList = [];
     mockOastStore.tabs = [];
     mockOastStore.pollingStatus = {};
+    // clearAllMocks keeps implementations: storeLikePauseAndUpdate's must not leak
+    mockPausePolling.mockReset();
+    mockUpdatePolling.mockReset();
   });
 
   afterEach(() => {
@@ -741,7 +759,139 @@ describe("usePollingManager", () => {
     });
   });
 
+  describe("expired PostBin bin", () => {
+    it("stops the task and says why instead of polling a dead bin forever", async () => {
+      mockOastStore.pollingList = [
+        {
+          id: "pb",
+          providerId: "p",
+          provider: "PostBin",
+          interval: 1000,
+          tabId: "t",
+          payload: "https://www.postb.in/b1",
+        },
+      ];
+      mockListProviders.mockResolvedValue([
+        { id: "p", name: "PostBin", type: "postbin", url: "https://x/b1" },
+      ]);
+      // As Caido hands a thrown backend error to the frontend
+      const binGone = new Error(
+        "RPC function 'getOASTEvents' threw an error: PostBin bin no longer exists\n\nstack",
+      );
+      mockGetOASTEvents.mockResolvedValueOnce([]).mockRejectedValue(binGone);
+      storeLikePauseAndUpdate();
+
+      const { resume } = usePollingManager();
+      expect(await resume("pb")).toBe(true);
+      await vi.advanceTimersByTimeAsync(1000); // second tick: the bin is gone
+
+      expect(mockPausePolling).toHaveBeenCalledWith("pb");
+      expect(mockShowToast).toHaveBeenCalledWith(
+        expect.stringContaining("expired"),
+        { variant: "error" },
+      );
+      mockGetOASTEvents.mockClear();
+      await vi.advanceTimersByTimeAsync(60000);
+      expect(mockGetOASTEvents).not.toHaveBeenCalled();
+
+      // Resuming it finds the bin still gone on the first tick
+      expect(await resume("pb")).toBe(false);
+    });
+  });
+
+  describe("applyInterval", () => {
+    it("gives every task the new interval and restarts the running ones", async () => {
+      const task = (id: string) => ({
+        id,
+        providerId: "b",
+        provider: "B",
+        interval: 5000,
+        tabId: "t",
+        payload: id,
+      });
+      mockOastStore.pollingList = [task("running"), task("stopped")];
+      mockListProviders.mockResolvedValue([
+        { id: "b", name: "B", type: "BOAST", url: "http://boast.url" },
+      ]);
+      mockGetOASTEvents.mockResolvedValue([]);
+      storeLikePauseAndUpdate();
+
+      const { resume, applyInterval } = usePollingManager();
+      await resume("running");
+      mockGetOASTEvents.mockClear();
+      mockSetPollingRunning.mockClear();
+
+      await applyInterval(1000);
+
+      expect(mockOastStore.pollingList.map((p) => p.interval)).toEqual([
+        1000, 1000,
+      ]);
+      // Restarted: one immediate poll, then one per new interval
+      expect(mockGetOASTEvents).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(mockGetOASTEvents).toHaveBeenCalledTimes(2);
+      expect(mockSetPollingRunning).not.toHaveBeenCalledWith("stopped", true);
+    });
+
+    it("says so when a task cannot be restarted", async () => {
+      mockOastStore.pollingList = [
+        {
+          id: "t1",
+          providerId: "b",
+          provider: "B",
+          interval: 5000,
+          tabId: "t",
+          payload: "x",
+        },
+      ];
+      mockListProviders.mockResolvedValueOnce([
+        { id: "b", name: "B", type: "BOAST", url: "http://boast.url" },
+      ]);
+      mockGetOASTEvents.mockResolvedValue([]);
+      storeLikePauseAndUpdate();
+
+      const { resume, applyInterval } = usePollingManager();
+      await resume("t1");
+      mockListProviders.mockRejectedValueOnce(new Error("backend down"));
+
+      await applyInterval(1000);
+
+      expect(mockShowToast).toHaveBeenCalledWith(
+        "Failed to restart 1 polling task(s)",
+        { variant: "error" },
+      );
+    });
+  });
+
   describe("resumeAll", () => {
+    it("leaves a task the user paused alone until it is resumed", async () => {
+      mockOastStore.pollingList = [
+        {
+          id: "paused",
+          providerId: "p1",
+          provider: "BOAST",
+          interval: 5000,
+          tabId: "t1",
+          payload: "pl1",
+          paused: true,
+        },
+      ];
+      mockListProviders.mockResolvedValue([
+        { id: "p1", name: "BOAST", type: "BOAST", url: "url", token: "token" },
+      ]);
+      mockGetOASTEvents.mockResolvedValue([]);
+
+      const { resumeAll, resume } = usePollingManager();
+      await resumeAll();
+      expect(mockSetPollingRunning).not.toHaveBeenCalled();
+
+      await resume("paused");
+      expect(mockUpdatePolling).toHaveBeenCalledWith("paused", {
+        paused: false,
+      });
+      expect(mockSetPollingRunning).toHaveBeenCalledWith("paused", true);
+    });
+
     it("should resume all stopped tasks", async () => {
       const pollingId1 = "polling-1";
       const pollingId2 = "polling-2";
@@ -815,6 +965,10 @@ describe("usePollingManager", () => {
       await expect(resumeAll()).resolves.toBeUndefined();
 
       expect(mockSetPollingRunning).toHaveBeenCalledWith("good", true);
+      expect(mockShowToast).toHaveBeenCalledWith(
+        "Failed to resume 1 polling task(s)",
+        { variant: "error" },
+      );
     });
   });
 });

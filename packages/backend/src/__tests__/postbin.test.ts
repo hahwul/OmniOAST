@@ -155,6 +155,29 @@ describe("PostbinService", () => {
       expect(mockSdk.requests.send).toHaveBeenCalledTimes(1);
     });
 
+    it("throws for a bin that no longer exists, unlike an empty one", async () => {
+      mockResponse.getCode.mockReturnValue(404);
+      mockSdk.requests.send.mockResolvedValue(mockRequestResponse);
+      const service = new PostbinService(
+        undefined,
+        mockSdk as any,
+        "https://www.postb.in/test-bin",
+      );
+
+      // PostBin answers 404 to both; only the message differs
+      mockResponse.getBody.mockReturnValue({
+        toText: () => '{"msg":"No requests in this bin"}',
+      });
+      expect(await service.getEvents()).toEqual([]);
+
+      mockResponse.getBody.mockReturnValue({
+        toText: () => '{"msg":"No such bin"}',
+      });
+      await expect(service.getEvents()).rejects.toThrow(
+        "PostBin bin no longer exists",
+      );
+    });
+
     it("should handle HTTP errors (non-404)", async () => {
       mockResponse.getCode.mockReturnValue(500);
       mockSdk.requests.send.mockResolvedValue(mockRequestResponse);

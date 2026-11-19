@@ -28,7 +28,12 @@ type WebhooksiteRequest = {
 
 type WebhooksiteRequests = {
   data?: WebhooksiteRequest[] | null;
+  is_last_page?: boolean;
 };
+
+// 50 requests a page (larger per_page values are capped to that), newest first.
+// ponytail: refetches every page each poll; pass a date_from if big tokens get slow
+const MAX_PAGES = 10;
 
 type WebhooksiteToken = {
   uuid?: string | null;
@@ -63,56 +68,60 @@ export class WebhooksiteService implements OASTService {
       return [];
     }
 
+    // Every page, not just the first: more than one page of requests can
+    // arrive between two polls. Kept if a later page fails.
+    const requests: WebhooksiteRequest[] = [];
     try {
-      const url = `https://webhook.site/token/${this.tokenId}/requests?sorting=newest`;
+      for (let page = 1; page <= MAX_PAGES; page++) {
+        const url = `https://webhook.site/token/${this.tokenId}/requests?sorting=newest&page=${page}`;
 
-      const spec = new RequestSpec(url);
-      if (this.apiKey !== undefined && this.apiKey !== "") {
-        spec.setHeader("Api-Key", this.apiKey);
+        const spec = new RequestSpec(url);
+        if (this.apiKey !== undefined && this.apiKey !== "") {
+          spec.setHeader("Api-Key", this.apiKey);
+        }
+
+        const res: RequestResponse = await this.sdk.requests.send(spec);
+
+        if (res.response.getCode() >= 300) {
+          throw new Error(`HTTP error! status: ${res.response.getCode()}`);
+        }
+
+        const body = res.response.getBody();
+        if (!body) {
+          this.sdk.console.log("Webhook.site: Empty response body");
+          break;
+        }
+
+        const data = body.toJson() as WebhooksiteRequests;
+
+        if (!data.data || !Array.isArray(data.data)) {
+          break;
+        }
+        requests.push(...data.data);
+        if (data.is_last_page !== false) break;
       }
-
-      const res: RequestResponse = await this.sdk.requests.send(spec);
-
-      if (res.response.getCode() >= 300) {
-        throw new Error(`HTTP error! status: ${res.response.getCode()}`);
-      }
-
-      const body = res.response.getBody();
-      if (!body) {
-        this.sdk.console.log("Webhook.site: Empty response body");
-        return [];
-      }
-
-      const data = body.toJson() as WebhooksiteRequests;
-
-      if (!data.data || !Array.isArray(data.data)) {
-        return [];
-      }
-
-      const events = data.data.map((event) => ({
-        id: event.uuid,
-        type: "webhooksite",
-        destination: this.payloadUrl,
-        timestamp: parseWebhooksiteDate(event.created_at ?? event.updated_at),
-        data: event,
-        protocol: "HTTP",
-        method: event.method,
-        source: event.ip,
-        correlationId: event.uuid,
-        rawRequest:
-          event.content !== undefined &&
-          event.content !== null &&
-          event.content !== ""
-            ? event.content
-            : JSON.stringify(event),
-        rawResponse: "",
-      }));
-
-      return events;
     } catch (error) {
       this.sdk.console.error("Error fetching webhook.site events:", error);
-      return [];
     }
+
+    return requests.map((event) => ({
+      id: event.uuid,
+      type: "webhooksite",
+      destination: this.payloadUrl,
+      timestamp: parseWebhooksiteDate(event.created_at ?? event.updated_at),
+      data: event,
+      protocol: "HTTP",
+      method: event.method,
+      source: event.ip,
+      correlationId: event.uuid,
+      rawRequest:
+        event.content !== undefined &&
+        event.content !== null &&
+        event.content !== ""
+          ? event.content
+          : JSON.stringify(event),
+      rawResponse: "",
+    }));
   }
 
   public getId(): string | null {
