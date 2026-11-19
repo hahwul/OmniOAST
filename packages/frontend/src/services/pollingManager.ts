@@ -361,7 +361,7 @@ export function usePollingManager() {
         .filter((item) => item.interval !== interval)
         .map(async ({ id }) => {
           const active = runningTasks[id] !== undefined;
-          if (active) await oastStore.pausePolling(id);
+          if (active) await oastStore.pausePolling(id, { persist: false });
           await oastStore.updatePolling(id, { interval });
           if (active) await resume(id);
         }),

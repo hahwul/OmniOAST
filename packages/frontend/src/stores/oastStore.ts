@@ -671,7 +671,12 @@ export const useOastStore = defineStore("oast", () => {
   /**
    * Pauses a polling task without removing it
    */
-  const pausePolling = async (pollingId: string) => {
+  // persist: false for a restart (stop, then resume right away): a restart
+  // that does not finish must not leave the task saved as paused by the user.
+  const pausePolling = async (
+    pollingId: string,
+    { persist = true }: { persist?: boolean } = {},
+  ) => {
     const stopFn = pollingFunctions.value[pollingId];
     if (stopFn) {
       try {
@@ -681,6 +686,7 @@ export const useOastStore = defineStore("oast", () => {
       }
     }
     pollingStatus.value[pollingId] = "stopped";
+    if (!persist) return;
     const item = pollingList.value.find((p) => p.id === pollingId);
     if (item) item.paused = true;
     await savePollingList();

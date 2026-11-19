@@ -831,6 +831,10 @@ describe("usePollingManager", () => {
       await vi.advanceTimersByTimeAsync(1000);
       expect(mockGetOASTEvents).toHaveBeenCalledTimes(2);
       expect(mockSetPollingRunning).not.toHaveBeenCalledWith("stopped", true);
+      // A restart, not a pause by the user: nothing saved as paused
+      expect(mockPausePolling).toHaveBeenCalledWith("running", {
+        persist: false,
+      });
     });
 
     it("says so when a task cannot be restarted", async () => {

@@ -98,7 +98,7 @@ export class WebhooksiteService implements OASTService {
           break;
         }
         requests.push(...data.data);
-        if (data.is_last_page !== false) break;
+        if (data.is_last_page !== false || data.data.length === 0) break;
       }
     } catch (error) {
       this.sdk.console.error("Error fetching webhook.site events:", error);

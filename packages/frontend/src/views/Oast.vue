@@ -312,7 +312,7 @@ async function registerPayload() {
   const pollingId = existing?.id ?? uuidv4();
   if (existing) {
     // Restart it, so provider or interval edits made since it started apply
-    await oastStore.pausePolling(existing.id);
+    await oastStore.pausePolling(existing.id, { persist: false });
     await oastStore.updatePolling(existing.id, { interval: pollingInterval });
   } else {
     await oastStore.addPolling({

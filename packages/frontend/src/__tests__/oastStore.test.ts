@@ -525,6 +525,28 @@ describe("oastStore", () => {
       expect(useOastStore().pollingList[0]!.paused).toBe(true);
     });
 
+    it("does not save a restart's stop as a pause by the user", async () => {
+      const store = useOastStore();
+      const tab = store.tabs[0]!;
+      const stopFn = vi.fn();
+      await store.addPolling({
+        id: "poll-1",
+        payload: "test.oast.fun",
+        provider: "interactsh",
+        lastChecked: 1000,
+        interval: 5000,
+        stop: stopFn,
+        tabId: tab.id,
+        tabName: tab.name,
+      });
+
+      // e.g. the restart's resume never happens because Caido reloads
+      await store.pausePolling("poll-1", { persist: false });
+
+      expect(stopFn).toHaveBeenCalled();
+      expect(mockStorage["omnioast.pollingList"][0].paused).toBeUndefined();
+    });
+
     it("should set polling running status", () => {
       const store = useOastStore();
 
