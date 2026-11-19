@@ -116,7 +116,11 @@ export const useOastStore = defineStore("oast", () => {
   // Avoids hammering sdk.storage.set() on every poll tick / interaction.
   const pendingFlush: Record<string, ReturnType<typeof setTimeout>> = {};
 
-  function debouncedSave(key: string, saveFn: () => Promise<void>, delayMs = 2000) {
+  function debouncedSave(
+    key: string,
+    saveFn: () => Promise<void>,
+    delayMs = 2000,
+  ) {
     if (pendingFlush[key]) clearTimeout(pendingFlush[key]);
     pendingFlush[key] = setTimeout(() => {
       delete pendingFlush[key];
@@ -199,7 +203,10 @@ export const useOastStore = defineStore("oast", () => {
     }
 
     // Load desktop notification setting (default: true)
-    if (storage && typeof storage[storageKeyDesktopNotification] === "boolean") {
+    if (
+      storage &&
+      typeof storage[storageKeyDesktopNotification] === "boolean"
+    ) {
       desktopNotification.value = storage[storageKeyDesktopNotification];
     }
 
@@ -448,7 +455,9 @@ export const useOastStore = defineStore("oast", () => {
    * Saves current polling list to persistent storage
    */
   const savePollingList = () =>
-    persist(storageKeyPollingList, () => ({ [storageKeyPollingList]: pollingList.value }));
+    persist(storageKeyPollingList, () => ({
+      [storageKeyPollingList]: pollingList.value,
+    }));
 
   const loadTabPayloads = () => {
     const storage = sdk.storage.get() as Record<string, any> | null;
@@ -458,7 +467,9 @@ export const useOastStore = defineStore("oast", () => {
   };
 
   const saveTabPayloads = () =>
-    persist(storageKeyTabPayloads, () => ({ [storageKeyTabPayloads]: tabPayloads.value }));
+    persist(storageKeyTabPayloads, () => ({
+      [storageKeyTabPayloads]: tabPayloads.value,
+    }));
 
   const setTabPayload = async (tabId: string, payload: string) => {
     tabPayloads.value[tabId] = payload;
@@ -473,7 +484,9 @@ export const useOastStore = defineStore("oast", () => {
   };
 
   const saveTabPayloadHistory = () =>
-    persist(storageKeyTabPayloadHistory, () => ({ [storageKeyTabPayloadHistory]: tabPayloadHistory.value }));
+    persist(storageKeyTabPayloadHistory, () => ({
+      [storageKeyTabPayloadHistory]: tabPayloadHistory.value,
+    }));
 
   const addPayloadToHistory = async (tabId: string, payload: string) => {
     const list = tabPayloadHistory.value[tabId] || [];
@@ -497,7 +510,9 @@ export const useOastStore = defineStore("oast", () => {
   };
 
   const saveTabProviders = () =>
-    persist(storageKeyTabProviders, () => ({ [storageKeyTabProviders]: tabProviders.value }));
+    persist(storageKeyTabProviders, () => ({
+      [storageKeyTabProviders]: tabProviders.value,
+    }));
 
   const setTabProvider = async (tabId: string, provider: string) => {
     tabProviders.value[tabId] = provider;
@@ -531,10 +546,7 @@ export const useOastStore = defineStore("oast", () => {
    * @param pollingId The ID of the polling entry to update.
    * @param timestamp The new timestamp.
    */
-  const updatePollingLastPolled = (
-    pollingId: string,
-    timestamp: number,
-  ) => {
+  const updatePollingLastPolled = (pollingId: string, timestamp: number) => {
     const item = pollingList.value.find((p) => p.id === pollingId);
     if (item) {
       item.lastChecked = timestamp;
@@ -654,7 +666,6 @@ export const useOastStore = defineStore("oast", () => {
     }
   };
 
-
   /**
    * Sets desktop notification enabled/disabled and persists the setting
    */
@@ -668,14 +679,18 @@ export const useOastStore = defineStore("oast", () => {
   /**
    * Shows a toast notification for a new interaction
    */
-  const sendDesktopNotification = (interaction: Omit<OastInteraction, "index">) => {
+  const sendDesktopNotification = (
+    interaction: Omit<OastInteraction, "index">,
+  ) => {
     if (!desktopNotification.value) return;
 
     const protocol = interaction.protocol?.toUpperCase() || interaction.type;
     const detail = [
       interaction.source && `From: ${interaction.source}`,
       interaction.provider && `Provider: ${interaction.provider}`,
-    ].filter(Boolean).join(" | ");
+    ]
+      .filter(Boolean)
+      .join(" | ");
 
     sdk.window.showToast(`[${protocol}] ${detail}`, { variant: "info" });
   };

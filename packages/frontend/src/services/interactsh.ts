@@ -307,13 +307,17 @@ class InteractshClient {
     const generation = ++this.pollingGeneration;
 
     const pollingLoop = async () => {
-      while (!this.quitPollingFlag.value && this.pollingGeneration === generation) {
+      while (
+        !this.quitPollingFlag.value &&
+        this.pollingGeneration === generation
+      ) {
         try {
           await this.getInteractions(callback);
         } catch (err) {
           console.error("Polling error (will retry next cycle):", err);
         }
-        if (this.quitPollingFlag.value || this.pollingGeneration !== generation) break;
+        if (this.quitPollingFlag.value || this.pollingGeneration !== generation)
+          break;
         await new Promise((resolve) =>
           setTimeout(resolve, this.pollingInterval.value),
         );

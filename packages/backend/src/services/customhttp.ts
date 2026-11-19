@@ -65,7 +65,11 @@ export class CustomHttpService implements OASTService {
         // Content-derived fallback keeps the id stable across polls; a new
         // service is created per poll, so the frontend's id dedup is what counts.
         const id = String(
-          item.id || item.uuid || item.reqId || item._id || JSON.stringify(item),
+          item.id ||
+            item.uuid ||
+            item.reqId ||
+            item._id ||
+            JSON.stringify(item),
         );
 
         if (this.seenIds.has(id)) continue;

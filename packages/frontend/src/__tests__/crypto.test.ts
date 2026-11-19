@@ -27,8 +27,7 @@ if (
   });
 }
 
-import { useCryptoService } from "../services/crypto";
-import { decryptAesCtr } from "../services/crypto";
+import { decryptAesCtr, useCryptoService } from "../services/crypto";
 
 describe("Crypto Service - No External Requests", () => {
   beforeEach(() => {
@@ -179,9 +178,7 @@ describe("End-to-end RSA + AES-CTR decrypt", () => {
       .replace(/-----BEGIN PUBLIC KEY-----/, "")
       .replace(/-----END PUBLIC KEY-----/, "")
       .replace(/\s+/g, "");
-    const pubKeyDer = Uint8Array.from(atob(derBase64), (c) =>
-      c.charCodeAt(0),
-    );
+    const pubKeyDer = Uint8Array.from(atob(derBase64), (c) => c.charCodeAt(0));
     const pubKey = await window.crypto.subtle.importKey(
       "spki",
       pubKeyDer.buffer,
@@ -239,9 +236,7 @@ describe("End-to-end RSA + AES-CTR decrypt", () => {
       .replace(/-----BEGIN PUBLIC KEY-----/, "")
       .replace(/-----END PUBLIC KEY-----/, "")
       .replace(/\s+/g, "");
-    const pubKeyDer = Uint8Array.from(atob(derBase64), (c) =>
-      c.charCodeAt(0),
-    );
+    const pubKeyDer = Uint8Array.from(atob(derBase64), (c) => c.charCodeAt(0));
     const pubKey = await window.crypto.subtle.importKey(
       "spki",
       pubKeyDer.buffer,
@@ -289,9 +284,7 @@ describe("End-to-end RSA + AES-CTR decrypt", () => {
       .replace(/-----BEGIN PUBLIC KEY-----/, "")
       .replace(/-----END PUBLIC KEY-----/, "")
       .replace(/\s+/g, "");
-    const pubKeyDer = Uint8Array.from(atob(derBase64), (c) =>
-      c.charCodeAt(0),
-    );
+    const pubKeyDer = Uint8Array.from(atob(derBase64), (c) => c.charCodeAt(0));
     const pubKey = await window.crypto.subtle.importKey(
       "spki",
       pubKeyDer.buffer,
@@ -358,7 +351,10 @@ describe("Crypto Service - per-instance keys", () => {
       true,
       ["encrypt", "decrypt"],
     );
-    const pkcs8 = await window.crypto.subtle.exportKey("pkcs8", other.privateKey);
+    const pkcs8 = await window.crypto.subtle.exportKey(
+      "pkcs8",
+      other.privateKey,
+    );
     const otherPem = `-----BEGIN PRIVATE KEY-----\n${btoa(
       String.fromCharCode(...new Uint8Array(pkcs8)),
     )}\n-----END PRIVATE KEY-----`;

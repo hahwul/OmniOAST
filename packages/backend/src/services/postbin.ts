@@ -47,7 +47,9 @@ export class PostbinService implements OASTService {
       while (requestCount < 100) {
         // Rate limit: add small delay between requests to avoid hammering the API
         if (requestCount > 0 && this.rateLimitDelay > 0) {
-          await new Promise((resolve) => setTimeout(resolve, this.rateLimitDelay));
+          await new Promise((resolve) =>
+            setTimeout(resolve, this.rateLimitDelay),
+          );
         }
         const url = `https://www.postb.in/api/bin/${this.binId}/req/shift`;
 

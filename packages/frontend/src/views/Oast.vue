@@ -80,7 +80,6 @@ function openExpandModal(title: string, content: string) {
   showExpandModal.value = true;
 }
 
-
 const selectedProviderA = computed({
   get: () =>
     oastStore.activeTab
@@ -140,10 +139,12 @@ const filteredInteractions = computed(() => {
     // Time range filter
     let matchesTime = true;
     if (timeFrom.value) {
-      matchesTime = matchesTime && i.timestampNum >= new Date(timeFrom.value).getTime();
+      matchesTime =
+        matchesTime && i.timestampNum >= new Date(timeFrom.value).getTime();
     }
     if (timeTo.value) {
-      matchesTime = matchesTime && i.timestampNum <= new Date(timeTo.value).getTime();
+      matchesTime =
+        matchesTime && i.timestampNum <= new Date(timeTo.value).getTime();
     }
 
     return matchesSearch && matchesProvider && matchesTime;
@@ -225,7 +226,8 @@ async function getPayload() {
           // A new bin means the old one expired: its tasks would poll nothing
           // now and, resolving the provider again after a reload, this bin.
           const stale = oastStore.pollingList.filter(
-            (p) => p.providerId === currentProvider.id && p.payload !== payloadUrl,
+            (p) =>
+              p.providerId === currentProvider.id && p.payload !== payloadUrl,
           );
           for (const task of stale) await oastStore.removePolling(task.id);
         }
@@ -324,7 +326,12 @@ async function pollTasks(tasks: PollingItem[]) {
               publicKey: task.session.publicKey,
             },
           },
-          createInteractshCallback(oastStore, task.id, provider.name, task.tabId),
+          createInteractshCallback(
+            oastStore,
+            task.id,
+            provider.name,
+            task.tabId,
+          ),
         );
         // Do not close/deregister: the background task still uses this session
         await tmpClient.poll();
@@ -568,7 +575,9 @@ onMounted(() => {
       </div>
       <!-- 검색바 -->
 
-      <div class="oast-filter-bar px-4 mb-2 flex-shrink-0 flex items-center gap-2">
+      <div
+        class="oast-filter-bar px-4 mb-2 flex-shrink-0 flex items-center gap-2"
+      >
         <input
           v-model="searchQuery"
           type="text"
@@ -604,7 +613,7 @@ onMounted(() => {
             icon="fa fa-times"
             class="p-button-text p-button-sm w-8 min-w-0 p-0"
             title="Clear time filter"
-            style="height: 32px;"
+            style="height: 32px"
             @click="clearTimeFilter"
           />
         </div>
@@ -714,15 +723,19 @@ onMounted(() => {
     </div>
 
     <!-- Drag divider for resizing -->
-    <div
-      class="oast-resize-divider"
-      @mousedown="onDividerMouseDown"
-    ></div>
+    <div class="oast-resize-divider" @mousedown="onDividerMouseDown"></div>
 
-    <div class="w-full flex flex-col" :style="{ height: (100 - topPanelPercent) + '%' }">
+    <div
+      class="w-full flex flex-col"
+      :style="{ height: 100 - topPanelPercent + '%' }"
+    >
       <div v-show="selectedInteraction" class="flex gap-1 w-full h-full">
-        <div class="w-1/2 h-full flex flex-col bg-surface-0 dark:bg-surface-800 rounded">
-          <div class="flex items-center justify-between px-2 py-1 flex-shrink-0">
+        <div
+          class="w-1/2 h-full flex flex-col bg-surface-0 dark:bg-surface-800 rounded"
+        >
+          <div
+            class="flex items-center justify-between px-2 py-1 flex-shrink-0"
+          >
             <span class="text-xs font-semibold text-surface-500">Request</span>
             <div class="flex items-center gap-1">
               <Button
@@ -735,15 +748,24 @@ onMounted(() => {
                 v-tooltip.bottom="'Expand'"
                 icon="fa fa-expand"
                 class="p-button-rounded p-button-text h-6 w-6 min-w-0 p-0 text-xs"
-                @click="openExpandModal('Request', selectedInteraction?.rawRequest)"
+                @click="
+                  openExpandModal('Request', selectedInteraction?.rawRequest)
+                "
               />
             </div>
           </div>
-          <div ref="requestContainer" class="field flex-1 min-h-0 overflow-auto"></div>
+          <div
+            ref="requestContainer"
+            class="field flex-1 min-h-0 overflow-auto"
+          ></div>
         </div>
 
-        <div class="w-1/2 h-full flex flex-col bg-surface-0 dark:bg-surface-800 rounded">
-          <div class="flex items-center justify-between px-2 py-1 flex-shrink-0">
+        <div
+          class="w-1/2 h-full flex flex-col bg-surface-0 dark:bg-surface-800 rounded"
+        >
+          <div
+            class="flex items-center justify-between px-2 py-1 flex-shrink-0"
+          >
             <span class="text-xs font-semibold text-surface-500">Response</span>
             <div class="flex items-center gap-1">
               <Button
@@ -756,11 +778,16 @@ onMounted(() => {
                 v-tooltip.bottom="'Expand'"
                 icon="fa fa-expand"
                 class="p-button-rounded p-button-text h-6 w-6 min-w-0 p-0 text-xs"
-                @click="openExpandModal('Response', selectedInteraction?.rawResponse)"
+                @click="
+                  openExpandModal('Response', selectedInteraction?.rawResponse)
+                "
               />
             </div>
           </div>
-          <div ref="responseContainer" class="field flex-1 min-h-0 overflow-auto"></div>
+          <div
+            ref="responseContainer"
+            class="field flex-1 min-h-0 overflow-auto"
+          ></div>
         </div>
       </div>
 
@@ -778,7 +805,13 @@ onMounted(() => {
       :header="expandedTitle"
       :modal="true"
       :style="{ width: '90vw', height: '85vh' }"
-      :content-style="{ padding: 0, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }"
+      :content-style="{
+        padding: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        minHeight: 0,
+      }"
     >
       <template #header>
         <div class="flex items-center justify-between w-full pr-8">
@@ -925,7 +958,9 @@ onMounted(() => {
   font-size: 0.75rem;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
 }
 
 :deep(.cm-button:hover) {

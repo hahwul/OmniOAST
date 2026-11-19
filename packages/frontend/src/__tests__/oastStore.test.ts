@@ -281,11 +281,27 @@ describe("oastStore", () => {
       const secondTab = store.tabs[1]!;
 
       await store.addInteraction(
-        { id: "a", type: "t", timestamp: "", timestampNum: 1, provider: "p", correlationId: "c", data: {} },
+        {
+          id: "a",
+          type: "t",
+          timestamp: "",
+          timestampNum: 1,
+          provider: "p",
+          correlationId: "c",
+          data: {},
+        },
         firstTab.id,
       );
       await store.addInteraction(
-        { id: "b", type: "t", timestamp: "", timestampNum: 1, provider: "p", correlationId: "c", data: {} },
+        {
+          id: "b",
+          type: "t",
+          timestamp: "",
+          timestampNum: 1,
+          provider: "p",
+          correlationId: "c",
+          data: {},
+        },
         secondTab.id,
       );
 
@@ -739,9 +755,7 @@ describe("oastStore", () => {
 
   describe("Storage Persistence", () => {
     it("should load tabs from storage", () => {
-      const savedTabs = [
-        { id: "saved-tab", name: "Saved", interactions: [] },
-      ];
+      const savedTabs = [{ id: "saved-tab", name: "Saved", interactions: [] }];
       mockStorage["omnioast.tabs"] = savedTabs;
       mockStorage["omnioast.activeTabId"] = "saved-tab";
 

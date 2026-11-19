@@ -87,10 +87,10 @@ function aesKeyExpansion(key: Uint8Array): Uint8Array[] {
 
     const back = w[i - Nk]!;
     w[i] = new Uint8Array([
-      back[0]! ^ temp[0]!,
-      back[1]! ^ temp[1]!,
-      back[2]! ^ temp[2]!,
-      back[3]! ^ temp[3]!,
+      back[0]! ^ temp[0],
+      back[1]! ^ temp[1],
+      back[2]! ^ temp[2],
+      back[3]! ^ temp[3],
     ]);
   }
   return w;
@@ -100,7 +100,10 @@ function aesKeyExpansion(key: Uint8Array): Uint8Array[] {
  * AES block encrypt (single 16-byte block).
  * State layout: column-major — state[row + 4*col] = input[row + 4*col].
  */
-function aesEncryptBlock(roundKeys: Uint8Array[], block: Uint8Array): Uint8Array {
+function aesEncryptBlock(
+  roundKeys: Uint8Array[],
+  block: Uint8Array,
+): Uint8Array {
   const Nr = roundKeys.length / 4 - 1;
   const s = new Uint8Array(16);
 

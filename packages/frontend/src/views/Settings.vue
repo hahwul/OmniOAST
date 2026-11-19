@@ -165,13 +165,14 @@ onMounted(loadSettings);
           <div class="flex flex-col gap-1">
             <div class="flex items-center gap-3">
               <ToggleSwitch
-                :modelValue="oastStore.desktopNotification"
-                @update:modelValue="onNotificationToggle"
+                :model-value="oastStore.desktopNotification"
+                @update:model-value="onNotificationToggle"
               />
               <label class="font-medium">Toast Notifications</label>
             </div>
             <small class="text-gray-500">
-              Show toast alerts when new interactions arrive while OmniOAST tab is inactive
+              Show toast alerts when new interactions arrive while OmniOAST tab
+              is inactive
             </small>
           </div>
         </div>
