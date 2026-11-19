@@ -36,8 +36,9 @@ export function createInteractshCallback(
 ) {
   return (interaction: Interaction) => {
     const method =
-      interaction["q-type"] !== undefined && interaction["q-type"] !== ""
-        ? String(interaction["q-type"])
+      // typeof: decrypted server data, so not only "missing or a string"
+      typeof interaction["q-type"] === "string" && interaction["q-type"] !== ""
+        ? interaction["q-type"]
         : typeof interaction["raw-request"] === "string"
           ? (interaction["raw-request"].split(" ")[0] ?? "")
           : "";

@@ -218,7 +218,7 @@ OmniOAST is a Caido security testing plugin for Out-of-Band Application Security
 - Database inspection: Backend uses Caido SDK's SQLite database accessible via `sdk.meta.db()`
 
 ## CI/CD & Workflows
-- `.github/workflows/validate.yml`: Runs typecheck and lint (currently lint commented out) on push to main
+- `.github/workflows/validate.yml`: Runs typecheck, lint (`eslint` without `--fix`, so unformatted code fails) and tests on push to main
 - `.github/workflows/release.yml`: Automated release workflow
 - `.github/workflows/contributors.yml`: Updates contributor list
 - Environment variables: `CAIDO_NODE_VERSION=20`, `CAIDO_PNPM_VERSION=9`
