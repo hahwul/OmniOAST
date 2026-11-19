@@ -22,14 +22,14 @@ vi.mock("@/utils/try-catch", () => ({
 
 // Mock crypto service
 const mockDecryptMessage = vi.fn();
-const mockEncodePublicKey = vi.fn().mockResolvedValue("mock-encoded-public-key");
+const mockEncodePublicKey = vi
+  .fn()
+  .mockResolvedValue("mock-encoded-public-key");
 const mockSetKeyPairFromPEM = vi.fn().mockResolvedValue(undefined);
 const mockExportPrivateKeyPEM = vi
   .fn()
   .mockResolvedValue("mock-private-key-pem");
-const mockExportPublicKeyPEM = vi
-  .fn()
-  .mockResolvedValue("mock-public-key-pem");
+const mockExportPublicKeyPEM = vi.fn().mockResolvedValue("mock-public-key-pem");
 
 vi.mock("@/services/crypto", () => ({
   useCryptoService: vi.fn(() => ({

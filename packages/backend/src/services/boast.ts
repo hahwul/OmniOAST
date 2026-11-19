@@ -1,12 +1,25 @@
 import { type RequestResponse, RequestSpec } from "caido:utils";
 
-import { type OASTEvent } from "../../types";
-
-// Import all required classes and types from 'caido:utils'
-// Using regular 'import' instead of 'import type'
-import type { CaidoBackendSDK } from "../../types";
+import { type CaidoBackendSDK, type OASTEvent } from "../../types";
 
 import { type OASTService } from "./provider";
+
+// The parts of a BOAST /events response that are read here. The body is not
+// validated beyond the checks below.
+type BoastEvent = {
+  id: string;
+  time?: string | null;
+  receiver?: string;
+  queryType?: string;
+  remoteAddress?: string;
+  dump?: string;
+};
+
+type BoastResponse = {
+  id?: string | null;
+  canary?: string | null;
+  events?: BoastEvent[] | null;
+};
 
 export class BoastService implements OASTService {
   private url: string;
@@ -39,8 +52,13 @@ export class BoastService implements OASTService {
         throw new Error("Response body is empty");
       }
 
-      const data = body.toJson() as any;
-      if (!this.id && data.id) {
+      const data = body.toJson() as BoastResponse;
+      if (
+        (this.id === null || this.id === "") &&
+        data.id !== undefined &&
+        data.id !== null &&
+        data.id !== ""
+      ) {
         this.id = data.id;
         const urlObj = new URL(this.url);
         this.domain = `${this.id}.${urlObj.hostname}`; // Generate payloadUrl here as well
@@ -48,11 +66,14 @@ export class BoastService implements OASTService {
       }
 
       // A fresh BOAST session reports `"events": null`
-      return (data.events ?? []).map((event: any) => ({
+      return (data.events ?? []).map((event) => ({
         id: event.id,
         type: "BOAST",
         destination: this.domain,
-        timestamp: event.time ? new Date(event.time).getTime() : Date.now(),
+        timestamp:
+          event.time !== undefined && event.time !== null && event.time !== ""
+            ? new Date(event.time).getTime()
+            : Date.now(),
         data: event,
         protocol: event.receiver,
         method: event.queryType,
@@ -87,7 +108,12 @@ export class BoastService implements OASTService {
       throw new Error("BOAST provider requires a non-empty token (Secret).");
     } // Return immediately if payloadUrl already exists
 
-    if (this.payloadUrl && this.id) {
+    if (
+      this.payloadUrl !== null &&
+      this.payloadUrl !== "" &&
+      this.id !== null &&
+      this.id !== ""
+    ) {
       return { id: this.id, payloadUrl: this.payloadUrl };
     }
     try {
@@ -105,9 +131,16 @@ export class BoastService implements OASTService {
         throw new Error("Response body is empty");
       }
 
-      const data = body.toJson() as any;
+      const data = body.toJson() as BoastResponse;
 
-      if (!data.id || !data.canary) {
+      if (
+        data.id === undefined ||
+        data.id === null ||
+        data.id === "" ||
+        data.canary === undefined ||
+        data.canary === null ||
+        data.canary === ""
+      ) {
         throw new Error("BOAST registration response missing id or canary");
       }
 
@@ -115,7 +148,7 @@ export class BoastService implements OASTService {
       const urlObj = new URL(this.url); // Create canary-based payloadUrl (http/https based on original url)
       this.payloadUrl = `${data.id}.${urlObj.hostname}`;
 
-      return { id: this.id!, payloadUrl: this.payloadUrl };
+      return { id: this.id, payloadUrl: this.payloadUrl };
     } catch (err) {
       this.sdk.console.error("Error during BOAST registration:", err);
       return null;

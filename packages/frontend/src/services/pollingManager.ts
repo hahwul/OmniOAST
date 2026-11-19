@@ -3,7 +3,10 @@ import { v4 as uuidv4 } from "uuid";
 import type { Provider } from "../../../backend/src/validation/schemas";
 
 import { useSDK } from "@/plugins/sdk";
-import { useClientService as useInteractshClient } from "@/services/interactsh";
+import {
+  type Interaction,
+  useClientService as useInteractshClient,
+} from "@/services/interactsh";
 import { useOastStore } from "@/stores/oastStore";
 import { formatTimestamp, toNumericTimestamp } from "@/utils/time";
 
@@ -31,29 +34,31 @@ export function createInteractshCallback(
   providerName: string,
   tabId: string,
 ) {
-  return (interaction: Record<string, unknown>) => {
-    const method = (interaction as any)["q-type"]
-      ? String((interaction as any)["q-type"])
-      : typeof (interaction as any)["raw-request"] === "string"
-        ? (interaction as any)["raw-request"].split(" ")[0] || ""
-        : "";
+  return (interaction: Interaction) => {
+    const method =
+      // typeof: decrypted server data, so not only "missing or a string"
+      typeof interaction["q-type"] === "string" && interaction["q-type"] !== ""
+        ? interaction["q-type"]
+        : typeof interaction["raw-request"] === "string"
+          ? (interaction["raw-request"].split(" ")[0] ?? "")
+          : "";
 
     oastStore.addInteraction(
       {
         id: uuidv4(),
         type: "interactsh",
-        correlationId: String((interaction as any)["full-id"]),
+        correlationId: String(interaction["full-id"]),
         data: interaction,
-        protocol: String((interaction as any).protocol),
+        protocol: String(interaction.protocol),
         method,
-        source: String((interaction as any)["remote-address"]),
-        destination: String((interaction as any)["full-id"]),
+        source: String(interaction["remote-address"]),
+        destination: String(interaction["full-id"]),
         provider: providerName,
-        timestamp: formatTimestamp((interaction as any).timestamp),
-        timestampNum: toNumericTimestamp((interaction as any).timestamp),
+        timestamp: formatTimestamp(interaction.timestamp),
+        timestampNum: toNumericTimestamp(interaction.timestamp),
         // Omitted by the server for some protocols (e.g. no SMTP raw-response)
-        rawRequest: String((interaction as any)["raw-request"] ?? ""),
-        rawResponse: String((interaction as any)["raw-response"] ?? ""),
+        rawRequest: String(interaction["raw-request"] ?? ""),
+        rawResponse: String(interaction["raw-response"] ?? ""),
       },
       tabId,
     );
@@ -68,7 +73,7 @@ export function usePollingManager() {
   const pollOnce = async (provider: Provider, tabId: string) => {
     try {
       const events = await sdk.backend.getOASTEvents(provider);
-      if (events && events.length > 0) {
+      if (events.length > 0) {
         // Dedup against the task's own tab: providers like webhook.site return
         // their full history on every poll, and the active tab may be another one.
         const tab = oastStore.tabs.find((t) => t.id === tabId);
@@ -162,12 +167,14 @@ export function usePollingManager() {
 
     // Pausing only stops polling so callbacks keep queueing on the server;
     // removing the task (deregister=true) also deregisters the session.
-    const stopFn = async (deregister?: boolean) => {
+    const stopFn = (deregister?: boolean) => {
       try {
         // Deregister in the background: removal must not wait on a slow server
-        if (deregister) void client.stop().catch(() => {});
+        if (deregister === true) void client.stop().catch(() => {});
         else client.stopPolling();
-      } catch (_) {}
+      } catch (_) {
+        // stopPolling throws if the client is not polling: nothing to stop then
+      }
       clearTask(pollingId, task);
       oastStore.setPollingRunning(pollingId, false);
     };
@@ -258,7 +265,7 @@ export function usePollingManager() {
         try {
           return await startInteractsh(item, task, provider.name, provider.id, {
             serverURL: provider.url,
-            token: provider.token || "",
+            token: provider.token ?? "",
           });
         } catch (e) {
           console.error(
@@ -284,7 +291,7 @@ export function usePollingManager() {
       } catch {
         consecutiveFailures++;
       }
-      await oastStore.updatePollingLastPolled(pollingId, Date.now());
+      oastStore.updatePollingLastPolled(pollingId, Date.now());
 
       // Identity check: after a pause+resume during this (slow) tick, a newer
       // task owns the id and this chain must end rather than run alongside it.

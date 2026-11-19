@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { openSearchPanel, search, searchKeymap } from "@codemirror/search";
 import { StateEffect } from "@codemirror/state";
-import { keymap } from "@codemirror/view";
+import { type EditorView, keymap } from "@codemirror/view";
 import { refDebounced, useClipboard } from "@vueuse/core";
 import Button from "primevue/button";
 import Column from "primevue/column";
-import DataTable from "primevue/datatable";
+import DataTable, { type DataTableRowSelectEvent } from "primevue/datatable";
 import Dialog from "primevue/dialog";
 import Dropdown from "primevue/dropdown";
 import { useToast } from "primevue/usetoast";
@@ -26,6 +26,13 @@ import { useOastStore } from "@/stores/oastStore";
 
 type PollingItem = ReturnType<typeof useOastStore>["pollingList"][number];
 type PollingSession = PollingItem["session"];
+type Interaction = ReturnType<typeof useOastStore>["interactions"][number];
+// An editor from sdk.ui. The SDK types getEditorView as always there and always
+// returning a view; the checks below do not take either for granted.
+type SdkEditor = {
+  getElement: () => HTMLElement;
+  getEditorView?: () => EditorView | undefined;
+};
 
 const { copy } = useClipboard();
 const sdk = useSDK();
@@ -33,8 +40,8 @@ const toast = useToast();
 const oastStore = useOastStore();
 const pollingManager = usePollingManager();
 
-const requestEditor = ref<any>(null);
-const responseEditor = ref<any>(null);
+const requestEditor = ref<SdkEditor | null>(null);
+const responseEditor = ref<SdkEditor | null>(null);
 const requestContainer = ref<HTMLElement | null>(null);
 const responseContainer = ref<HTMLElement | null>(null);
 
@@ -74,17 +81,16 @@ const expandedContent = ref("");
 const expandedTitle = ref("");
 const showExpandModal = ref(false);
 
-function openExpandModal(title: string, content: string) {
+function openExpandModal(title: string, content: string | undefined) {
   expandedTitle.value = title;
-  expandedContent.value = content || "";
+  expandedContent.value = content ?? "";
   showExpandModal.value = true;
 }
-
 
 const selectedProviderA = computed({
   get: () =>
     oastStore.activeTab
-      ? oastStore.tabProviders[oastStore.activeTab.id] || ""
+      ? (oastStore.tabProviders[oastStore.activeTab.id] ?? "")
       : "",
   set: (value) => {
     if (oastStore.activeTab) {
@@ -92,7 +98,7 @@ const selectedProviderA = computed({
     }
   },
 });
-const selectedProviderB = ref<string | undefined>(undefined); // Interaction 필터용
+const selectedProviderB = ref<string | null | undefined>(undefined); // Interaction 필터용
 const availableProviders = ref<Provider[]>([]);
 
 const availableProvidersWithAll = computed(() => [
@@ -100,11 +106,11 @@ const availableProvidersWithAll = computed(() => [
   ...availableProviders.value,
 ]);
 
-const selectedInteraction = ref<any>(null);
+const selectedInteraction = ref<Interaction | null>(null);
 const payloadInput = computed({
   get: () =>
     oastStore.activeTab
-      ? oastStore.tabPayloads[oastStore.activeTab.id] || ""
+      ? (oastStore.tabPayloads[oastStore.activeTab.id] ?? "")
       : "",
   set: (value) => {
     if (oastStore.activeTab) {
@@ -130,20 +136,22 @@ const filteredInteractions = computed(() => {
       (i.rawRequest?.toLowerCase() ?? "").includes(query) ||
       (i.rawResponse?.toLowerCase() ?? "").includes(query);
     const matchesProvider =
-      !selectedProviderB.value ||
+      selectedProviderB.value === undefined ||
+      selectedProviderB.value === null ||
+      selectedProviderB.value === "" ||
       i.provider ===
-        ((availableProviders.value &&
-          availableProviders.value.find((p) => p.id === selectedProviderB.value)
-            ?.name) ??
-          "");
+        (availableProviders.value.find((p) => p.id === selectedProviderB.value)
+          ?.name ?? "");
 
     // Time range filter
     let matchesTime = true;
     if (timeFrom.value) {
-      matchesTime = matchesTime && i.timestampNum >= new Date(timeFrom.value).getTime();
+      matchesTime =
+        matchesTime && i.timestampNum >= new Date(timeFrom.value).getTime();
     }
     if (timeTo.value) {
-      matchesTime = matchesTime && i.timestampNum <= new Date(timeTo.value).getTime();
+      matchesTime =
+        matchesTime && i.timestampNum <= new Date(timeTo.value).getTime();
     }
 
     return matchesSearch && matchesProvider && matchesTime;
@@ -175,7 +183,11 @@ async function getPayload() {
   const currentProvider = availableProviders.value.find(
     (p) => p.id === selectedProviderA.value,
   );
-  if (!currentProvider || !currentProvider.id) {
+  if (
+    !currentProvider ||
+    currentProvider.id === undefined ||
+    currentProvider.id === ""
+  ) {
     sdk.window.showToast("Please select a valid provider", {
       variant: "warning",
     });
@@ -183,7 +195,7 @@ async function getPayload() {
   }
 
   const settings = await sdk.backend.getCurrentSettings();
-  const pollingInterval = (settings?.pollingInterval || 5) * 1000;
+  const pollingInterval = (settings?.pollingInterval ?? 5) * 1000;
 
   let payloadUrl = "";
   let session: PollingSession | undefined;
@@ -194,7 +206,7 @@ async function getPayload() {
       const client = useClientService();
       await client.start({
         serverURL: currentProvider.url,
-        token: currentProvider.token || "",
+        token: currentProvider.token ?? "",
       });
       payloadUrl = client.generateUrl().url;
       const si = await client.getSessionInfo();
@@ -211,7 +223,10 @@ async function getPayload() {
       const payloadInfo =
         await sdk.backend.registerAndGetPayload(currentProvider);
 
-      if (payloadInfo?.payloadUrl) {
+      if (
+        payloadInfo?.payloadUrl !== undefined &&
+        payloadInfo.payloadUrl !== ""
+      ) {
         payloadUrl = payloadInfo.payloadUrl;
         // webhook.site/PostBin identify the bin by its URL; BOAST must keep its
         // events API URL (its payload is a bare domain).
@@ -225,7 +240,8 @@ async function getPayload() {
           // A new bin means the old one expired: its tasks would poll nothing
           // now and, resolving the provider again after a reload, this bin.
           const stale = oastStore.pollingList.filter(
-            (p) => p.providerId === currentProvider.id && p.payload !== payloadUrl,
+            (p) =>
+              p.providerId === currentProvider.id && p.payload !== payloadUrl,
           );
           for (const task of stale) await oastStore.removePolling(task.id);
         }
@@ -248,7 +264,9 @@ async function getPayload() {
   // Prefix is a subdomain label, so only apply it to bare-domain payloads
   const prefix = settings?.payloadPrefix;
   const finalPayload =
-    prefix && !/^[a-z][a-z0-9+.-]*:\/\//i.test(payloadUrl)
+    prefix !== undefined &&
+    prefix !== "" &&
+    !/^[a-z][a-z0-9+.-]*:\/\//i.test(payloadUrl)
       ? `${prefix}.${payloadUrl}`
       : payloadUrl;
   // The tab captured at click time, not whichever tab is active after the awaits
@@ -292,7 +310,7 @@ async function getPayload() {
 
 function clearInteractions() {
   oastStore.clearInteractions();
-  selectedInteraction.value = "";
+  selectedInteraction.value = null;
   sdk.window.showToast("Interactions cleared", { variant: "success" });
 }
 
@@ -318,13 +336,18 @@ async function pollTasks(tasks: PollingItem[]) {
             sessionInfo: {
               serverURL: task.session.serverURL,
               token: task.session.token,
-              privateKey: task.session.privateKey || "",
+              privateKey: task.session.privateKey ?? "",
               correlationID: task.session.correlationID,
               secretKey: task.session.secretKey,
               publicKey: task.session.publicKey,
             },
           },
-          createInteractshCallback(oastStore, task.id, provider.name, task.tabId),
+          createInteractshCallback(
+            oastStore,
+            task.id,
+            provider.name,
+            task.tabId,
+          ),
         );
         // Do not close/deregister: the background task still uses this session
         await tmpClient.poll();
@@ -385,12 +408,12 @@ async function removePayload(payload: string) {
   });
 }
 
-function showDetails(event: any) {
+function showDetails(event: DataTableRowSelectEvent) {
   selectedInteraction.value = event.data;
 }
 
 // Inject CodeMirror search extension into a Caido SDK editor
-function enableEditorSearch(editor: any) {
+function enableEditorSearch(editor: SdkEditor | null) {
   const view = editor?.getEditorView?.();
   if (!view) return;
   view.dispatch({
@@ -398,7 +421,7 @@ function enableEditorSearch(editor: any) {
   });
 }
 
-function triggerEditorSearch(editor: any) {
+function triggerEditorSearch(editor: SdkEditor | null) {
   const view = editor?.getEditorView?.();
   if (!view) return;
   openSearchPanel(view);
@@ -568,7 +591,9 @@ onMounted(() => {
       </div>
       <!-- 검색바 -->
 
-      <div class="oast-filter-bar px-4 mb-2 flex-shrink-0 flex items-center gap-2">
+      <div
+        class="oast-filter-bar px-4 mb-2 flex-shrink-0 flex items-center gap-2"
+      >
         <input
           v-model="searchQuery"
           type="text"
@@ -604,7 +629,7 @@ onMounted(() => {
             icon="fa fa-times"
             class="p-button-text p-button-sm w-8 min-w-0 p-0"
             title="Clear time filter"
-            style="height: 32px;"
+            style="height: 32px"
             @click="clearTimeFilter"
           />
         </div>
@@ -714,15 +739,19 @@ onMounted(() => {
     </div>
 
     <!-- Drag divider for resizing -->
-    <div
-      class="oast-resize-divider"
-      @mousedown="onDividerMouseDown"
-    ></div>
+    <div class="oast-resize-divider" @mousedown="onDividerMouseDown"></div>
 
-    <div class="w-full flex flex-col" :style="{ height: (100 - topPanelPercent) + '%' }">
+    <div
+      class="w-full flex flex-col"
+      :style="{ height: 100 - topPanelPercent + '%' }"
+    >
       <div v-show="selectedInteraction" class="flex gap-1 w-full h-full">
-        <div class="w-1/2 h-full flex flex-col bg-surface-0 dark:bg-surface-800 rounded">
-          <div class="flex items-center justify-between px-2 py-1 flex-shrink-0">
+        <div
+          class="w-1/2 h-full flex flex-col bg-surface-0 dark:bg-surface-800 rounded"
+        >
+          <div
+            class="flex items-center justify-between px-2 py-1 flex-shrink-0"
+          >
             <span class="text-xs font-semibold text-surface-500">Request</span>
             <div class="flex items-center gap-1">
               <Button
@@ -735,15 +764,24 @@ onMounted(() => {
                 v-tooltip.bottom="'Expand'"
                 icon="fa fa-expand"
                 class="p-button-rounded p-button-text h-6 w-6 min-w-0 p-0 text-xs"
-                @click="openExpandModal('Request', selectedInteraction?.rawRequest)"
+                @click="
+                  openExpandModal('Request', selectedInteraction?.rawRequest)
+                "
               />
             </div>
           </div>
-          <div ref="requestContainer" class="field flex-1 min-h-0 overflow-auto"></div>
+          <div
+            ref="requestContainer"
+            class="field flex-1 min-h-0 overflow-auto"
+          ></div>
         </div>
 
-        <div class="w-1/2 h-full flex flex-col bg-surface-0 dark:bg-surface-800 rounded">
-          <div class="flex items-center justify-between px-2 py-1 flex-shrink-0">
+        <div
+          class="w-1/2 h-full flex flex-col bg-surface-0 dark:bg-surface-800 rounded"
+        >
+          <div
+            class="flex items-center justify-between px-2 py-1 flex-shrink-0"
+          >
             <span class="text-xs font-semibold text-surface-500">Response</span>
             <div class="flex items-center gap-1">
               <Button
@@ -756,11 +794,16 @@ onMounted(() => {
                 v-tooltip.bottom="'Expand'"
                 icon="fa fa-expand"
                 class="p-button-rounded p-button-text h-6 w-6 min-w-0 p-0 text-xs"
-                @click="openExpandModal('Response', selectedInteraction?.rawResponse)"
+                @click="
+                  openExpandModal('Response', selectedInteraction?.rawResponse)
+                "
               />
             </div>
           </div>
-          <div ref="responseContainer" class="field flex-1 min-h-0 overflow-auto"></div>
+          <div
+            ref="responseContainer"
+            class="field flex-1 min-h-0 overflow-auto"
+          ></div>
         </div>
       </div>
 
@@ -778,7 +821,13 @@ onMounted(() => {
       :header="expandedTitle"
       :modal="true"
       :style="{ width: '90vw', height: '85vh' }"
-      :content-style="{ padding: 0, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }"
+      :content-style="{
+        padding: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        minHeight: 0,
+      }"
     >
       <template #header>
         <div class="flex items-center justify-between w-full pr-8">
@@ -925,7 +974,9 @@ onMounted(() => {
   font-size: 0.75rem;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
 }
 
 :deep(.cm-button:hover) {

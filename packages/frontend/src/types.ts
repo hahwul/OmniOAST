@@ -4,24 +4,32 @@ import {
   type Provider,
   type Settings,
 } from "../../backend/src/validation/schemas";
+import { type OASTEvent } from "../../backend/types";
+
+// A provider as the backend returns it: the id it assigned is always set
+type StoredProvider = Provider & { id: string };
 
 type API = {
-  createProvider: (provider: {
-    name: string;
-    type: "interactsh" | "BOAST" | "webhooksite" | "postbin";
-    url: string;
-    token: string;
-  }) => Promise<any>;
-  getProvider: (id: string) => Promise<any>;
-  updateProvider: (id: string, updates: Partial<any>) => Promise<any>;
+  // The backend validates the provider and resolves to null if it is invalid
+  createProvider: (
+    provider: Partial<Omit<Provider, "id">>,
+  ) => Promise<StoredProvider | null>;
+  getProvider: (id: string) => Promise<StoredProvider | null>;
+  updateProvider: (
+    id: string,
+    updates: Partial<Provider>,
+  ) => Promise<StoredProvider | null>;
   deleteProvider: (id: string) => Promise<boolean>;
-  listProviders: () => Promise<any[]>;
-  toggleProviderEnabled: (id: string, enabled: boolean) => Promise<any>;
+  listProviders: () => Promise<StoredProvider[]>;
+  toggleProviderEnabled: (
+    id: string,
+    enabled: boolean,
+  ) => Promise<StoredProvider | null>;
   // getOASTService: (provider: Provider) => Promise<OASTService | null>;
   registerAndGetPayload: (
     provider: Provider,
   ) => Promise<{ id: string; payloadUrl: string } | null>;
-  getOASTEvents: (provider: Provider) => Promise<any[]>;
+  getOASTEvents: (provider: Provider) => Promise<OASTEvent[]>;
 
   // Settings API
   createSettings: (settings: Omit<Settings, "id">) => Promise<Settings | null>;
@@ -36,11 +44,18 @@ type API = {
 };
 
 type SidebarSDKPatched = {
-  registerItem: (label: string, path: string, options?: any) => void;
+  registerItem: (
+    label: string,
+    path: string,
+    options?: Parameters<Caido["sidebar"]["registerItem"]>[2],
+  ) => void;
   setCount: (label: string, count: number) => void;
   // Optionally add getCount if needed
 };
 
-export type FrontendSDK = Caido<API, {}> & {
+export type FrontendSDK = Caido<API, Record<string, never>> & {
   sidebar: SidebarSDKPatched;
 };
+
+// A value sdk.storage can hold
+export type JSONValue = ReturnType<FrontendSDK["storage"]["get"]>;

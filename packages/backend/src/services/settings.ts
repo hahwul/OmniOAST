@@ -5,6 +5,14 @@ import { type Settings, SettingsSchema } from "../validation/schemas";
 
 type Database = Awaited<ReturnType<CaidoBackendSDK["meta"]["db"]>>;
 
+// A row of the settings table. The reads below do not rely on a column
+// holding its declared type.
+type SettingsRow = {
+  id?: string | null;
+  pollingInterval?: number | string;
+  payloadPrefix?: string | null;
+};
+
 export class SettingsService {
   private sdk: CaidoBackendSDK;
   private db: Database | null = null;
@@ -35,14 +43,18 @@ export class SettingsService {
     return this.initDb();
   }
 
-  async createSettings(
-    settings: Omit<Settings, "id"> | Record<string, any>,
-  ): Promise<Settings | null> {
+  async createSettings(settings: Partial<Settings>): Promise<Settings | null> {
     try {
       // Ensure we have primitive values with safe defaults
       const newSettings = {
         id: uuidv4(),
-        pollingInterval: Number(settings.pollingInterval || 30),
+        pollingInterval: Number(
+          settings.pollingInterval !== undefined &&
+            settings.pollingInterval !== 0 &&
+            !Number.isNaN(settings.pollingInterval)
+            ? settings.pollingInterval
+            : 30,
+        ),
         payloadPrefix:
           settings.payloadPrefix !== undefined
             ? String(settings.payloadPrefix)
@@ -65,20 +77,20 @@ export class SettingsService {
 
       return validatedSettings;
     } catch (error) {
-      this.console.error("Error in createSettings:" + error);
+      this.console.error("Error in createSettings:" + String(error));
       return null;
     }
   }
 
   async getSettings(id: string | undefined): Promise<Settings | null> {
     try {
-      if (!id) {
+      if (id === undefined || id === "") {
         return null;
       }
       const db = await this.getDb();
       const statement = await db.prepare("SELECT * FROM settings WHERE id = ?");
 
-      const result = (await statement.get(id)) as any;
+      const result = await statement.get<SettingsRow>(id);
 
       if (!result) {
         return null;
@@ -86,18 +98,26 @@ export class SettingsService {
 
       // Convert each field to the appropriate primitive type with careful type checking
       const settingsData = {
-        id: result.id ? String(result.id) : uuidv4(),
+        id:
+          result.id !== undefined && result.id !== null && result.id !== ""
+            ? String(result.id)
+            : uuidv4(),
         pollingInterval:
           result.pollingInterval !== undefined
             ? Number(result.pollingInterval)
             : 30,
-        payloadPrefix: result.payloadPrefix ? String(result.payloadPrefix) : "",
+        payloadPrefix:
+          result.payloadPrefix !== undefined &&
+          result.payloadPrefix !== null &&
+          result.payloadPrefix !== ""
+            ? String(result.payloadPrefix)
+            : "",
       };
 
       const parsed = SettingsSchema.parse(settingsData);
       return parsed;
     } catch (error) {
-      this.console.error("Error in getSettings:" + error);
+      this.console.error("Error in getSettings:" + String(error));
       return null;
     }
   }
@@ -109,7 +129,7 @@ export class SettingsService {
         "SELECT * FROM settings ORDER BY rowid DESC LIMIT 1",
       );
 
-      const result = (await statement.get()) as any;
+      const result = await statement.get<SettingsRow>();
 
       if (!result) {
         // If no settings exist yet, create default settings
@@ -120,13 +140,18 @@ export class SettingsService {
       const settingsData = {
         id: String(result.id),
         pollingInterval: Number(result.pollingInterval),
-        payloadPrefix: result.payloadPrefix ? String(result.payloadPrefix) : "",
+        payloadPrefix:
+          result.payloadPrefix !== undefined &&
+          result.payloadPrefix !== null &&
+          result.payloadPrefix !== ""
+            ? String(result.payloadPrefix)
+            : "",
       };
 
       const parsed = SettingsSchema.parse(settingsData);
       return parsed;
     } catch (error) {
-      this.console.error("Error in getCurrentSettings:" + error);
+      this.console.error("Error in getCurrentSettings:" + String(error));
       return this.createDefaultSettings();
     }
   }
@@ -141,10 +166,10 @@ export class SettingsService {
 
   async updateSettings(
     id: string | undefined,
-    updates: Partial<Settings> | Record<string, any>,
+    updates: Partial<Settings>,
   ): Promise<Settings | null> {
     try {
-      if (!id) {
+      if (id === undefined || id === "") {
         this.console.error("Invalid ID provided to updateSettings");
         return null;
       }
@@ -158,11 +183,11 @@ export class SettingsService {
       const updatedSettings = {
         id,
         pollingInterval:
-          updates && updates.pollingInterval !== undefined
+          updates.pollingInterval !== undefined
             ? Number(updates.pollingInterval)
             : existingSettings.pollingInterval,
         payloadPrefix:
-          updates && updates.payloadPrefix !== undefined
+          updates.payloadPrefix !== undefined
             ? String(updates.payloadPrefix)
             : existingSettings.payloadPrefix || "",
       };
@@ -183,14 +208,14 @@ export class SettingsService {
 
       return validatedSettings;
     } catch (error) {
-      this.console.error("Error in updateSettings:" + error);
+      this.console.error("Error in updateSettings:" + String(error));
       return null;
     }
   }
 
   async deleteSettings(id: string | undefined): Promise<boolean> {
     try {
-      if (!id) {
+      if (id === undefined || id === "") {
         this.console.error("Invalid ID provided to deleteSettings");
         return false;
       }
@@ -199,7 +224,7 @@ export class SettingsService {
       const result = await statement.run(id);
       return result.changes > 0;
     } catch (error) {
-      this.console.error("Error in deleteSettings:" + error);
+      this.console.error("Error in deleteSettings:" + String(error));
       return false;
     }
   }
@@ -209,17 +234,17 @@ export class SettingsService {
       const db = await this.getDb();
       const statement = await db.prepare("SELECT * FROM settings");
 
-      const results = await statement.all<any[]>();
+      const results = await statement.all<SettingsRow>();
 
-      return results.map((settings: any) =>
+      return results.map((settings) =>
         SettingsSchema.parse({
           id: String(settings.id),
           pollingInterval: Number(settings.pollingInterval),
-          payloadPrefix: settings.payloadPrefix || "",
+          payloadPrefix: settings.payloadPrefix ?? "",
         }),
       );
     } catch (error) {
-      this.console.error("Error in listSettings:" + error);
+      this.console.error("Error in listSettings:" + String(error));
       return [];
     }
   }

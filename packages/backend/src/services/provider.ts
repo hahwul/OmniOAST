@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 
-import type { CaidoBackendSDK } from "../../types";
+import type { CaidoBackendSDK, OASTEvent } from "../../types";
 import { type Provider, ProviderSchema } from "../validation/schemas";
 
 import { BoastService } from "./boast";
@@ -9,13 +9,23 @@ import { PostbinService } from "./postbin";
 import { WebhooksiteService } from "./webhooksite";
 
 export interface OASTService {
-  getEvents(): Promise<any[]>;
+  getEvents(): Promise<OASTEvent[]>;
   getId(): string | null;
   getDomain(): string | null;
   registerAndGetPayload?(): Promise<{ id: string; payloadUrl: string } | null>;
 }
 
 type Database = Awaited<ReturnType<CaidoBackendSDK["meta"]["db"]>>;
+
+// A row of the providers table
+type ProviderRow = {
+  id: string;
+  name: string;
+  type: string;
+  url: string;
+  token: string | null;
+  enabled: number;
+};
 
 export class ProviderService {
   private sdk: CaidoBackendSDK;
@@ -73,7 +83,7 @@ export class ProviderService {
 
       return validatedProvider;
     } catch (error) {
-      this.console.error("Error in createProvider:" + error);
+      this.console.error("Error in createProvider:" + String(error));
       return null;
     }
   }
@@ -89,7 +99,7 @@ export class ProviderService {
         "SELECT * FROM providers WHERE id = ?",
       );
 
-      const result = (await statement.get(safeId)) as any;
+      const result = await statement.get<ProviderRow>(safeId);
 
       if (!result) {
         return null;
@@ -101,7 +111,7 @@ export class ProviderService {
       });
       return parsed;
     } catch (error) {
-      this.console.error("Error in getProvider:" + error);
+      this.console.error("Error in getProvider:" + String(error));
       return null;
     }
   }
@@ -135,7 +145,7 @@ export class ProviderService {
 
       return validatedProvider;
     } catch (error) {
-      this.console.error("Error in updateProvider:" + error);
+      this.console.error("Error in updateProvider:" + String(error));
       return null;
     }
   }
@@ -147,7 +157,7 @@ export class ProviderService {
       const result = await statement.run(id);
       return result.changes > 0;
     } catch (error) {
-      this.console.error("Error in deleteProvider:" + error);
+      this.console.error("Error in deleteProvider:" + String(error));
       return false;
     }
   }
@@ -157,9 +167,9 @@ export class ProviderService {
       const db = await this.getDb();
       const statement = await db.prepare("SELECT * FROM providers");
 
-      const results = await statement.all<any[]>();
+      const results = await statement.all<ProviderRow>();
 
-      return results.map((provider: any) =>
+      return results.map((provider) =>
         ProviderSchema.parse({
           ...provider,
           id: String(provider.id),
@@ -167,7 +177,7 @@ export class ProviderService {
         }),
       );
     } catch (error) {
-      this.console.error("Error in listProviders:" + error);
+      this.console.error("Error in listProviders:" + String(error));
       return [];
     }
   }
@@ -179,7 +189,7 @@ export class ProviderService {
     try {
       return await this.updateProvider(id, { enabled });
     } catch (error) {
-      this.console.error("Error in toggleProviderEnabled:" + error);
+      this.console.error("Error in toggleProviderEnabled:" + String(error));
       return null;
     }
   }
@@ -187,7 +197,7 @@ export class ProviderService {
   public getOASTService(provider: Provider): OASTService | null {
     switch (provider.type) {
       case "BOAST":
-        return new BoastService(provider.url, provider.token || "", this.sdk);
+        return new BoastService(provider.url, provider.token ?? "", this.sdk);
       case "webhooksite":
         return new WebhooksiteService(provider.token, this.sdk, provider.url);
       case "postbin":

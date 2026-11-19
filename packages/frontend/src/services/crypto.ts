@@ -10,7 +10,7 @@ function pemToArrayBuffer(pem: string): ArrayBuffer {
 
 function arrayBufferToPem(buf: ArrayBuffer, label: string): string {
   const base64 = arrayBufferToBase64(buf);
-  const wrapped = base64.match(/.{1,64}/g)?.join("\n") || base64;
+  const wrapped = base64.match(/.{1,64}/g)?.join("\n") ?? base64;
   return `-----BEGIN ${label}-----\n${wrapped}\n-----END ${label}-----`;
 }
 
@@ -87,10 +87,10 @@ function aesKeyExpansion(key: Uint8Array): Uint8Array[] {
 
     const back = w[i - Nk]!;
     w[i] = new Uint8Array([
-      back[0]! ^ temp[0]!,
-      back[1]! ^ temp[1]!,
-      back[2]! ^ temp[2]!,
-      back[3]! ^ temp[3]!,
+      back[0]! ^ temp[0],
+      back[1]! ^ temp[1],
+      back[2]! ^ temp[2],
+      back[3]! ^ temp[3],
     ]);
   }
   return w;
@@ -100,7 +100,10 @@ function aesKeyExpansion(key: Uint8Array): Uint8Array[] {
  * AES block encrypt (single 16-byte block).
  * State layout: column-major — state[row + 4*col] = input[row + 4*col].
  */
-function aesEncryptBlock(roundKeys: Uint8Array[], block: Uint8Array): Uint8Array {
+function aesEncryptBlock(
+  roundKeys: Uint8Array[],
+  block: Uint8Array,
+): Uint8Array {
   const Nr = roundKeys.length / 4 - 1;
   const s = new Uint8Array(16);
 
@@ -244,7 +247,7 @@ export const useCryptoService = () => {
     privKey = await window.crypto.subtle.importKey("pkcs8", pkcs8, algo, true, [
       "decrypt",
     ]);
-    if (publicKeyPem) {
+    if (publicKeyPem !== undefined && publicKeyPem !== "") {
       const spki = pemToArrayBuffer(publicKeyPem);
       pubKey = await window.crypto.subtle.importKey("spki", spki, algo, true, [
         "encrypt",

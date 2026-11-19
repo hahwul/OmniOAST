@@ -1,6 +1,6 @@
 import type { DefineAPI } from "caido:plugin";
 
-import type { BackendEvents, CaidoBackendSDK } from "../types";
+import type { BackendEvents, CaidoBackendSDK, OASTEvent } from "../types";
 
 import { getProviderService, initProviderService } from "./services/provider";
 import { getSettingsService, initSettingsService } from "./services/settings";
@@ -9,7 +9,9 @@ import { type Provider, type Settings } from "./validation/schemas";
 export type { BackendEvents };
 
 export type API = DefineAPI<{
-  createProvider: (provider: Omit<Provider, "id" | "enabled">) => Promise<any>;
+  createProvider: (
+    provider: Omit<Provider, "id" | "enabled">,
+  ) => Promise<Provider | null>;
   getProvider: (id: string) => Promise<Provider | null>;
   updateProvider: (
     id: string,
@@ -25,7 +27,7 @@ export type API = DefineAPI<{
   registerAndGetPayload: (
     provider: Provider,
   ) => Promise<{ id: string; payloadUrl: string } | null>;
-  getOASTEvents: (provider: Provider) => Promise<any[]>;
+  getOASTEvents: (provider: Provider) => Promise<OASTEvent[]>;
 
   // Settings API
   createSettings: (settings: Omit<Settings, "id">) => Promise<Settings | null>;
@@ -39,6 +41,25 @@ export type API = DefineAPI<{
   listSettings: () => Promise<Settings[]>;
 }>;
 
+// What each handler is called with: the SDK, then the caller's arguments.
+// Handlers that take an id also accept the arguments packed into one array.
+type CreateProviderArgs = [unknown, Omit<Provider, "id" | "enabled">];
+type UpdateProviderArgs = [
+  unknown,
+  string | [string, Partial<Provider>],
+  Partial<Provider>,
+];
+type DeleteProviderArgs = [unknown, string | [string]];
+type ToggleArgs = [unknown, string | [string, boolean], boolean];
+type ProviderArgs = [unknown, Provider];
+type CreateSettingsArgs = [unknown, Omit<Settings, "id">];
+type IdArgs = [unknown, string];
+type UpdateSettingsArgs = [
+  unknown,
+  string | [string, Partial<Settings>?],
+  Partial<Settings>?,
+];
+
 // Accept sdk as CaidoBackendSDK to ensure compatibility with provider service
 export function init(sdk: CaidoBackendSDK) {
   initProviderService(sdk);
@@ -46,18 +67,18 @@ export function init(sdk: CaidoBackendSDK) {
   const providerService = getProviderService();
   const settingsService = getSettingsService();
 
-  (sdk as any).api?.register?.("createProvider", (...args: any[]) => {
+  sdk.api?.register?.("createProvider", (...args: CreateProviderArgs) => {
     // Provider data is located at args[1]
     const provider = args[1];
     return providerService.createProvider(provider);
   });
-  (sdk as any).api?.register?.("getProvider", (_sdk: unknown, id: string) =>
+  sdk.api?.register?.("getProvider", (_sdk: unknown, id: string) =>
     providerService.getProvider(id),
   );
-  (sdk as any).api?.register?.("updateProvider", (...args: any[]) => {
+  sdk.api?.register?.("updateProvider", (...args: UpdateProviderArgs) => {
     // If args[1] is an array, it has [id, updates] structure
     let id, updates;
-    if (args[1] && Array.isArray(args[1])) {
+    if (Array.isArray(args[1])) {
       [id, updates] = args[1];
     } else {
       id = args[1];
@@ -65,21 +86,19 @@ export function init(sdk: CaidoBackendSDK) {
     }
     return providerService.updateProvider(id, updates);
   });
-  (sdk as any).api?.register?.("deleteProvider", (...args: any[]) => {
+  sdk.api?.register?.("deleteProvider", (...args: DeleteProviderArgs) => {
     let id;
-    if (args[1] && Array.isArray(args[1])) {
+    if (Array.isArray(args[1])) {
       [id] = args[1];
     } else {
       id = args[1];
     }
     return providerService.deleteProvider(id);
   });
-  (sdk as any).api?.register?.("listProviders", () =>
-    providerService.listProviders(),
-  );
-  (sdk as any).api?.register?.("toggleProviderEnabled", (...args: any[]) => {
+  sdk.api?.register?.("listProviders", () => providerService.listProviders());
+  sdk.api?.register?.("toggleProviderEnabled", (...args: ToggleArgs) => {
     let id, enabled;
-    if (args[1] && Array.isArray(args[1])) {
+    if (Array.isArray(args[1])) {
       [id, enabled] = args[1];
     } else {
       id = args[1];
@@ -89,9 +108,9 @@ export function init(sdk: CaidoBackendSDK) {
   });
 
   // Expose OAST service related functionality
-  (sdk as any).api?.register?.(
+  sdk.api?.register?.(
     "registerAndGetPayload",
-    async (...args: any[]) => {
+    async (...args: ProviderArgs) => {
       const provider = args[1];
       const service = providerService.getOASTService(provider);
       if (!service || !service.registerAndGetPayload) return null;
@@ -99,7 +118,7 @@ export function init(sdk: CaidoBackendSDK) {
     },
   );
 
-  (sdk as any).api?.register?.("getOASTEvents", async (...args: any[]) => {
+  sdk.api?.register?.("getOASTEvents", async (...args: ProviderArgs) => {
     const provider = args[1];
     const service = providerService.getOASTService(provider);
     if (!service) return [];
@@ -108,12 +127,9 @@ export function init(sdk: CaidoBackendSDK) {
   });
 
   // Settings API registration
-  (sdk as any).api?.register?.("createSettings", (...args: any[]) => {
+  sdk.api?.register?.("createSettings", (...args: CreateSettingsArgs) => {
     // Settings data is located at args[1]
-    const settingsData = args[1];
-
-    // Type assertion and validation
-    const settingsInput = settingsData as Record<string, any>;
+    const settingsInput = args[1];
 
     // Ensure we have primitive values
     const settings: Partial<Settings> = {
@@ -125,7 +141,7 @@ export function init(sdk: CaidoBackendSDK) {
 
     return settingsService.createSettings(settings);
   });
-  (sdk as any).api?.register?.("getSettings", (...args: any[]) => {
+  sdk.api?.register?.("getSettings", (...args: IdArgs) => {
     const id = args[1];
     if (!id) {
       return null;
@@ -133,13 +149,13 @@ export function init(sdk: CaidoBackendSDK) {
     return settingsService.getSettings(String(id));
   });
 
-  (sdk as any).api?.register?.("getCurrentSettings", () => {
+  sdk.api?.register?.("getCurrentSettings", () => {
     return settingsService.getCurrentSettings();
   });
-  (sdk as any).api?.register?.("updateSettings", (...args: any[]) => {
+  sdk.api?.register?.("updateSettings", (...args: UpdateSettingsArgs) => {
     // If args[1] is an array, it has [id, updates] structure
     let id, updates;
-    if (args[1] && Array.isArray(args[1])) {
+    if (Array.isArray(args[1])) {
       [id, updates] = args[1];
     } else {
       id = args[1];
@@ -150,8 +166,7 @@ export function init(sdk: CaidoBackendSDK) {
       return null;
     }
 
-    // Type assertion to avoid TypeScript errors
-    const updateData = updates as Record<string, any>;
+    const updateData = updates;
 
     // Ensure we have primitive values
     const safeUpdates: Partial<Settings> = {};
@@ -166,14 +181,12 @@ export function init(sdk: CaidoBackendSDK) {
 
     return settingsService.updateSettings(String(id), safeUpdates);
   });
-  (sdk as any).api?.register?.("deleteSettings", (...args: any[]) => {
+  sdk.api?.register?.("deleteSettings", (...args: IdArgs) => {
     const id = args[1];
     if (!id) {
       return false;
     }
     return settingsService.deleteSettings(String(id));
   });
-  (sdk as any).api?.register?.("listSettings", () =>
-    settingsService.listSettings(),
-  );
+  sdk.api?.register?.("listSettings", () => settingsService.listSettings());
 }
