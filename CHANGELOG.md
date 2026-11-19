@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 ### Fixed
+- Deleting or enabling/disabling a provider, and the Interactsh quick-add, showed a success toast even when the backend reported a failure
 - Resuming a polling task while it was still starting (e.g. clicking Resume during startup) started a second Interactsh client that could never be stopped; removing or pausing a task mid-start now cancels the start
 - Pausing and resuming a task during a slow poll left two polling loops running for the same task
 - Clearing a tab's interactions no longer brings back the whole webhook.site / BOAST / Custom HTTP history on the next poll
@@ -19,6 +20,19 @@ All notable changes to this project will be documented in this file.
 - BOAST DNS interactions never showed their query type in the Method column
 - Clicking Get Payload again for a provider that returns the same payload (webhook.site, PostBin, BOAST, Custom HTTP) no longer stacks a duplicate polling task on the tab; the existing task is restarted so provider and interval changes apply
 - Saves that overlapped (e.g. an interaction arriving while the polling list was being saved) wrote each other's data back to an older state, so a just-received interaction, tab or polling task could be missing after a reload. Storage writes are now queued and coalesced
+- A provider stored without a token (NULL in the database) made the whole provider list come back empty and that provider impossible to load
+- One malformed entry in the stored plugin data (e.g. a `null` polling task or a tab without interactions) stopped the OmniOAST page from loading; such entries are now skipped
+- Get Payload, Resume and Poll no longer fail silently: settings that cannot be loaded, a polling task that cannot be started and tasks whose provider is disabled or deleted now show a toast. The "Polling N task(s)" notice of the Poll button was never shown
+- Closing a tab while Get Payload was still registering left a polling task (and an Interactsh session) behind for the missing tab
+- Clicking Get Payload again while it was still registering registered a second bin/token for the same provider
+- When settings could not be loaded, Get Payload used a 5 s polling interval instead of the 30 s default
+- Changing the polling interval in Settings now applies to existing polling tasks (running ones are restarted), not only to new payloads
+- Paused polling tasks are now kept paused after a reload instead of all resuming
+- An expired PostBin bin was polled forever as if it were empty; its task is now paused with a toast saying to get a new payload
+- Webhook.site polling read only the newest 50 requests, so anything beyond that arriving between two polls was never shown
+- Tab rename: Escape saved the typed name anyway, an emptied name left the input stuck in edit mode, and double-clicking inside the input reset what had been typed
+- The request/response of the selected interaction stayed on screen after switching to another tab
+- Removing a payload (its chip or its polling task) left it in the tab's payload field
 
 ## 0.6.1
 

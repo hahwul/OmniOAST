@@ -503,6 +503,50 @@ describe("oastStore", () => {
       expect(store.pollingStatus["poll-1"]).toBe("stopped");
     });
 
+    it("keeps a paused task paused across a reload", async () => {
+      const store = useOastStore();
+      const tab = store.tabs[0]!;
+
+      await store.addPolling({
+        id: "poll-1",
+        payload: "test.oast.fun",
+        provider: "interactsh",
+        lastChecked: 1000,
+        interval: 5000,
+        stop: () => {},
+        tabId: tab.id,
+        tabName: tab.name,
+      });
+      await store.pausePolling("poll-1");
+
+      expect(mockStorage["omnioast.pollingList"][0].paused).toBe(true);
+
+      setActivePinia(createPinia());
+      expect(useOastStore().pollingList[0]!.paused).toBe(true);
+    });
+
+    it("does not save a restart's stop as a pause by the user", async () => {
+      const store = useOastStore();
+      const tab = store.tabs[0]!;
+      const stopFn = vi.fn();
+      await store.addPolling({
+        id: "poll-1",
+        payload: "test.oast.fun",
+        provider: "interactsh",
+        lastChecked: 1000,
+        interval: 5000,
+        stop: stopFn,
+        tabId: tab.id,
+        tabName: tab.name,
+      });
+
+      // e.g. the restart's resume never happens because Caido reloads
+      await store.pausePolling("poll-1", { persist: false });
+
+      expect(stopFn).toHaveBeenCalled();
+      expect(mockStorage["omnioast.pollingList"][0].paused).toBeUndefined();
+    });
+
     it("should set polling running status", () => {
       const store = useOastStore();
 
@@ -626,6 +670,29 @@ describe("oastStore", () => {
 
       expect(store.pollingList.length).toBe(0);
       expect(store.tabPayloadHistory[tab.id]).toEqual([]);
+    });
+
+    it("stops offering a payload in the tab's payload field once its task is removed", async () => {
+      const store = useOastStore();
+      const tab = store.tabs[0]!;
+      const task = {
+        provider: "interactsh",
+        lastChecked: 1000,
+        interval: 5000,
+        tabId: tab.id,
+        tabName: tab.name,
+      };
+      await store.addPolling({ ...task, id: "old", payload: "old.oast.fun" });
+      await store.addPolling({ ...task, id: "new", payload: "new.oast.fun" });
+      await store.setTabPayload(tab.id, "new.oast.fun");
+
+      // Not the payload on show: the field keeps its value
+      await store.removePolling("old");
+      expect(store.tabPayloads[tab.id]).toBe("new.oast.fun");
+
+      await store.removePolling("new");
+      expect(store.tabPayloads[tab.id]).toBeUndefined();
+      expect(mockStorage["omnioast.tabPayloads"]).toEqual({});
     });
   });
 
@@ -790,6 +857,62 @@ describe("oastStore", () => {
       // Only valid item should be loaded
       expect(store.pollingList.length).toBe(1);
       expect(store.pollingList[0]!.id).toBe("p1");
+    });
+
+    it("loads what it can from malformed storage instead of throwing", () => {
+      mockStorage["omnioast.tabs"] = [
+        null,
+        "not a tab",
+        {
+          id: "t1",
+          name: "Kept",
+          interactions: [null, "x", { id: "i1" }],
+          dismissedIds: "nope",
+        },
+        { id: "t2", name: "No interactions" },
+      ];
+      mockStorage["omnioast.activeTabId"] = 7;
+      mockStorage["omnioast.pollingList"] = [
+        null,
+        "x",
+        {
+          id: "p1",
+          payload: "x",
+          provider: "interactsh",
+          lastChecked: 100,
+          interval: 5000,
+          tabId: "t1",
+          tabName: "Kept",
+        },
+      ];
+      mockStorage["omnioast.tabPayloads"] = "oops";
+      mockStorage["omnioast.tabProviders"] = ["a"];
+      mockStorage["omnioast.tabPayloadHistory"] = { t1: "oops", t2: ["p"] };
+      mockStorage["omnioast.activeProviders"] = "oops";
+
+      setActivePinia(createPinia());
+      const store = useOastStore();
+
+      expect(store.tabs.map((t) => t.id)).toEqual(["t1", "t2"]);
+      expect(store.tabs[0]!.interactions.map((i) => i.id)).toEqual(["i1"]);
+      expect(store.tabs[0]!.dismissedIds).toBeUndefined();
+      expect(store.tabs[1]!.interactions).toEqual([]);
+      expect(store.activeTabId).toBe("t1");
+      expect(store.pollingList.map((p) => p.id)).toEqual(["p1"]);
+      expect(store.tabPayloads).toEqual({});
+      expect(store.tabProviders).toEqual({});
+      expect(store.tabPayloadHistory).toEqual({ t2: ["p"] });
+      expect(store.activeProviders).toEqual({});
+    });
+
+    it("starts with a fresh tab when the stored tabs are not a list", () => {
+      mockStorage["omnioast.tabs"] = { id: "t1" };
+
+      setActivePinia(createPinia());
+      const store = useOastStore();
+
+      expect(store.tabs).toHaveLength(1);
+      expect(store.tabs[0]!.interactions).toEqual([]);
     });
 
     it("should migrate legacy lastPolled to lastChecked", () => {

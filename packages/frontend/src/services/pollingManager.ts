@@ -24,6 +24,10 @@ interface RunningTask {
 
 const runningTasks: Record<string, RunningTask> = {};
 
+// The message backend/src/services/postbin.ts throws for a bin that is gone;
+// Caido wraps a thrown backend error, so it is looked for inside the text.
+const POSTBIN_BIN_GONE = "PostBin bin no longer exists";
+
 /**
  * Creates an interactsh interaction callback for use with the client.
  * Shared by background polling and the manual one-shot poll in Oast.vue.
@@ -199,6 +203,10 @@ export function usePollingManager() {
     });
 
     try {
+      // Asked to run again: a reload must not treat it as paused any more
+      if (item.paused === true) {
+        await oastStore.updatePolling(pollingId, { paused: false });
+      }
       const started = await startTask(item, task);
       if (!started) clearTask(pollingId, task);
       return started;
@@ -282,14 +290,28 @@ export function usePollingManager() {
 
     // Start interval polling for non-interactsh providers
     let consecutiveFailures = 0;
+    let binGone = false;
     const MAX_BACKOFF_MULTIPLIER = 8; // Cap at 8x the base interval
 
     const doTick = async () => {
       try {
         await pollOnce(provider, item.tabId);
         consecutiveFailures = 0; // Reset on success
-      } catch {
+      } catch (e) {
         consecutiveFailures++;
+        // Bins last 30 minutes and do not come back: retrying would only keep
+        // a dead task looking alive
+        const message = String(
+          (e as { message?: unknown } | undefined)?.message ?? e,
+        );
+        if (isCurrent() && message.includes(POSTBIN_BIN_GONE)) {
+          binGone = true;
+          sdk.window.showToast(
+            `${provider.name}: the PostBin bin has expired. Use Get Payload for a new one.`,
+            { variant: "error" },
+          );
+          await oastStore.pausePolling(pollingId);
+        }
       }
       oastStore.updatePollingLastPolled(pollingId, Date.now());
 
@@ -308,22 +330,54 @@ export function usePollingManager() {
 
     // First immediate tick then recursive timeout
     await doTick();
-    return true;
+    return !binGone;
   };
 
   // Concurrent so one slow first poll (a PostBin drain can take 20s+) doesn't
   // hold up the rest; allSettled so one failure doesn't abort the others.
   const resumeAll = async () => {
-    await Promise.allSettled(
+    const results = await Promise.allSettled(
       oastStore.pollingList
-        .filter((item) => oastStore.pollingStatus[item.id] !== "running")
+        .filter(
+          (item) =>
+            item.paused !== true &&
+            oastStore.pollingStatus[item.id] !== "running",
+        )
         .map((item) => resume(item.id)),
     );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    if (failed > 0) {
+      sdk.window.showToast(`Failed to resume ${failed} polling task(s)`, {
+        variant: "error",
+      });
+    }
+  };
+
+  // The interval is stored per task. Applies a changed setting to all of them,
+  // restarting the ones that are polling (or starting) so it takes effect now.
+  const applyInterval = async (interval: number) => {
+    const results = await Promise.allSettled(
+      oastStore.pollingList
+        .filter((item) => item.interval !== interval)
+        .map(async ({ id }) => {
+          const active = runningTasks[id] !== undefined;
+          if (active) await oastStore.pausePolling(id, { persist: false });
+          await oastStore.updatePolling(id, { interval });
+          if (active) await resume(id);
+        }),
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    if (failed > 0) {
+      sdk.window.showToast(`Failed to restart ${failed} polling task(s)`, {
+        variant: "error",
+      });
+    }
   };
 
   return {
     resumeAll,
     resume,
     pollOnce,
+    applyInterval,
   };
 }

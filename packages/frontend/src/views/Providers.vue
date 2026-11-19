@@ -198,7 +198,10 @@ const saveProvider = async () => {
 const deleteProvider = async (id: string) => {
   if (!id) return;
   try {
-    await sdk.backend.deleteProvider(id);
+    // The backend reports a failure as false, not as an error
+    if (!(await sdk.backend.deleteProvider(id))) {
+      throw new Error("deleteProvider returned false");
+    }
     sdk.window.showToast("Provider deleted", { variant: "success" });
     await loadProviders();
   } catch (error) {
@@ -214,7 +217,12 @@ const handleDelete = (provider: FetchedProvider) => {
 
 const toggleEnabled = async (provider: FetchedProvider) => {
   try {
-    await sdk.backend.toggleProviderEnabled(provider.id, !provider.enabled);
+    const updated = await sdk.backend.toggleProviderEnabled(
+      provider.id,
+      !provider.enabled,
+    );
+    if (updated === null)
+      throw new Error("toggleProviderEnabled returned null");
     sdk.window.showToast("Provider status updated", { variant: "success" });
     await loadProviders();
   } catch (error) {
@@ -255,7 +263,9 @@ const addPublicInteractshProvider = async () => {
       token: "",
       enabled: true,
     };
-    await sdk.backend.createProvider(payload);
+    if ((await sdk.backend.createProvider(payload)) === null) {
+      throw new Error("createProvider returned null");
+    }
     sdk.window.showToast("Public Interactsh Provider created", {
       variant: "success",
     });

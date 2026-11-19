@@ -58,6 +58,7 @@ export class PostbinService implements OASTService {
     // Outside the try: shift removes requests from the bin, so the ones already
     // fetched must still be returned if a later shift fails.
     const events: OASTEvent[] = [];
+    let binGone = false;
     try {
       let requestCount = 0;
 
@@ -75,7 +76,9 @@ export class PostbinService implements OASTService {
         const res: RequestResponse = await this.sdk.requests.send(spec);
 
         if (res.response.getCode() === 404) {
-          // No more requests
+          // No more requests, or no bin: both are a 404, told apart only by
+          // the message ("No requests in this bin" / "No such bin")
+          binGone = /no such bin/i.test(res.response.getBody()?.toText() ?? "");
           break;
         }
 
@@ -143,12 +146,16 @@ export class PostbinService implements OASTService {
 
         requestCount++;
       }
-
-      return events;
     } catch (error) {
       this.sdk.console.error("Error fetching PostBin events:", error);
-      return events;
     }
+
+    // Thrown, so the poller can tell a bin that expired (they last 30 minutes)
+    // from a quiet one. The frontend matches this message: keep them in sync.
+    if (binGone && events.length === 0) {
+      throw new Error("PostBin bin no longer exists");
+    }
+    return events;
   }
 
   public getId(): string | null {

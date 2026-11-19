@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { RequestSpec } from "caido:utils";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
 import { WebhooksiteService } from "../services/webhooksite";
 
@@ -118,6 +119,40 @@ describe("WebhooksiteService", () => {
         correlationId: "event-1",
         rawRequest: "test content",
       });
+    });
+
+    it("reads every page of requests, keeping them if a later page fails", async () => {
+      const page = (uuids: string[], isLastPage: boolean) => ({
+        toJson: () => ({
+          data: uuids.map((uuid) => ({ uuid })),
+          is_last_page: isLastPage,
+        }),
+      });
+      mockResponse.getBody
+        .mockReturnValueOnce(page(["e3", "e2"], false))
+        .mockReturnValueOnce(page(["e1"], true));
+      mockSdk.requests.send.mockResolvedValue(mockRequestResponse);
+      const service = new WebhooksiteService(
+        undefined,
+        mockSdk as any,
+        "https://webhook.site/12345678-1234-1234-1234-123456789abc",
+      );
+
+      const events = await service.getEvents();
+
+      expect(events.map((e) => e.id)).toEqual(["e3", "e2", "e1"]);
+      const urls = (RequestSpec as unknown as Mock).mock.calls.map((c) => c[0]);
+      expect(urls[0]).toContain("page=1");
+      expect(urls[1]).toContain("page=2");
+
+      mockResponse.getBody.mockReturnValueOnce(page(["e3", "e2"], false));
+      mockSdk.requests.send
+        .mockResolvedValueOnce(mockRequestResponse)
+        .mockRejectedValueOnce(new Error("network"));
+      expect((await service.getEvents()).map((e) => e.id)).toEqual([
+        "e3",
+        "e2",
+      ]);
     });
 
     it("reads webhook.site's zone-less created_at as UTC", async () => {

@@ -29,6 +29,8 @@ const setActiveTab = (tabId: string) => {
 };
 
 const startEditing = (tab: { id: string; name: string }) => {
+  // A double click inside the input (selecting a word) bubbles up to the tab
+  if (editingTabId.value === tab.id) return;
   editingTabId.value = tab.id;
   editingName.value = tab.name;
   nextTick(() => {
@@ -38,9 +40,13 @@ const startEditing = (tab: { id: string; name: string }) => {
 };
 
 const finishEditing = (tabId: string) => {
-  if (editingName.value.trim() === "") return;
-  oastStore.updateTabName(tabId, editingName.value);
+  // Removing the input blurs it (Chromium), which lands here once more after
+  // Enter and, without this check, saved the name that Escape had cancelled
+  if (editingTabId.value !== tabId) return;
   editingTabId.value = null;
+  // An empty name keeps the old one
+  const name = editingName.value.trim();
+  if (name !== "") oastStore.updateTabName(tabId, name);
 };
 </script>
 

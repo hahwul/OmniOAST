@@ -100,7 +100,10 @@ const pauseTask = async (pollingId: string) => {
 };
 
 const resumePolling = async (pollingId: string) => {
-  const ok = await pollingManager.resume(pollingId);
+  const ok = await pollingManager.resume(pollingId).catch((error: unknown) => {
+    console.error("Failed to resume polling task:", error);
+    return false;
+  });
   if (!ok) {
     sdk.window.showToast("Failed to resume polling task", { variant: "error" });
   } else {

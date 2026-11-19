@@ -6,10 +6,12 @@ import ToggleSwitch from "primevue/toggleswitch";
 import { onMounted, ref } from "vue";
 
 import { useSDK } from "@/plugins/sdk";
+import { usePollingManager } from "@/services/pollingManager";
 import { useOastStore } from "@/stores/oastStore";
 
 const sdk = useSDK();
 const oastStore = useOastStore();
+const pollingManager = usePollingManager();
 
 // Define settings interface
 interface SettingsData {
@@ -64,6 +66,8 @@ const saveSettings = () => {
         sdk.window.showToast("Settings updated successfully", {
           variant: "success",
         });
+        // Existing tasks carry their own interval
+        void pollingManager.applyInterval(result.pollingInterval * 1000);
       })
       .catch((error: unknown) => {
         sdk.window.showToast("Failed to update settings", {
@@ -82,6 +86,7 @@ const saveSettings = () => {
         sdk.window.showToast("Settings created successfully", {
           variant: "success",
         });
+        void pollingManager.applyInterval(result.pollingInterval * 1000);
       })
       .catch((error: unknown) => {
         sdk.window.showToast("Failed to create settings", {

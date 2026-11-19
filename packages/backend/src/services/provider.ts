@@ -107,6 +107,8 @@ export class ProviderService {
 
       const parsed = ProviderSchema.parse({
         ...result,
+        // NULL when the provider was created without a token
+        token: result.token ?? undefined,
         enabled: !!result.enabled,
       });
       return parsed;
@@ -173,6 +175,7 @@ export class ProviderService {
         ProviderSchema.parse({
           ...provider,
           id: String(provider.id),
+          token: provider.token ?? undefined,
           enabled: !!provider.enabled,
         }),
       );
