@@ -441,5 +441,32 @@ describe("CustomHttpService", () => {
 
       expect((events[0] as any).rawRequest).toBe("BODY-CONTENT");
     });
+
+    it("should stringify non-string body/rawResponse (the UI searches and renders them as text)", async () => {
+      mockResponse.getBody.mockReturnValue({
+        toJson: () => [
+          {
+            id: "raw-3",
+            body: { user: "admin" },
+            rawResponse: { status: 200 },
+          },
+        ],
+      });
+      mockSdk.requests.send.mockResolvedValue(mockRequestResponse);
+
+      const service = new CustomHttpService(
+        undefined,
+        mockSdk as any,
+        "https://example.com/oast",
+      );
+      const events = await service.getEvents();
+
+      expect((events[0] as any).rawRequest).toBe(
+        JSON.stringify({ user: "admin" }, null, 2),
+      );
+      expect((events[0] as any).rawResponse).toBe(
+        JSON.stringify({ status: 200 }, null, 2),
+      );
+    });
   });
 });

@@ -6,8 +6,12 @@ const mockStorage: Record<string, any> = {};
 vi.mock("@/plugins/sdk", () => ({
   useSDK: () => ({
     storage: {
+      // Like Caido: get() returns a copy of the last committed value, and
+      // set() replaces it only once the write has gone through.
       get: () => ({ ...mockStorage }),
       set: vi.fn(async (data: Record<string, any>) => {
+        await Promise.resolve();
+        resetStorage();
         Object.assign(mockStorage, data);
       }),
     },
@@ -40,6 +44,22 @@ describe("oastStore", () => {
     resetStorage();
     setActivePinia(createPinia());
     vi.clearAllMocks();
+  });
+
+  it("keeps every key when saves of different keys overlap", async () => {
+    const store = useOastStore();
+
+    await Promise.all([
+      store.setTabPayload("tab-1", "payload.example"),
+      store.setTabProvider("tab-1", "provider-1"),
+    ]);
+
+    expect(mockStorage["omnioast.tabPayloads"]).toEqual({
+      "tab-1": "payload.example",
+    });
+    expect(mockStorage["omnioast.tabProviders"]).toEqual({
+      "tab-1": "provider-1",
+    });
   });
 
   describe("Tab Management", () => {

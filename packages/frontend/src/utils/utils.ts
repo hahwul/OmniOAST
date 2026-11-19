@@ -8,16 +8,20 @@
  *
  * @param length - The length of the string to generate
  * @param lettersOnly - If true, only lowercase letters will be used (no numbers)
+ * @param alphabet - Characters to draw from instead (overrides lettersOnly)
  * @returns A random string of the specified length
  */
 export const generateRandomString = (
   length: number,
   lettersOnly: boolean = false,
+  alphabet?: string,
 ) => {
   if (length <= 0) return "";
-  const characters = lettersOnly
-    ? "abcdefghijklmnopqrstuvwxyz"
-    : "abcdefghijklmnopqrstuvwxyz0123456789";
+  const characters =
+    alphabet ??
+    (lettersOnly
+      ? "abcdefghijklmnopqrstuvwxyz"
+      : "abcdefghijklmnopqrstuvwxyz0123456789");
   const charsLen = characters.length;
   // Use rejection sampling to avoid modulo bias. Threshold is the largest
   // multiple of charsLen that fits in a byte; values >= threshold are rejected.

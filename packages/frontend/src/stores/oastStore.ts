@@ -124,6 +124,20 @@ export const useOastStore = defineStore("oast", () => {
     }, delayMs);
   }
 
+  // sdk.storage.get() only reflects a set() once that set() has resolved, so
+  // overlapping get→set pairs would write each other's keys back to stale
+  // values (e.g. a polling-list save dropping a just-saved interaction). Writes
+  // are queued, and read their values when they run.
+  let storageWrites: Promise<void> = Promise.resolve();
+  const persist = (values: () => Record<string, unknown>) => {
+    const run = async () => {
+      const storage = (sdk.storage.get() as Record<string, any>) || {};
+      await sdk.storage.set({ ...storage, ...values() });
+    };
+    storageWrites = storageWrites.then(run, run);
+    return storageWrites;
+  };
+
   // Storage keys for persisting data between sessions
   const storageKeyTabs = "omnioast.tabs";
   const storageKeyActiveTabId = "omnioast.activeTabId";
@@ -179,13 +193,12 @@ export const useOastStore = defineStore("oast", () => {
   /**
    * Saves current tabs and active tab to persistent storage
    */
-  const saveTabs = async () => {
-    const storage = (sdk.storage.get() as Record<string, any>) || {};
-    storage[storageKeyTabs] = tabs.value;
-    storage[storageKeyActiveTabId] = activeTabId.value;
-    storage[storageKeyInteractionCounter] = interactionCounter.value;
-    await sdk.storage.set(storage);
-  };
+  const saveTabs = () =>
+    persist(() => ({
+      [storageKeyTabs]: tabs.value,
+      [storageKeyActiveTabId]: activeTabId.value,
+      [storageKeyInteractionCounter]: interactionCounter.value,
+    }));
 
   /**
    * Adds a new tab
@@ -350,9 +363,7 @@ export const useOastStore = defineStore("oast", () => {
    */
   const saveProviderData = async (type: string, data: any) => {
     activeProviders.value[type] = data;
-    const storage = (sdk.storage.get() as Record<string, any>) || {};
-    storage[storageKeyActiveProviders] = activeProviders.value;
-    await sdk.storage.set(storage);
+    await persist(() => ({ [storageKeyActiveProviders]: activeProviders.value }));
   };
 
   /**
@@ -361,9 +372,7 @@ export const useOastStore = defineStore("oast", () => {
    */
   const clearProviderData = async (type: string) => {
     delete activeProviders.value[type];
-    const storage = (sdk.storage.get() as Record<string, any>) || {};
-    storage[storageKeyActiveProviders] = activeProviders.value;
-    await sdk.storage.set(storage);
+    await persist(() => ({ [storageKeyActiveProviders]: activeProviders.value }));
   };
 
   /**
@@ -416,11 +425,7 @@ export const useOastStore = defineStore("oast", () => {
   /**
    * Saves current polling list to persistent storage
    */
-  const savePollingList = async () => {
-    const storage = (sdk.storage.get() as Record<string, any>) || {};
-    storage[storageKeyPollingList] = pollingList.value;
-    await sdk.storage.set(storage);
-  };
+  const savePollingList = () => persist(() => ({ [storageKeyPollingList]: pollingList.value }));
 
   const loadTabPayloads = () => {
     const storage = sdk.storage.get() as Record<string, any> | null;
@@ -429,11 +434,7 @@ export const useOastStore = defineStore("oast", () => {
     }
   };
 
-  const saveTabPayloads = async () => {
-    const storage = (sdk.storage.get() as Record<string, any>) || {};
-    storage[storageKeyTabPayloads] = tabPayloads.value;
-    await sdk.storage.set(storage);
-  };
+  const saveTabPayloads = () => persist(() => ({ [storageKeyTabPayloads]: tabPayloads.value }));
 
   const setTabPayload = async (tabId: string, payload: string) => {
     tabPayloads.value[tabId] = payload;
@@ -447,11 +448,7 @@ export const useOastStore = defineStore("oast", () => {
     }
   };
 
-  const saveTabPayloadHistory = async () => {
-    const storage = (sdk.storage.get() as Record<string, any>) || {};
-    storage[storageKeyTabPayloadHistory] = tabPayloadHistory.value;
-    await sdk.storage.set(storage);
-  };
+  const saveTabPayloadHistory = () => persist(() => ({ [storageKeyTabPayloadHistory]: tabPayloadHistory.value }));
 
   const addPayloadToHistory = async (tabId: string, payload: string) => {
     const list = tabPayloadHistory.value[tabId] || [];
@@ -474,11 +471,7 @@ export const useOastStore = defineStore("oast", () => {
     }
   };
 
-  const saveTabProviders = async () => {
-    const storage = (sdk.storage.get() as Record<string, any>) || {};
-    storage[storageKeyTabProviders] = tabProviders.value;
-    await sdk.storage.set(storage);
-  };
+  const saveTabProviders = () => persist(() => ({ [storageKeyTabProviders]: tabProviders.value }));
 
   const setTabProvider = async (tabId: string, provider: string) => {
     tabProviders.value[tabId] = provider;
@@ -641,9 +634,7 @@ export const useOastStore = defineStore("oast", () => {
    */
   const setDesktopNotification = async (enabled: boolean) => {
     desktopNotification.value = enabled;
-    const storage = (sdk.storage.get() as Record<string, any>) || {};
-    storage[storageKeyDesktopNotification] = enabled;
-    await sdk.storage.set(storage);
+    await persist(() => ({ [storageKeyDesktopNotification]: enabled }));
   };
 
   /**

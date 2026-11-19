@@ -247,18 +247,28 @@ async function getPayload() {
   await oastStore.setTabPayload(activeTab.id, finalPayload);
   await oastStore.addPayloadToHistory(activeTab.id, finalPayload);
 
-  const pollingId = uuidv4();
-  await oastStore.addPolling({
-    id: pollingId,
-    payload: finalPayload,
-    provider: currentProvider.name,
-    providerId: currentProvider.id,
-    lastChecked: Date.now(),
-    interval: pollingInterval,
-    tabId: activeTab.id,
-    tabName: activeTab.name,
-    session,
-  });
+  // webhook.site, PostBin, BOAST and custom HTTP return the same payload on
+  // every click: reuse the tab's task instead of stacking another poller on it
+  const existing = oastStore.pollingList.find(
+    (p) =>
+      p.tabId === activeTab.id &&
+      p.payload === finalPayload &&
+      p.providerId === currentProvider.id,
+  );
+  const pollingId = existing?.id ?? uuidv4();
+  if (!existing) {
+    await oastStore.addPolling({
+      id: pollingId,
+      payload: finalPayload,
+      provider: currentProvider.name,
+      providerId: currentProvider.id,
+      lastChecked: Date.now(),
+      interval: pollingInterval,
+      tabId: activeTab.id,
+      tabName: activeTab.name,
+      session,
+    });
+  }
 
   const started = await pollingManager.resume(pollingId);
   if (started && currentProvider.type !== "interactsh") {

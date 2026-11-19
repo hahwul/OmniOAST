@@ -608,6 +608,31 @@ describe("usePollingManager", () => {
     });
   });
 
+  describe("createInteractshCallback", () => {
+    it("leaves raw request/response empty when the server omits them", async () => {
+      const { createInteractshCallback } = await import(
+        "../services/pollingManager"
+      );
+      // e.g. SMTP interactions carry no raw-response
+      createInteractshCallback(
+        mockOastStore as any,
+        "p1",
+        "Interactsh",
+        "tab-1",
+      )({
+        protocol: "smtp",
+        "full-id": "abc.oast.fun",
+        "remote-address": "1.2.3.4",
+        timestamp: "2024-01-01T00:00:00Z",
+      });
+
+      expect(mockAddInteraction).toHaveBeenCalledWith(
+        expect.objectContaining({ rawRequest: "", rawResponse: "" }),
+        "tab-1",
+      );
+    });
+  });
+
   describe("lifecycle races", () => {
     const session = {
       type: "interactsh",

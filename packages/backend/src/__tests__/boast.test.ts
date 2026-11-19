@@ -47,7 +47,7 @@ describe("BoastService", () => {
             id: "event-1",
             time: "2024-01-01T00:00:00Z",
             receiver: "DNS",
-            QueryType: "A",
+            queryType: "A", // BOAST's JSON field name
             remoteAddress: "1.2.3.4",
             dump: "test dump data",
           },
