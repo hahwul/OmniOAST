@@ -4,6 +4,11 @@ import { type CaidoBackendSDK, type OASTEvent } from "../../types";
 
 import { type OASTService } from "./provider";
 
+// The UI searches and renders raw request/response as text; endpoints often
+// return parsed JSON bodies.
+const asText = (value: unknown): string =>
+  typeof value === "string" ? value : JSON.stringify(value, null, 2);
+
 export class CustomHttpService implements OASTService {
   private pollUrl: string;
   private sdk: CaidoBackendSDK;
@@ -80,8 +85,10 @@ export class CustomHttpService implements OASTService {
           method: String(item.method || ""),
           source: String(item.ip || item.source || item.remote_address || ""),
           correlationId: id,
-          rawRequest: item.rawRequest || item.raw_request || item.body || JSON.stringify(item, null, 2),
-          rawResponse: item.rawResponse || item.raw_response || "",
+          rawRequest: asText(
+            item.rawRequest || item.raw_request || item.body || item,
+          ),
+          rawResponse: asText(item.rawResponse || item.raw_response || ""),
         } as OASTEvent & Record<string, any>);
       }
 

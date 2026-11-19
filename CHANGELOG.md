@@ -11,6 +11,14 @@ All notable changes to this project will be documented in this file.
 - Webhook.site interaction timestamps were shifted by the local UTC offset (its `created_at` is UTC without a zone marker)
 - Interactsh servers configured with a path prefix (e.g. behind a reverse proxy at `/oast`) had the prefix dropped from register/poll/deregister requests
 - Restoring an Interactsh session that only stored its private key replaced that key with a freshly generated pair, so its interactions could no longer be decrypted
+- Interactsh payloads are now generated from the alphabets the server expects (xid correlation ID + zbase32 nonce, like the official client). interactsh-server 1.4.0+ silently ignored callbacks to most OmniOAST payloads, and newer builds reject the registration itself. Payloads generated before this version keep their old IDs: generate a new one when using such a server
+- Interactsh interactions without a raw request/response (e.g. SMTP) showed the literal text `undefined` in the editor
+- A PostBin provider kept handing out its expired bin (bins last 30 minutes); Get Payload now creates a new bin when the old one is gone
+- PostBin requests already taken off the bin were dropped when a later request in the same poll failed
+- Custom HTTP endpoints returning a JSON object as `body` / `rawResponse` broke interaction search and the request/response view (interactions already stored that way are repaired on load)
+- BOAST DNS interactions never showed their query type in the Method column
+- Clicking Get Payload again for a provider that returns the same payload (webhook.site, PostBin, BOAST, Custom HTTP) no longer stacks a duplicate polling task on the tab; the existing task is restarted so provider and interval changes apply
+- Saves that overlapped (e.g. an interaction arriving while the polling list was being saved) wrote each other's data back to an older state, so a just-received interaction, tab or polling task could be missing after a reload. Storage writes are now queued and coalesced
 
 ## 0.6.1
 

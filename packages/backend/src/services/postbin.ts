@@ -37,8 +37,10 @@ export class PostbinService implements OASTService {
       return [];
     }
 
+    // Outside the try: shift removes requests from the bin, so the ones already
+    // fetched must still be returned if a later shift fails.
+    const events: OASTEvent[] = [];
     try {
-      const events: OASTEvent[] = [];
       let requestCount = 0;
 
       // Keep shifting requests until we get a 404 (no more requests)
@@ -110,7 +112,7 @@ export class PostbinService implements OASTService {
       return events;
     } catch (error) {
       this.sdk.console.error("Error fetching PostBin events:", error);
-      return [];
+      return events;
     }
   }
 
@@ -122,11 +124,24 @@ export class PostbinService implements OASTService {
     return this.payloadUrl;
   }
 
+  // Bins expire after 30 minutes. Only a definite 404 counts as gone, so a
+  // network hiccup doesn't replace a bin that is still alive.
+  private async binExists(): Promise<boolean> {
+    try {
+      const res: RequestResponse = await this.sdk.requests.send(
+        new RequestSpec(`https://www.postb.in/api/bin/${this.binId}`),
+      );
+      return res.response.getCode() !== 404;
+    } catch {
+      return true;
+    }
+  }
+
   public async registerAndGetPayload(): Promise<{
     id: string;
     payloadUrl: string;
   } | null> {
-    if (this.payloadUrl && this.binId) {
+    if (this.payloadUrl && this.binId && (await this.binExists())) {
       return { id: this.binId, payloadUrl: this.payloadUrl };
     }
 

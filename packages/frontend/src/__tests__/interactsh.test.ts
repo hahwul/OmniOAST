@@ -2,6 +2,7 @@ import axios from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useClientService } from "../services/interactsh";
+import { generateRandomString } from "../utils/utils";
 
 // Mock axios
 vi.mock("axios");
@@ -520,6 +521,31 @@ describe("Interactsh Service", () => {
       expect(url).toContain(uniqueId);
       expect(uniqueId).toBeDefined();
       expect(uniqueId.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("id alphabets", () => {
+    // interactsh-server >= 1.4.0 only matches ids made of an xid-alphabet
+    // prefix and a zbase32 nonce; newer builds also reject others at /register
+    it("generates the correlation id and nonce from the alphabets the server accepts", async () => {
+      const mockInstance = createMockAxiosInstance();
+      mockInstance.post.mockResolvedValue({ status: 200 });
+      mockedAxios.create = vi.fn().mockReturnValue(mockInstance);
+
+      const client = useClientService();
+      await client.start({ serverURL: "https://interact.sh", token: "" });
+      client.generateUrl();
+
+      expect(generateRandomString).toHaveBeenCalledWith(
+        20,
+        false,
+        "0123456789abcdefghijklmnopqrstuv",
+      );
+      expect(generateRandomString).toHaveBeenCalledWith(
+        13,
+        false,
+        "ybndrfg8ejkmcpqxot1uwisza345h769",
+      );
     });
   });
 

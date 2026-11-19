@@ -315,6 +315,31 @@ describe("PostbinService", () => {
       expect(mockSdk.console.error).toHaveBeenCalled();
     });
 
+    it("keeps requests already shifted off the bin when a later shift fails", async () => {
+      // shift is destructive: dropping these would lose them for good
+      mockSdk.requests.send
+        .mockResolvedValueOnce({
+          response: {
+            getCode: () => 200,
+            getBody: () => ({
+              toJson: () => ({ reqId: "req-1", method: "GET" }),
+            }),
+          },
+        })
+        .mockRejectedValueOnce(new Error("Network error"));
+
+      const service = new PostbinService(
+        undefined,
+        mockSdk as any,
+        "https://www.postb.in/test-bin",
+        0,
+      );
+      const events = await service.getEvents();
+
+      expect(events.map((e) => e.id)).toEqual(["req-1"]);
+      expect(mockSdk.console.error).toHaveBeenCalled();
+    });
+
     it("should stop at safety limit of 100 requests", async () => {
       vi.clearAllMocks();
 
@@ -350,7 +375,9 @@ describe("PostbinService", () => {
   });
 
   describe("registerAndGetPayload", () => {
-    it("should return existing payload if already set", async () => {
+    it("should return existing payload if the bin still exists", async () => {
+      mockSdk.requests.send.mockResolvedValue(mockRequestResponse);
+
       const existingUrl = "https://www.postb.in/existing-bin";
       const service = new PostbinService(
         undefined,
@@ -363,7 +390,33 @@ describe("PostbinService", () => {
         id: "existing-bin",
         payloadUrl: "https://www.postb.in/existing-bin",
       });
-      expect(mockSdk.requests.send).not.toHaveBeenCalled();
+      // Only the existence check, no new bin
+      expect(mockSdk.requests.send).toHaveBeenCalledTimes(1);
+    });
+
+    it("should create a new bin when the existing one has expired", async () => {
+      mockSdk.requests.send
+        .mockResolvedValueOnce({
+          response: { getCode: () => 404, getBody: () => null },
+        })
+        .mockResolvedValueOnce({
+          response: {
+            getCode: () => 200,
+            getBody: () => ({ toJson: () => ({ binId: "fresh-bin" }) }),
+          },
+        });
+
+      const service = new PostbinService(
+        undefined,
+        mockSdk as any,
+        "https://www.postb.in/expired-bin",
+      );
+      const result = await service.registerAndGetPayload();
+
+      expect(result).toEqual({
+        id: "fresh-bin",
+        payloadUrl: "https://www.postb.in/fresh-bin",
+      });
     });
 
     it("should register new bin successfully", async () => {

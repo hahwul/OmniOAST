@@ -26,6 +26,12 @@ describe("Utility Functions", () => {
       expect(result).toMatch(/[0-9]/);
     });
 
+    it("should draw only from a custom alphabet when given", () => {
+      expect(
+        generateRandomString(500, false, "0123456789abcdefghijklmnopqrstuv"),
+      ).toMatch(/^[0-9a-v]{500}$/);
+    });
+
     it("should return different strings on subsequent calls", () => {
       const str1 = generateRandomString(10);
       const str2 = generateRandomString(10);

@@ -55,7 +55,7 @@ export class BoastService implements OASTService {
         timestamp: event.time ? new Date(event.time).getTime() : Date.now(),
         data: event,
         protocol: event.receiver,
-        method: event.QueryType,
+        method: event.queryType,
         source: event.remoteAddress,
         correlationId: event.id,
         rawRequest: event.dump,

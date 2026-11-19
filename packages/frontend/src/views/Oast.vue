@@ -221,6 +221,14 @@ async function getPayload() {
           });
           currentProvider.url = payloadUrl;
         }
+        if (currentProvider.type === "postbin") {
+          // A new bin means the old one expired: its tasks would poll nothing
+          // now and, resolving the provider again after a reload, this bin.
+          const stale = oastStore.pollingList.filter(
+            (p) => p.providerId === currentProvider.id && p.payload !== payloadUrl,
+          );
+          for (const task of stale) await oastStore.removePolling(task.id);
+        }
       } else if (currentProvider.type === "customhttp") {
         // No registration step: the configured URL is polled as-is
         payloadUrl = currentProvider.url;
@@ -247,18 +255,32 @@ async function getPayload() {
   await oastStore.setTabPayload(activeTab.id, finalPayload);
   await oastStore.addPayloadToHistory(activeTab.id, finalPayload);
 
-  const pollingId = uuidv4();
-  await oastStore.addPolling({
-    id: pollingId,
-    payload: finalPayload,
-    provider: currentProvider.name,
-    providerId: currentProvider.id,
-    lastChecked: Date.now(),
-    interval: pollingInterval,
-    tabId: activeTab.id,
-    tabName: activeTab.name,
-    session,
-  });
+  // webhook.site, PostBin, BOAST and custom HTTP return the same payload on
+  // every click: reuse the tab's task instead of stacking another poller on it
+  const existing = oastStore.pollingList.find(
+    (p) =>
+      p.tabId === activeTab.id &&
+      p.payload === finalPayload &&
+      p.providerId === currentProvider.id,
+  );
+  const pollingId = existing?.id ?? uuidv4();
+  if (existing) {
+    // Restart it, so provider or interval edits made since it started apply
+    await oastStore.pausePolling(existing.id);
+    await oastStore.updatePolling(existing.id, { interval: pollingInterval });
+  } else {
+    await oastStore.addPolling({
+      id: pollingId,
+      payload: finalPayload,
+      provider: currentProvider.name,
+      providerId: currentProvider.id,
+      lastChecked: Date.now(),
+      interval: pollingInterval,
+      tabId: activeTab.id,
+      tabName: activeTab.name,
+      session,
+    });
+  }
 
   const started = await pollingManager.resume(pollingId);
   if (started && currentProvider.type !== "interactsh") {

@@ -39,6 +39,12 @@ interface SessionInfo {
   publicKey?: string;
 }
 
+// interactsh-server >= 1.4.0 only attributes callbacks to ids made of an xid
+// prefix and a zbase32 nonce (what the Go client generates), and newer builds
+// reject other correlation ids at /register.
+const XID_ALPHABET = "0123456789abcdefghijklmnopqrstuv";
+const ZBASE32_ALPHABET = "ybndrfg8ejkmcpqxot1uwisza345h769";
+
 // Like the Go client, append the endpoint to the server URL: new URL("/x", base)
 // would drop a path prefix (e.g. a server behind a reverse proxy at /oast).
 const endpointUrl = (serverURL: string | URL, path: string) =>
@@ -221,7 +227,11 @@ class InteractshClient {
 
     this.correlationID.value =
       options.sessionInfo?.correlationID ||
-      generateRandomString(options.correlationIdLength || 20);
+      generateRandomString(
+        options.correlationIdLength || 20,
+        false,
+        XID_ALPHABET,
+      );
     this.secretKey.value =
       options.sessionInfo?.secretKey ||
       generateRandomString(options.correlationIdNonceLength || 13);
@@ -473,7 +483,11 @@ class InteractshClient {
       return { url: "", uniqueId: "" };
     }
 
-    const randomId = generateRandomString(this.correlationIdNonceLength);
+    const randomId = generateRandomString(
+      this.correlationIdNonceLength,
+      false,
+      ZBASE32_ALPHABET,
+    );
     const url = `${this.correlationID.value}${randomId}.${this.serverURL.value.host}`;
     const uniqueId = `${this.correlationID.value}${randomId}`;
     return { url, uniqueId };

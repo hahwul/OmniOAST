@@ -51,8 +51,9 @@ export function createInteractshCallback(
         provider: providerName,
         timestamp: formatTimestamp((interaction as any).timestamp),
         timestampNum: toNumericTimestamp((interaction as any).timestamp),
-        rawRequest: String((interaction as any)["raw-request"]),
-        rawResponse: String((interaction as any)["raw-response"]),
+        // Omitted by the server for some protocols (e.g. no SMTP raw-response)
+        rawRequest: String((interaction as any)["raw-request"] ?? ""),
+        rawResponse: String((interaction as any)["raw-response"] ?? ""),
       },
       tabId,
     );
