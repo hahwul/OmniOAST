@@ -221,6 +221,14 @@ async function getPayload() {
           });
           currentProvider.url = payloadUrl;
         }
+        if (currentProvider.type === "postbin") {
+          // A new bin means the old one expired: its tasks would poll nothing
+          // now and, resolving the provider again after a reload, this bin.
+          const stale = oastStore.pollingList.filter(
+            (p) => p.providerId === currentProvider.id && p.payload !== payloadUrl,
+          );
+          for (const task of stale) await oastStore.removePolling(task.id);
+        }
       } else if (currentProvider.type === "customhttp") {
         // No registration step: the configured URL is polled as-is
         payloadUrl = currentProvider.url;
@@ -256,7 +264,11 @@ async function getPayload() {
       p.providerId === currentProvider.id,
   );
   const pollingId = existing?.id ?? uuidv4();
-  if (!existing) {
+  if (existing) {
+    // Restart it, so provider or interval edits made since it started apply
+    await oastStore.pausePolling(existing.id);
+    await oastStore.updatePolling(existing.id, { interval: pollingInterval });
+  } else {
     await oastStore.addPolling({
       id: pollingId,
       payload: finalPayload,

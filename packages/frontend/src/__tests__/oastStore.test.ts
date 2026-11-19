@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock SDK before importing the store
 const mockStorage: Record<string, any> = {};
+const storageWrites = { count: 0 };
 vi.mock("@/plugins/sdk", () => ({
   useSDK: () => ({
     storage: {
@@ -10,6 +11,7 @@ vi.mock("@/plugins/sdk", () => ({
       // set() replaces it only once the write has gone through.
       get: () => ({ ...mockStorage }),
       set: vi.fn(async (data: Record<string, any>) => {
+        storageWrites.count++;
         await Promise.resolve();
         resetStorage();
         Object.assign(mockStorage, data);
@@ -44,6 +46,36 @@ describe("oastStore", () => {
     resetStorage();
     setActivePinia(createPinia());
     vi.clearAllMocks();
+  });
+
+  it("writes a burst of interactions once, not once per interaction", async () => {
+    const store = useOastStore();
+    await Promise.resolve(); // let the initial tab save start
+    const before = storageWrites.count;
+
+    const saves = Array.from({ length: 20 }, (_, n) =>
+      store.addInteraction({ id: `i${n}` } as any),
+    );
+    await Promise.all(saves);
+
+    expect(storageWrites.count - before).toBeLessThanOrEqual(2);
+    expect(mockStorage["omnioast.tabs"][0].interactions).toHaveLength(20);
+  });
+
+  it("turns stored non-text raw bodies into text on load", () => {
+    mockStorage["omnioast.tabs"] = [
+      {
+        id: "t1",
+        name: "1",
+        interactions: [{ id: "a", rawRequest: { a: 1 }, rawResponse: "ok" }],
+      },
+    ];
+    const store = useOastStore();
+
+    expect(store.tabs[0]!.interactions[0]!.rawRequest).toBe(
+      JSON.stringify({ a: 1 }, null, 2),
+    );
+    expect(store.tabs[0]!.interactions[0]!.rawResponse).toBe("ok");
   });
 
   it("keeps every key when saves of different keys overlap", async () => {
